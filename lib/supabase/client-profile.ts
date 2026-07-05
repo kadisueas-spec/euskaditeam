@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type ClientRecord = {
@@ -13,7 +14,11 @@ export type ClientRecord = {
   subscriptionEndDate: string | null;
 };
 
-export async function getCurrentClientRecord(): Promise<ClientRecord | null> {
+// cache(): varias funciones de este módulo llaman a getCurrentClientRecord()
+// de forma independiente dentro del mismo request (layout, stats, my-month,
+// etc.) — sin memoizar, cada llamada repetía el mismo round trip a Supabase
+// (incluyendo auth.getUser(), que también pega contra el servidor).
+export const getCurrentClientRecord = cache(async function getCurrentClientRecord(): Promise<ClientRecord | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -42,4 +47,4 @@ export async function getCurrentClientRecord(): Promise<ClientRecord | null> {
     subscriptionStatus: data.subscription_status,
     subscriptionEndDate: data.subscription_end_date,
   };
-}
+});

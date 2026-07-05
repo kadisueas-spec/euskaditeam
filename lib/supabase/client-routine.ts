@@ -29,19 +29,32 @@ export type MyRoutine = {
   days: MyRoutineDay[];
 };
 
-type RoutineExerciseRow = {
+type MyActiveRoutineRow = {
   id: string;
-  day_id: string;
-  exercise_id: string;
-  order_index: number;
-  sets: number;
-  reps_min: number | null;
-  reps_max: number | null;
-  rir_target: number | null;
-  rest_seconds: number | null;
-  coach_notes: string | null;
+  name: string;
+  objective: string | null;
+  routine_days: {
+    id: string;
+    name: string;
+    day_number: number;
+    routine_exercises: {
+      id: string;
+      exercise_id: string;
+      order_index: number;
+      sets: number;
+      reps_min: number | null;
+      reps_max: number | null;
+      rir_target: number | null;
+      rest_seconds: number | null;
+      coach_notes: string | null;
+      exercises: { name: string; video_url: string | null } | null;
+    }[];
+  }[];
 };
 
+// Antes: 4 round trips secuenciales (routine -> days -> routine_exercises ->
+// exercises). Ahora: 1 sola consulta con todo anidado; orden se resuelve
+// en JS.
 export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
   const client = await getCurrentClientRecord();
   if (!client) return null;
@@ -50,76 +63,53 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
 
   const { data: routine } = await supabase
     .from("routines")
-    .select("id, name, objective")
+    .select(
+      `id, name, objective,
+       routine_days (
+         id, name, day_number,
+         routine_exercises (
+           id, exercise_id, order_index, sets, reps_min, reps_max,
+           rir_target, rest_seconds, coach_notes,
+           exercises ( name, video_url )
+         )
+       )`
+    )
     .eq("client_id", client.id)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()
+    .returns<MyActiveRoutineRow>();
 
   if (!routine) return null;
 
-  const { data: days } = await supabase
-    .from("routine_days")
-    .select("id, name, day_number")
-    .eq("routine_id", routine.id)
-    .order("day_number", { ascending: true });
-
-  const dayRows = days ?? [];
-  const dayIds = dayRows.map((d) => d.id);
-
-  const { data: routineExercises } = dayIds.length
-    ? await supabase
-        .from("routine_exercises")
-        .select(
-          "id, day_id, exercise_id, order_index, sets, reps_min, reps_max, rir_target, rest_seconds, coach_notes"
-        )
-        .in("day_id", dayIds)
-        .order("order_index", { ascending: true })
-    : { data: [] as RoutineExerciseRow[] };
-
-  const exerciseIds = (routineExercises ?? [])
-    .map((re) => re.exercise_id)
-    .filter((id): id is string => Boolean(id));
-
-  const { data: exercises } = exerciseIds.length
-    ? await supabase
-        .from("exercises")
-        .select("id, name, video_url")
-        .in("id", exerciseIds)
-    : { data: [] as { id: string; name: string; video_url: string | null }[] };
-
-  const exerciseById = new Map((exercises ?? []).map((e) => [e.id, e]));
-
-  const exercisesByDay = new Map<string, MyRoutineExercise[]>();
-  for (const re of routineExercises ?? []) {
-    const exercise = exerciseById.get(re.exercise_id);
-    const list = exercisesByDay.get(re.day_id) ?? [];
-    list.push({
-      id: re.id,
-      exerciseId: re.exercise_id,
-      exerciseName: exercise?.name ?? "Ejercicio",
-      videoId: exercise?.video_url ?? null,
-      order: re.order_index,
-      sets: re.sets,
-      repsMin: re.reps_min,
-      repsMax: re.reps_max,
-      rirTarget: re.rir_target,
-      restSeconds: re.rest_seconds,
-      coachNotes: re.coach_notes,
-    });
-    exercisesByDay.set(re.day_id, list);
-  }
+  const days = [...routine.routine_days].sort(
+    (a, b) => a.day_number - b.day_number
+  );
 
   return {
     id: routine.id,
     name: routine.name,
     objective: routine.objective,
-    days: dayRows.map((d) => ({
+    days: days.map((d) => ({
       id: d.id,
       name: d.name,
       dayNumber: d.day_number,
-      exercises: exercisesByDay.get(d.id) ?? [],
+      exercises: [...d.routine_exercises]
+        .sort((a, b) => a.order_index - b.order_index)
+        .map((re) => ({
+          id: re.id,
+          exerciseId: re.exercise_id,
+          exerciseName: re.exercises?.name ?? "Ejercicio",
+          videoId: re.exercises?.video_url ?? null,
+          order: re.order_index,
+          sets: re.sets,
+          repsMin: re.reps_min,
+          repsMax: re.reps_max,
+          rirTarget: re.rir_target,
+          restSeconds: re.rest_seconds,
+          coachNotes: re.coach_notes,
+        })),
     })),
   };
 }

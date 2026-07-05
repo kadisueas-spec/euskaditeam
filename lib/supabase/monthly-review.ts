@@ -17,12 +17,27 @@ export async function getMonthEndAlerts(): Promise<MonthEndAlert[]> {
   if (rows.length === 0) return [];
 
   const clientIds = rows.map((c) => c.id);
+  const clientById = new Map(rows.map((c) => [c.id, c]));
+  const allUserIds = rows
+    .map((c) => c.user_id)
+    .filter((id): id is string => Boolean(id));
 
-  const { data: reviews } = await supabase
-    .from("monthly_reviews")
-    .select("client_id, completed_at")
-    .eq("month", monthKey)
-    .in("client_id", clientIds);
+  // "reviews" y "profiles" son independientes entre sí (ambos dependen solo
+  // de los IDs ya obtenidos de "clients") — antes se pedían en secuencia,
+  // ahora en paralelo. Nota: esta función solo corre el último día del mes
+  // (ver isMonthEndToday arriba), es de bajo impacto en el total.
+  const [{ data: reviews }, { data: profiles }] = await Promise.all([
+    supabase
+      .from("monthly_reviews")
+      .select("client_id, completed_at")
+      .eq("month", monthKey)
+      .in("client_id", clientIds),
+    allUserIds.length
+      ? supabase.from("profiles").select("id, full_name, email").in("id", allUserIds)
+      : Promise.resolve({
+          data: [] as { id: string; full_name: string | null; email: string }[],
+        }),
+  ]);
 
   const completedClientIds = new Set(
     (reviews ?? []).filter((r) => r.completed_at).map((r) => r.client_id)
@@ -32,18 +47,6 @@ export async function getMonthEndAlerts(): Promise<MonthEndAlert[]> {
     (id) => !completedClientIds.has(id)
   );
   if (pendingClientIds.length === 0) return [];
-
-  const clientById = new Map(rows.map((c) => [c.id, c]));
-  const userIds = pendingClientIds
-    .map((id) => clientById.get(id)?.user_id)
-    .filter((id): id is string => Boolean(id));
-
-  const { data: profiles } = userIds.length
-    ? await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string }[] };
 
   const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
 

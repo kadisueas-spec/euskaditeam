@@ -9,36 +9,36 @@ export type WorkoutHistoryItem = {
   energyLevel: number | null;
 };
 
+type HistoryRow = {
+  id: string;
+  workout_date: string;
+  is_completed: boolean;
+  energy_level: number | null;
+  routine_days: { name: string } | null;
+};
+
+// Antes: 2 round trips (logs -> routine_days). Ahora: 1.
 export async function getWorkoutHistory(): Promise<WorkoutHistoryItem[]> {
   const client = await getCurrentClientRecord();
   if (!client) return [];
 
   const supabase = await createClient();
 
-  const { data: logs } = await supabase
+  const { data } = await supabase
     .from("workout_logs")
-    .select("id, workout_date, routine_day_id, is_completed, energy_level")
+    .select(
+      `id, workout_date, is_completed, energy_level,
+       routine_days ( name )`
+    )
     .eq("client_id", client.id)
     .order("workout_date", { ascending: false })
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<HistoryRow[]>();
 
-  const rows = logs ?? [];
-  const dayIds = rows
-    .map((r) => r.routine_day_id)
-    .filter((id): id is string => Boolean(id));
-
-  const { data: days } = dayIds.length
-    ? await supabase.from("routine_days").select("id, name").in("id", dayIds)
-    : { data: [] as { id: string; name: string }[] };
-
-  const dayNameById = new Map((days ?? []).map((d) => [d.id, d.name]));
-
-  return rows.map((r) => ({
+  return (data ?? []).map((r) => ({
     id: r.id,
     workoutDate: r.workout_date,
-    dayName: r.routine_day_id
-      ? (dayNameById.get(r.routine_day_id) ?? null)
-      : null,
+    dayName: r.routine_days?.name ?? null,
     isCompleted: r.is_completed,
     energyLevel: r.energy_level,
   }));
@@ -62,6 +62,24 @@ export type WorkoutLogDetail = {
   sets: WorkoutLogSetDetail[];
 };
 
+type LogDetailRow = {
+  id: string;
+  workout_date: string;
+  energy_level: number | null;
+  client_notes: string | null;
+  routine_days: { name: string } | null;
+  workout_set_logs: {
+    id: string;
+    set_number: number;
+    weight_kg: number | null;
+    reps_completed: number | null;
+    rir_actual: number | null;
+    routine_exercises: { exercises: { name: string } | null } | null;
+  }[];
+};
+
+// Antes: hasta 5 round trips secuenciales (log -> day -> setLogs ->
+// routineExercises -> exercises). Ahora: 1.
 export async function getWorkoutLogDetail(
   id: string
 ): Promise<WorkoutLogDetail | null> {
@@ -72,76 +90,36 @@ export async function getWorkoutLogDetail(
 
   const { data: log } = await supabase
     .from("workout_logs")
-    .select("id, workout_date, routine_day_id, energy_level, client_notes")
+    .select(
+      `id, workout_date, energy_level, client_notes,
+       routine_days ( name ),
+       workout_set_logs (
+         id, set_number, weight_kg, reps_completed, rir_actual,
+         routine_exercises ( exercises ( name ) )
+       )`
+    )
     .eq("id", id)
     .eq("client_id", client.id)
-    .single();
+    .single()
+    .returns<LogDetailRow>();
 
   if (!log) return null;
 
-  let dayName: string | null = null;
-  if (log.routine_day_id) {
-    const { data: day } = await supabase
-      .from("routine_days")
-      .select("name")
-      .eq("id", log.routine_day_id)
-      .single();
-    dayName = day?.name ?? null;
-  }
-
-  const { data: setLogs } = await supabase
-    .from("workout_set_logs")
-    .select(
-      "id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual"
-    )
-    .eq("workout_log_id", id)
-    .order("set_number", { ascending: true });
-
-  const rows = setLogs ?? [];
-  const routineExerciseIds = rows
-    .map((r) => r.routine_exercise_id)
-    .filter((id): id is string => Boolean(id));
-
-  const { data: routineExercises } = routineExerciseIds.length
-    ? await supabase
-        .from("routine_exercises")
-        .select("id, exercise_id")
-        .in("id", routineExerciseIds)
-    : { data: [] as { id: string; exercise_id: string }[] };
-
-  const exerciseIdByRoutineExerciseId = new Map(
-    (routineExercises ?? []).map((re) => [re.id, re.exercise_id])
-  );
-  const exerciseIds = Array.from(
-    new Set(Array.from(exerciseIdByRoutineExerciseId.values()))
-  );
-
-  const { data: exercises } = exerciseIds.length
-    ? await supabase.from("exercises").select("id, name").in("id", exerciseIds)
-    : { data: [] as { id: string; name: string }[] };
-
-  const exerciseNameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
-
-  const sets: WorkoutLogSetDetail[] = rows.map((r) => {
-    const exerciseId = r.routine_exercise_id
-      ? exerciseIdByRoutineExerciseId.get(r.routine_exercise_id)
-      : undefined;
-    return {
-      id: r.id,
-      exerciseName: exerciseId
-        ? (exerciseNameById.get(exerciseId) ?? "Ejercicio")
-        : "Ejercicio",
-      setNumber: r.set_number,
-      weightKg: r.weight_kg,
-      repsCompleted: r.reps_completed,
-      rirActual: r.rir_actual,
-    };
-  });
+  const sets: WorkoutLogSetDetail[] = [...log.workout_set_logs]
+    .sort((a, b) => a.set_number - b.set_number)
+    .map((s) => ({
+      id: s.id,
+      exerciseName: s.routine_exercises?.exercises?.name ?? "Ejercicio",
+      setNumber: s.set_number,
+      weightKg: s.weight_kg,
+      repsCompleted: s.reps_completed,
+      rirActual: s.rir_actual,
+    }));
 
   return {
     id: log.id,
     workoutDate: log.workout_date,
-    dayName,
+    dayName: log.routine_days?.name ?? null,
     energyLevel: log.energy_level,
     clientNotes: log.client_notes,
     sets,

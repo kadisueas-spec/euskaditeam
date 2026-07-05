@@ -51,6 +51,34 @@ function computeStreak(datesDesc: string[]): number {
   return streak;
 }
 
+type LogSetRow = {
+  workout_log_id: string;
+  exercise_id: string | null;
+  weight_kg: number | null;
+  reps_completed: number | null;
+};
+
+type LogWithSetsRow = {
+  id: string;
+  workout_date: string;
+  workout_set_logs: {
+    routine_exercise_id: string | null;
+    weight_kg: number | null;
+    reps_completed: number | null;
+    routine_exercises: { exercise_id: string; exercises: { name: string } | null } | null;
+  }[];
+};
+
+type RoutineWithDayCountRow = {
+  id: string;
+  routine_days: { count: number }[];
+};
+
+// Antes: 7 round trips secuenciales (client, logs, activeRoutine,
+// routine_days count, setLogs, routineExercises, exercises).
+// Ahora: client (memoizado) + 3 consultas en paralelo (Promise.all) — la de
+// logs+sets trae routine_exercises y exercises anidados en la misma
+// consulta, y la de la rutina activa trae el conteo de días embebido.
 export async function getClientStats(): Promise<ClientStats> {
   const client = await getCurrentClientRecord();
   if (!client) {
@@ -63,77 +91,69 @@ export async function getClientStats(): Promise<ClientStats> {
   const todayStart = new Date(now);
   todayStart.setUTCHours(0, 0, 0, 0);
   const eightWeeksAgo = new Date(todayStart.getTime() - 8 * WEEK_MS);
+  const monthPrefix = now.toISOString().slice(0, 7);
 
-  const { data: logs } = await supabase
-    .from("workout_logs")
-    .select("id, workout_date")
-    .eq("client_id", client.id)
-    .order("workout_date", { ascending: false });
+  const [{ data: allLogs }, { data: recentLogsWithSets }, { data: activeRoutine }] =
+    await Promise.all([
+      supabase
+        .from("workout_logs")
+        .select("id, workout_date")
+        .eq("client_id", client.id)
+        .order("workout_date", { ascending: false }),
+      supabase
+        .from("workout_logs")
+        .select(
+          `id, workout_date,
+           workout_set_logs (
+             routine_exercise_id, weight_kg, reps_completed,
+             routine_exercises ( exercise_id, exercises ( name ) )
+           )`
+        )
+        .eq("client_id", client.id)
+        .gte("workout_date", eightWeeksAgo.toISOString().slice(0, 10))
+        .returns<LogWithSetsRow[]>(),
+      supabase
+        .from("routines")
+        .select("id, routine_days(count)")
+        .eq("client_id", client.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .returns<RoutineWithDayCountRow | null>(),
+    ]);
 
-  const allLogRows = logs ?? [];
+  const allLogRows = allLogs ?? [];
   const distinctDatesDesc = Array.from(new Set(allLogRows.map((l) => l.workout_date)));
   const streak = computeStreak(distinctDatesDesc);
 
-  // Adherencia del mes: días entrenados vs. (días de rutina por semana x semanas transcurridas)
-  const monthPrefix = now.toISOString().slice(0, 7);
   const trainedThisMonth = distinctDatesDesc.filter((d) => d.startsWith(monthPrefix)).length;
 
-  const { data: activeRoutine } = await supabase
-    .from("routines")
-    .select("id")
-    .eq("client_id", client.id)
-    .eq("is_active", true)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  let plannedDaysPerWeek = 0;
-  if (activeRoutine) {
-    const { count } = await supabase
-      .from("routine_days")
-      .select("id", { count: "exact", head: true })
-      .eq("routine_id", activeRoutine.id);
-    plannedDaysPerWeek = count ?? 0;
-  }
-
+  const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
   const weeksElapsedThisMonth = Math.ceil(now.getUTCDate() / 7);
   const plannedTotal = plannedDaysPerWeek * weeksElapsedThisMonth;
   const adherencePercent = plannedTotal > 0
     ? Math.min(100, Math.round((trainedThisMonth / plannedTotal) * 100))
     : 0;
 
-  const logsInRange = allLogRows.filter(
-    (l) => new Date(`${l.workout_date}T00:00:00Z`).getTime() >= eightWeeksAgo.getTime()
-  );
-  const logIds = logsInRange.map((l) => l.id);
-  const workoutDateByLogId = new Map(logsInRange.map((l) => [l.id, l.workout_date]));
-
-  const { data: setLogs } = logIds.length
-    ? await supabase
-        .from("workout_set_logs")
-        .select("workout_log_id, routine_exercise_id, weight_kg, reps_completed")
-        .in("workout_log_id", logIds)
-    : { data: [] as { workout_log_id: string; routine_exercise_id: string | null; weight_kg: number | null; reps_completed: number | null }[] };
-
-  const setRows = setLogs ?? [];
-  const routineExerciseIds = Array.from(
-    new Set(setRows.map((s) => s.routine_exercise_id).filter((id): id is string => Boolean(id)))
-  );
-
-  const { data: routineExercises } = routineExerciseIds.length
-    ? await supabase.from("routine_exercises").select("id, exercise_id").in("id", routineExerciseIds)
-    : { data: [] as { id: string; exercise_id: string }[] };
-
-  const exerciseIdByRoutineExerciseId = new Map(
-    (routineExercises ?? []).map((re) => [re.id, re.exercise_id])
-  );
-  const exerciseIds = Array.from(new Set(Array.from(exerciseIdByRoutineExerciseId.values())));
-
-  const { data: exercises } = exerciseIds.length
-    ? await supabase.from("exercises").select("id, name").in("id", exerciseIds)
-    : { data: [] as { id: string; name: string }[] };
-
-  const exerciseNameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
+  const recentLogRows = recentLogsWithSets ?? [];
+  const workoutDateByLogId = new Map(recentLogRows.map((l) => [l.id, l.workout_date]));
+  const exerciseNameById = new Map<string, string>();
+  const setRows: LogSetRow[] = [];
+  for (const log of recentLogRows) {
+    for (const s of log.workout_set_logs) {
+      const exerciseId = s.routine_exercises?.exercise_id ?? null;
+      setRows.push({
+        workout_log_id: log.id,
+        exercise_id: exerciseId,
+        weight_kg: s.weight_kg,
+        reps_completed: s.reps_completed,
+      });
+      if (exerciseId && s.routine_exercises?.exercises?.name) {
+        exerciseNameById.set(exerciseId, s.routine_exercises.exercises.name);
+      }
+    }
+  }
 
   // Buckets: 8 semanas, de la más vieja a la más nueva, terminando hoy.
   const weekStarts = Array.from({ length: 8 }, (_, i) => {
@@ -161,9 +181,7 @@ export async function getClientStats(): Promise<ClientStats> {
       volumeByWeek.set(bucket, (volumeByWeek.get(bucket) ?? 0) + set.weight_kg * set.reps_completed);
     }
 
-    const exerciseId = set.routine_exercise_id
-      ? exerciseIdByRoutineExerciseId.get(set.routine_exercise_id)
-      : undefined;
+    const exerciseId = set.exercise_id;
     if (!exerciseId || set.weight_kg == null) continue;
 
     const perWeek = maxWeightByExerciseAndWeek.get(exerciseId) ?? new Map<number, number>();

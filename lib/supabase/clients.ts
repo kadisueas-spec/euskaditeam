@@ -11,71 +11,44 @@ export type ClientListItem = {
   activeRoutineName: string | null;
 };
 
+type ClientListRow = {
+  id: string;
+  is_active: boolean;
+  subscription_status: string;
+  subscription_end_date: string | null;
+  profiles: { full_name: string | null; email: string } | null;
+  workout_logs: { workout_date: string }[];
+  routines: { name: string; is_active: boolean }[];
+};
+
+// Antes: 1 (clients) + 3 en paralelo (profiles, logs, routines) = efectivo
+// 2 round trips. Ahora: 1 sola consulta con todo embebido.
 export async function getClientsList(): Promise<ClientListItem[]> {
   const supabase = await createClient();
 
-  const { data: clients } = await supabase
+  const { data } = await supabase
     .from("clients")
-    .select("id, user_id, is_active, subscription_status, subscription_end_date")
-    .order("created_at", { ascending: false });
+    .select(
+      `id, is_active, subscription_status, subscription_end_date,
+       profiles!clients_user_id_fkey ( full_name, email ),
+       workout_logs ( workout_date ),
+       routines ( name, is_active )`
+    )
+    .order("created_at", { ascending: false })
+    .order("workout_date", { ascending: false, referencedTable: "workout_logs" })
+    .returns<ClientListRow[]>();
 
-  const clientRows = clients ?? [];
-  if (clientRows.length === 0) return [];
-
-  const userIds = clientRows
-    .map((c) => c.user_id)
-    .filter((id): id is string => Boolean(id));
-  const clientIds = clientRows.map((c) => c.id);
-
-  const [{ data: profiles }, { data: logs }, { data: routines }] =
-    await Promise.all([
-      userIds.length
-        ? supabase
-            .from("profiles")
-            .select("id, full_name, email")
-            .in("id", userIds)
-        : Promise.resolve({
-            data: [] as { id: string; full_name: string | null; email: string }[],
-          }),
-      supabase
-        .from("workout_logs")
-        .select("client_id, workout_date")
-        .in("client_id", clientIds)
-        .order("workout_date", { ascending: false }),
-      supabase
-        .from("routines")
-        .select("client_id, name")
-        .in("client_id", clientIds)
-        .eq("is_active", true),
-    ]);
-
-  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-  const lastWorkoutByClient = new Map<string, string>();
-  for (const log of logs ?? []) {
-    if (!lastWorkoutByClient.has(log.client_id)) {
-      lastWorkoutByClient.set(log.client_id, log.workout_date);
-    }
-  }
-
-  const activeRoutineByClient = new Map<string, string>();
-  for (const routine of routines ?? []) {
-    if (routine.client_id && !activeRoutineByClient.has(routine.client_id)) {
-      activeRoutineByClient.set(routine.client_id, routine.name);
-    }
-  }
-
-  return clientRows.map((c) => {
-    const profile = c.user_id ? profileById.get(c.user_id) : undefined;
+  return (data ?? []).map((c) => {
+    const activeRoutine = c.routines.find((r) => r.is_active);
     return {
       id: c.id,
-      fullName: profile?.full_name ?? null,
-      email: profile?.email ?? "",
+      fullName: c.profiles?.full_name ?? null,
+      email: c.profiles?.email ?? "",
       isActive: c.is_active,
       subscriptionStatus: c.subscription_status,
       subscriptionEndDate: c.subscription_end_date,
-      lastWorkoutDate: lastWorkoutByClient.get(c.id) ?? null,
-      activeRoutineName: activeRoutineByClient.get(c.id) ?? null,
+      lastWorkoutDate: c.workout_logs[0]?.workout_date ?? null,
+      activeRoutineName: activeRoutine?.name ?? null,
     };
   });
 }
@@ -100,6 +73,27 @@ export type ClientDetail = {
   recentLogs: { id: string; workoutDate: string; isCompleted: boolean }[];
 };
 
+type ClientDetailRow = {
+  id: string;
+  user_id: string;
+  birth_date: string | null;
+  weight_kg: number | null;
+  height_cm: number | null;
+  goal: string | null;
+  training_experience: string | null;
+  notes_coach: string | null;
+  is_active: boolean;
+  subscription_status: string;
+  subscription_end_date: string | null;
+  payment_method: string | null;
+  profiles: { full_name: string | null; email: string; avatar_url: string | null } | null;
+  routines: { id: string; name: string; is_active: boolean; created_at: string }[];
+  workout_logs: { id: string; workout_date: string; is_completed: boolean }[];
+};
+
+// Antes: 1 (client) + 3 en paralelo (profile, routines, logs) = efectivo 2
+// round trips. Ahora: 1 sola consulta con todo embebido (ordering y límite
+// de logs vía referencedTable, igual que antes).
 export async function getClientDetail(
   clientId: string
 ): Promise<ClientDetail | null> {
@@ -108,39 +102,27 @@ export async function getClientDetail(
   const { data: client } = await supabase
     .from("clients")
     .select(
-      "id, user_id, birth_date, weight_kg, height_cm, goal, training_experience, notes_coach, is_active, subscription_status, subscription_end_date, payment_method"
+      `id, user_id, birth_date, weight_kg, height_cm, goal, training_experience,
+       notes_coach, is_active, subscription_status, subscription_end_date, payment_method,
+       profiles!clients_user_id_fkey ( full_name, email, avatar_url ),
+       routines ( id, name, is_active, created_at ),
+       workout_logs ( id, workout_date, is_completed )`
     )
     .eq("id", clientId)
-    .single();
+    .order("created_at", { ascending: false, referencedTable: "routines" })
+    .order("workout_date", { ascending: false, referencedTable: "workout_logs" })
+    .limit(10, { referencedTable: "workout_logs" })
+    .single()
+    .returns<ClientDetailRow>();
 
   if (!client) return null;
-
-  const [{ data: profile }, { data: routines }, { data: logs }] =
-    await Promise.all([
-      supabase
-        .from("profiles")
-        .select("full_name, email, avatar_url")
-        .eq("id", client.user_id)
-        .single(),
-      supabase
-        .from("routines")
-        .select("id, name, is_active, created_at")
-        .eq("client_id", client.id)
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("workout_logs")
-        .select("id, workout_date, is_completed")
-        .eq("client_id", client.id)
-        .order("workout_date", { ascending: false })
-        .limit(10),
-    ]);
 
   return {
     id: client.id,
     userId: client.user_id,
-    fullName: profile?.full_name ?? null,
-    email: profile?.email ?? "",
-    avatarUrl: profile?.avatar_url ?? null,
+    fullName: client.profiles?.full_name ?? null,
+    email: client.profiles?.email ?? "",
+    avatarUrl: client.profiles?.avatar_url ?? null,
     birthDate: client.birth_date,
     weightKg: client.weight_kg,
     heightCm: client.height_cm,
@@ -151,13 +133,13 @@ export async function getClientDetail(
     subscriptionStatus: client.subscription_status,
     subscriptionEndDate: client.subscription_end_date,
     paymentMethod: client.payment_method,
-    routines: (routines ?? []).map((r) => ({
+    routines: client.routines.map((r) => ({
       id: r.id,
       name: r.name,
       isActive: r.is_active,
       createdAt: r.created_at,
     })),
-    recentLogs: (logs ?? []).map((log) => ({
+    recentLogs: client.workout_logs.map((log) => ({
       id: log.id,
       workoutDate: log.workout_date,
       isCompleted: log.is_completed,

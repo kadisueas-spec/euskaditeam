@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 
@@ -29,7 +30,9 @@ export type MonthlyGoal = {
   createdAt: string;
 };
 
-export async function getCurrentMonthGoal(): Promise<MonthlyGoal | null> {
+// cache(): se llama desde el layout del cliente y de nuevo dentro de
+// getMyMonthProgress/getMyMonthUnlockedData en la misma request.
+export const getCurrentMonthGoal = cache(async function getCurrentMonthGoal(): Promise<MonthlyGoal | null> {
   const client = await getCurrentClientRecord();
   if (!client) return null;
 
@@ -55,7 +58,7 @@ export async function getCurrentMonthGoal(): Promise<MonthlyGoal | null> {
     improveNote: data.improve_note,
     createdAt: data.created_at,
   };
-}
+});
 
 export async function getMonthlyGoalForClient(
   clientId: string,

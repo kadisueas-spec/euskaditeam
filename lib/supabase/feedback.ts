@@ -17,6 +17,10 @@ export type FeedbackItem = {
   exerciseName: string | null;
 };
 
+const FEEDBACK_SELECT = `id, type, message, is_read, created_at, workout_log_id, routine_exercise_id,
+  workout_logs ( workout_date ),
+  routine_exercises ( exercises ( name ) )`;
+
 type FeedbackRow = {
   id: string;
   type: FeedbackType;
@@ -25,69 +29,29 @@ type FeedbackRow = {
   created_at: string;
   workout_log_id: string | null;
   routine_exercise_id: string | null;
+  workout_logs: { workout_date: string } | null;
+  routine_exercises: { exercises: { name: string } | null } | null;
 };
 
-async function enrichFeedbackRows(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  rows: FeedbackRow[]
-): Promise<FeedbackItem[]> {
-  const workoutLogIds = rows
-    .map((r) => r.workout_log_id)
-    .filter((id): id is string => Boolean(id));
-  const routineExerciseIds = rows
-    .map((r) => r.routine_exercise_id)
-    .filter((id): id is string => Boolean(id));
-
-  const { data: logs } = workoutLogIds.length
-    ? await supabase
-        .from("workout_logs")
-        .select("id, workout_date")
-        .in("id", workoutLogIds)
-    : { data: [] as { id: string; workout_date: string }[] };
-
-  const { data: routineExercises } = routineExerciseIds.length
-    ? await supabase
-        .from("routine_exercises")
-        .select("id, exercise_id")
-        .in("id", routineExerciseIds)
-    : { data: [] as { id: string; exercise_id: string }[] };
-
-  const exerciseIds = Array.from(
-    new Set((routineExercises ?? []).map((re) => re.exercise_id))
-  );
-
-  const { data: exercises } = exerciseIds.length
-    ? await supabase.from("exercises").select("id, name").in("id", exerciseIds)
-    : { data: [] as { id: string; name: string }[] };
-
-  const dateByLogId = new Map((logs ?? []).map((l) => [l.id, l.workout_date]));
-  const exerciseIdByRoutineExerciseId = new Map(
-    (routineExercises ?? []).map((re) => [re.id, re.exercise_id])
-  );
-  const exerciseNameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
-
-  return rows.map((r) => {
-    const exerciseId = r.routine_exercise_id
-      ? exerciseIdByRoutineExerciseId.get(r.routine_exercise_id)
-      : undefined;
-    return {
-      id: r.id,
-      type: r.type,
-      message: r.message,
-      isRead: r.is_read,
-      createdAt: r.created_at,
-      workoutLogId: r.workout_log_id,
-      workoutDate: r.workout_log_id
-        ? (dateByLogId.get(r.workout_log_id) ?? null)
-        : null,
-      routineExerciseId: r.routine_exercise_id,
-      exerciseName: exerciseId
-        ? (exerciseNameById.get(exerciseId) ?? null)
-        : null,
-    };
-  });
+// Transformación pura, sin consultas — antes `enrichFeedbackRows` hacía
+// hasta 3 round trips secuenciales adicionales (workout_logs,
+// routine_exercises, exercises) por cada lista de feedback. Ahora esos
+// datos vienen embebidos en la misma consulta (ver FEEDBACK_SELECT).
+function mapFeedbackRow(r: FeedbackRow): FeedbackItem {
+  return {
+    id: r.id,
+    type: r.type,
+    message: r.message,
+    isRead: r.is_read,
+    createdAt: r.created_at,
+    workoutLogId: r.workout_log_id,
+    workoutDate: r.workout_logs?.workout_date ?? null,
+    routineExerciseId: r.routine_exercise_id,
+    exerciseName: r.routine_exercises?.exercises?.name ?? null,
+  };
 }
 
+// Antes: 1 (feedback) + 3 (enrich) = 4 round trips. Ahora: 1.
 export async function getFeedbackForClient(
   clientId: string
 ): Promise<FeedbackItem[]> {
@@ -95,15 +59,16 @@ export async function getFeedbackForClient(
 
   const { data } = await supabase
     .from("feedback")
-    .select(
-      "id, type, message, is_read, created_at, workout_log_id, routine_exercise_id"
-    )
+    .select(FEEDBACK_SELECT)
     .eq("client_id", clientId)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<FeedbackRow[]>();
 
-  return enrichFeedbackRows(supabase, data ?? []);
+  return (data ?? []).map(mapFeedbackRow);
 }
 
+// Antes: 1 (client, ahora memoizado) + 1 (feedback) + 3 (enrich) = 5 round
+// trips. Ahora: client (memoizado) + 1.
 export async function getMyFeedback(): Promise<FeedbackItem[]> {
   const client = await getCurrentClientRecord();
   if (!client) return [];
@@ -112,13 +77,12 @@ export async function getMyFeedback(): Promise<FeedbackItem[]> {
 
   const { data } = await supabase
     .from("feedback")
-    .select(
-      "id, type, message, is_read, created_at, workout_log_id, routine_exercise_id"
-    )
+    .select(FEEDBACK_SELECT)
     .eq("client_id", client.id)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .returns<FeedbackRow[]>();
 
-  return enrichFeedbackRows(supabase, data ?? []);
+  return (data ?? []).map(mapFeedbackRow);
 }
 
 export async function getUnreadFeedbackCount(): Promise<number> {
@@ -138,6 +102,9 @@ export async function getUnreadFeedbackCount(): Promise<number> {
 
 export type FeedbackDetail = FeedbackItem;
 
+// Antes: 1 (client) + 1 (feedback) + 1 (update si no leído) + 3 (enrich) =
+// hasta 6 round trips. Ahora: client (memoizado) + 1 (feedback embebido) +
+// 1 (update, solo si hace falta) = hasta 2.
 export async function getFeedbackDetailAndMarkRead(
   id: string
 ): Promise<FeedbackDetail | null> {
@@ -148,12 +115,11 @@ export async function getFeedbackDetailAndMarkRead(
 
   const { data } = await supabase
     .from("feedback")
-    .select(
-      "id, type, message, is_read, created_at, workout_log_id, routine_exercise_id"
-    )
+    .select(FEEDBACK_SELECT)
     .eq("id", id)
     .eq("client_id", client.id)
-    .single();
+    .single()
+    .returns<FeedbackRow>();
 
   if (!data) return null;
 
@@ -164,8 +130,7 @@ export async function getFeedbackDetailAndMarkRead(
       .eq("id", id);
   }
 
-  const [enriched] = await enrichFeedbackRows(supabase, [data]);
-  return { ...enriched, isRead: true };
+  return { ...mapFeedbackRow(data), isRead: true };
 }
 
 export type SessionOption = { id: string; label: string };
@@ -187,6 +152,17 @@ export async function getRecentSessionsForSelect(
 
 export type ExerciseOption = { id: string; name: string };
 
+type ActiveRoutineExercisesRow = {
+  routine_days: {
+    routine_exercises: {
+      exercise_id: string;
+      exercises: { id: string; name: string } | null;
+    }[];
+  }[];
+};
+
+// Antes: 4 round trips secuenciales (routine -> days -> routine_exercises ->
+// exercises). Ahora: 1.
 export async function getClientRoutineExercisesForSelect(
   clientId: string
 ): Promise<ExerciseOption[]> {
@@ -194,39 +170,28 @@ export async function getClientRoutineExercisesForSelect(
 
   const { data: routine } = await supabase
     .from("routines")
-    .select("id")
+    .select(
+      `routine_days (
+         routine_exercises ( exercise_id, exercises ( id, name ) )
+       )`
+    )
     .eq("client_id", clientId)
     .eq("is_active", true)
     .order("created_at", { ascending: false })
     .limit(1)
-    .maybeSingle();
+    .maybeSingle()
+    .returns<ActiveRoutineExercisesRow | null>();
 
   if (!routine) return [];
 
-  const { data: days } = await supabase
-    .from("routine_days")
-    .select("id")
-    .eq("routine_id", routine.id);
-
-  const dayIds = (days ?? []).map((d) => d.id);
-  if (dayIds.length === 0) return [];
-
-  const { data: routineExercises } = await supabase
-    .from("routine_exercises")
-    .select("id, exercise_id")
-    .in("day_id", dayIds);
-
-  const rows = routineExercises ?? [];
-  const exerciseIds = Array.from(new Set(rows.map((r) => r.exercise_id)));
-
-  const { data: exercises } = exerciseIds.length
-    ? await supabase.from("exercises").select("id, name").in("id", exerciseIds)
-    : { data: [] as { id: string; name: string }[] };
-
-  const exerciseNameById = new Map((exercises ?? []).map((e) => [e.id, e.name]));
-
-  return rows.map((r) => ({
-    id: r.id,
-    name: exerciseNameById.get(r.exercise_id) ?? "Ejercicio",
-  }));
+  const seen = new Set<string>();
+  const options: ExerciseOption[] = [];
+  for (const day of routine.routine_days) {
+    for (const re of day.routine_exercises) {
+      if (seen.has(re.exercise_id)) continue;
+      seen.add(re.exercise_id);
+      options.push({ id: re.exercise_id, name: re.exercises?.name ?? "Ejercicio" });
+    }
+  }
+  return options;
 }

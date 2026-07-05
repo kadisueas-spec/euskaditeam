@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 
 export type Profile = {
@@ -8,7 +9,10 @@ export type Profile = {
   role: "coach" | "client";
 };
 
-export async function getCurrentProfile(): Promise<Profile | null> {
+// cache(): se llama tanto en el layout del coach como en varias páginas
+// dentro del mismo request — sin memoizar, repetía auth.getUser() + la
+// consulta a profiles cada vez.
+export const getCurrentProfile = cache(async function getCurrentProfile(): Promise<Profile | null> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,4 +26,4 @@ export async function getCurrentProfile(): Promise<Profile | null> {
     .single();
 
   return data;
-}
+});

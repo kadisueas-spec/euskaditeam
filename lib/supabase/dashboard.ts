@@ -27,60 +27,48 @@ export type CoachDashboardData = {
   staleClients: ClientSummary[];
 };
 
+type DashboardClientRow = {
+  id: string;
+  user_id: string;
+  is_active: boolean;
+  subscription_status: string;
+  subscription_end_date: string | null;
+  profiles: { full_name: string | null; email: string } | null;
+  workout_logs: {
+    id: string;
+    workout_date: string;
+    is_completed: boolean;
+  }[];
+};
+
+// Antes: 3 round trips secuenciales (clients -> profiles -> logs). Ahora: 1
+// sola consulta con profiles y workout_logs embebidos (ordenados por fecha
+// descendente vía referencedTable, igual que antes).
 export async function getCoachDashboardData(): Promise<CoachDashboardData> {
   const supabase = await createClient();
 
   const { data: clients } = await supabase
     .from("clients")
-    .select("id, user_id, is_active, subscription_status, subscription_end_date");
+    .select(
+      `id, user_id, is_active, subscription_status, subscription_end_date,
+       profiles!clients_user_id_fkey ( full_name, email ),
+       workout_logs ( id, workout_date, is_completed )`
+    )
+    .order("workout_date", { ascending: false, referencedTable: "workout_logs" })
+    .returns<DashboardClientRow[]>();
 
   const clientRows = clients ?? [];
-  const userIds = clientRows.map((c) => c.user_id).filter((id): id is string => Boolean(id));
 
-  const { data: profiles } = userIds.length
-    ? await supabase.from("profiles").select("id, full_name, email").in("id", userIds)
-    : { data: [] as { id: string; full_name: string | null; email: string }[] };
-
-  const profileById = new Map((profiles ?? []).map((p) => [p.id, p]));
-
-  const clientIds = clientRows.map((c) => c.id);
-  const { data: logs } = clientIds.length
-    ? await supabase
-        .from("workout_logs")
-        .select("id, client_id, workout_date, is_completed")
-        .in("client_id", clientIds)
-        .order("workout_date", { ascending: false })
-    : {
-        data: [] as {
-          id: string;
-          client_id: string;
-          workout_date: string;
-          is_completed: boolean;
-        }[],
-      };
-
-  const logRows = logs ?? [];
-
-  const lastWorkoutByClient = new Map<string, string>();
-  for (const log of logRows) {
-    if (!lastWorkoutByClient.has(log.client_id)) {
-      lastWorkoutByClient.set(log.client_id, log.workout_date);
-    }
-  }
-
-  const summaries: ClientSummary[] = clientRows.map((c) => {
-    const profile = c.user_id ? profileById.get(c.user_id) : undefined;
-    return {
-      id: c.id,
-      userId: c.user_id,
-      fullName: profile?.full_name ?? null,
-      email: profile?.email ?? "",
-      isActive: c.is_active,
-      subscriptionStatus: c.subscription_status,
-      subscriptionEndDate: c.subscription_end_date,
-      lastWorkoutDate: lastWorkoutByClient.get(c.id) ?? null,
-    };
-  });
+  const summaries: ClientSummary[] = clientRows.map((c) => ({
+    id: c.id,
+    userId: c.user_id,
+    fullName: c.profiles?.full_name ?? null,
+    email: c.profiles?.email ?? "",
+    isActive: c.is_active,
+    subscriptionStatus: c.subscription_status,
+    subscriptionEndDate: c.subscription_end_date,
+    lastWorkoutDate: c.workout_logs[0]?.workout_date ?? null,
+  }));
 
   const activeCount = summaries.filter((c) => c.isActive).length;
   const inactiveCount = summaries.length - activeCount;
@@ -101,7 +89,17 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData> {
   });
 
   const clientById = new Map(summaries.map((c) => [c.id, c]));
-  const recentLogs: RecentLog[] = logRows.slice(0, 10).map((log) => {
+  const allLogs = clientRows.flatMap((c) =>
+    c.workout_logs.map((log) => ({ ...log, client_id: c.id }))
+  );
+  // Igual que antes: el primer log de cada cliente ya viene ordenado por
+  // fecha desc, pero entre clientes distintos hay que volver a ordenar
+  // para tomar los 10 más recientes globales.
+  allLogs.sort(
+    (a, b) => new Date(b.workout_date).getTime() - new Date(a.workout_date).getTime()
+  );
+
+  const recentLogs: RecentLog[] = allLogs.slice(0, 10).map((log) => {
     const client = clientById.get(log.client_id);
     return {
       id: log.id,
