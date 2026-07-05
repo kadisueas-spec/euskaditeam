@@ -7,13 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { FadeIn } from "@/components/motion/fade-in";
 import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
 import { createRoutine } from "../actions";
@@ -230,23 +224,20 @@ export function RoutineWizard({
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="routine-client">Cliente</Label>
-            <Select value={clientId} onValueChange={(v) => setClientId(v ?? "")}>
-              <SelectTrigger id="routine-client" className="w-full">
-                <SelectValue placeholder="Seleccioná un cliente">
-                  {(value: string | null) =>
-                    clients.find((c) => c.id === value)?.name ??
-                    "Seleccioná un cliente"
-                  }
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {clients.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <NativeSelect
+              id="routine-client"
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+            >
+              <option value="" disabled>
+                Seleccioná un cliente
+              </option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </NativeSelect>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button onClick={goToStep2} className="w-fit">
@@ -311,28 +302,23 @@ export function RoutineWizard({
                   >
                     <div className="col-span-2 sm:col-span-2">
                       <Label className="text-xs">Ejercicio</Label>
-                      <Select
+                      <NativeSelect
                         value={ex.exerciseId}
-                        onValueChange={(v) =>
-                          updateExercise(day.key, ex.key, { exerciseId: v ?? "" })
+                        onChange={(e) =>
+                          updateExercise(day.key, ex.key, {
+                            exerciseId: e.target.value,
+                          })
                         }
                       >
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Elegir">
-                            {(value: string | null) =>
-                              exercises.find((opt) => opt.id === value)?.name ??
-                              "Elegir"
-                            }
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {exercises.map((opt) => (
-                            <SelectItem key={opt.id} value={opt.id}>
-                              {opt.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        <option value="" disabled>
+                          Elegir
+                        </option>
+                        {exercises.map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.name}
+                          </option>
+                        ))}
+                      </NativeSelect>
                     </div>
                     <div>
                       <Label className="text-xs">Series</Label>

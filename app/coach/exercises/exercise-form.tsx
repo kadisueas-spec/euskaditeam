@@ -6,13 +6,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { NativeSelect } from "@/components/ui/native-select";
 import { MUSCLE_GROUPS } from "@/lib/constants/exercises";
 import type { ExerciseDetail } from "@/lib/supabase/exercises";
 import type { ExerciseFormState } from "./actions";
@@ -48,21 +42,20 @@ export function ExerciseForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="muscle_group">Grupo muscular</Label>
-        <Select
+        <NativeSelect
+          id="muscle_group"
           name="muscle_group"
-          defaultValue={initialData?.muscleGroup ?? undefined}
+          defaultValue={initialData?.muscleGroup ?? ""}
         >
-          <SelectTrigger id="muscle_group" className="w-full">
-            <SelectValue placeholder="Seleccioná un grupo muscular" />
-          </SelectTrigger>
-          <SelectContent>
-            {MUSCLE_GROUPS.map((group) => (
-              <SelectItem key={group} value={group}>
-                {group}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <option value="" disabled>
+            Seleccioná un grupo muscular
+          </option>
+          {MUSCLE_GROUPS.map((group) => (
+            <option key={group} value={group}>
+              {group}
+            </option>
+          ))}
+        </NativeSelect>
       </div>
 
       <div className="flex flex-col gap-2">
