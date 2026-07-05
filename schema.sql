@@ -1,386 +1,1253 @@
 -- ============================================================
--- FitCoach - Schema completo de base de datos
--- Ejecutar en: Supabase > SQL Editor
+-- FitCoach — Schema real de producción (dump generado con pg_dump
+-- --schema-only, no un archivo mantenido a mano). Reemplaza a los dos
+-- schema.sql anteriores que habían quedado desactualizados respecto a
+-- la base real (les faltaban monthly_goals, monthly_reviews,
+-- push_subscriptions, invite_codes, workout_set_logs, entre otras).
+--
+-- Para regenerarlo:
+--   pg_dump "<connection string>" --schema-only --schema=public \
+--     --no-owner --no-privileges -f schema.sql
 -- ============================================================
 
--- Habilitar extensiones necesarias
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+--
+-- PostgreSQL database dump
+--
 
--- ============================================================
--- TABLA: profiles
--- Extiende la tabla auth.users de Supabase
--- ============================================================
-CREATE TABLE profiles (
-  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
-  email TEXT NOT NULL,
-  full_name TEXT,
-  avatar_url TEXT,
-  role TEXT NOT NULL CHECK (role IN ('coach', 'client')),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+\restrict pdYw84uqTraHpcKkIuP7p2OeTtcbdX3ZIr2bwKVyaftmdL8xPkPA3mpbUx059Oc
 
--- ============================================================
--- TABLA: clients
--- Información específica de cada cliente del coach
--- ============================================================
-CREATE TABLE clients (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
-  coach_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  -- Info física para personalizar rutinas
-  birth_date DATE,
-  weight_kg DECIMAL(5,2),
-  height_cm INTEGER,
-  goal TEXT, -- ej: "hipertrofia", "fuerza", "pérdida de grasa"
-  training_experience TEXT CHECK (training_experience IN ('beginner', 'intermediate', 'advanced')),
-  notes_coach TEXT, -- notas privadas del coach sobre el cliente
-  -- Estado
-  is_active BOOLEAN DEFAULT TRUE,
-  -- Suscripción
-  stripe_customer_id TEXT UNIQUE,
-  subscription_status TEXT DEFAULT 'inactive' CHECK (
-    subscription_status IN ('active', 'inactive', 'past_due', 'canceled', 'trialing')
-  ),
-  subscription_end_date TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+-- Dumped from database version 17.6
+-- Dumped by pg_dump version 17.10
 
--- ============================================================
--- TABLA: exercises
--- Biblioteca de ejercicios del coach
--- ============================================================
-CREATE TABLE exercises (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  coach_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT,
-  -- Video demostrativo
-  video_url TEXT, -- URL de Cloudflare Stream
-  video_thumbnail_url TEXT,
-  -- Clasificación
-  muscle_group TEXT, -- ej: "pecho", "espalda", "piernas", "hombros", "bíceps", "tríceps", "core"
-  secondary_muscles TEXT[], -- músculos secundarios
-  equipment TEXT, -- ej: "barra", "mancuerna", "máquina", "peso corporal"
-  movement_pattern TEXT, -- ej: "empuje", "jalón", "sentadilla", "bisagra", "llevar"
-  -- Tips técnicos
-  technique_tips TEXT,
-  common_mistakes TEXT,
-  is_active BOOLEAN DEFAULT TRUE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET transaction_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
 
--- ============================================================
--- TABLA: routines
--- Rutina asignada a un cliente específico
--- ============================================================
-CREATE TABLE routines (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  coach_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  name TEXT NOT NULL, -- ej: "Rutina Hipertrofia - Semana 1-4"
-  description TEXT, -- explicación general de la rutina
-  objective TEXT, -- objetivo específico de este bloque
-  duration_weeks INTEGER, -- duración estimada del bloque
-  -- Estado
-  is_active BOOLEAN DEFAULT TRUE, -- solo una activa por cliente
-  starts_at DATE,
-  ends_at DATE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+--
+-- Name: public; Type: SCHEMA; Schema: -; Owner: -
+--
 
--- ============================================================
--- TABLA: routine_days
--- Días de entrenamiento dentro de una rutina
--- ============================================================
-CREATE TABLE routine_days (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  routine_id UUID REFERENCES routines(id) ON DELETE CASCADE,
-  day_number INTEGER NOT NULL, -- 1, 2, 3... (orden del día)
-  name TEXT NOT NULL, -- ej: "Día A - Empuje", "Día B - Jalón"
-  description TEXT, -- notas del coach para ese día
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+CREATE SCHEMA public;
 
--- ============================================================
--- TABLA: routine_exercises
--- Ejercicios dentro de cada día de rutina
--- ============================================================
-CREATE TABLE routine_exercises (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  day_id UUID REFERENCES routine_days(id) ON DELETE CASCADE,
-  exercise_id UUID REFERENCES exercises(id) ON DELETE SET NULL,
-  order_index INTEGER NOT NULL, -- orden dentro del día
-  -- Prescripción
-  sets INTEGER NOT NULL,
-  reps_min INTEGER, -- ej: 8 (rango mínimo)
-  reps_max INTEGER, -- ej: 12 (rango máximo)
-  rir_target INTEGER, -- RIR objetivo (0-4)
-  rest_seconds INTEGER, -- descanso entre series en segundos
-  weight_suggestion TEXT, -- ej: "60% de tu 1RM", "peso moderado"
-  -- Notas del coach para este ejercicio específico
-  coach_notes TEXT,
-  -- Sustitución permitida
-  is_optional BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
 
--- ============================================================
--- TABLA: workout_logs
--- Registro de cada sesión de entrenamiento del cliente
--- ============================================================
-CREATE TABLE workout_logs (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  routine_day_id UUID REFERENCES routine_days(id) ON DELETE SET NULL,
-  -- Cuándo entrenó
-  workout_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  started_at TIMESTAMPTZ,
-  finished_at TIMESTAMPTZ,
-  -- Sensaciones generales
-  overall_feeling INTEGER CHECK (overall_feeling BETWEEN 1 AND 5), -- 1=muy mal, 5=excelente
-  energy_level INTEGER CHECK (energy_level BETWEEN 1 AND 5),
-  client_notes TEXT, -- notas libres del cliente sobre la sesión
-  -- Estado
-  is_completed BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+--
+-- Name: SCHEMA public; Type: COMMENT; Schema: -; Owner: -
+--
 
--- ============================================================
--- TABLA: set_logs
--- Registro de cada serie individual dentro de una sesión
--- ============================================================
-CREATE TABLE set_logs (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  workout_log_id UUID REFERENCES workout_logs(id) ON DELETE CASCADE,
-  routine_exercise_id UUID REFERENCES routine_exercises(id) ON DELETE SET NULL,
-  set_number INTEGER NOT NULL, -- número de serie (1, 2, 3...)
-  -- Lo que el cliente hizo
-  weight_kg DECIMAL(6,2), -- peso utilizado
-  reps INTEGER, -- repeticiones completadas
-  rir INTEGER CHECK (rir BETWEEN 0 AND 10), -- RIR percibido
-  -- Tiempo bajo tensión (opcional)
-  tempo TEXT, -- ej: "3-1-2-0"
-  -- Notas del cliente sobre esa serie
-  client_notes TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
+COMMENT ON SCHEMA public IS 'standard public schema';
 
--- ============================================================
--- TABLA: feedback
--- Correcciones, tips y feedback del coach al cliente
--- ============================================================
-CREATE TABLE feedback (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  coach_id UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  -- A qué se refiere el feedback (puede ser general o específico)
-  workout_log_id UUID REFERENCES workout_logs(id) ON DELETE SET NULL,
-  routine_exercise_id UUID REFERENCES routine_exercises(id) ON DELETE SET NULL,
-  -- Contenido
-  type TEXT CHECK (type IN ('correction', 'tip', 'encouragement', 'general', 'weight_adjustment')),
-  message TEXT NOT NULL,
-  -- Visibilidad
-  is_read BOOLEAN DEFAULT FALSE,
-  read_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
 
--- ============================================================
--- TABLA: subscriptions
--- Historial de suscripciones de Stripe
--- ============================================================
-CREATE TABLE subscriptions (
-  id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-  client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  stripe_subscription_id TEXT UNIQUE NOT NULL,
-  stripe_price_id TEXT,
-  status TEXT NOT NULL,
-  current_period_start TIMESTAMPTZ,
-  current_period_end TIMESTAMPTZ,
-  canceled_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW()
-);
+--
+-- Name: claim_invite_code(text, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
 
--- ============================================================
--- FUNCIONES Y TRIGGERS
--- ============================================================
+CREATE FUNCTION public.claim_invite_code(code_input text, user_id_input uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+declare
+  v_count int;
+  v_role text;
+  v_coach_id uuid;
+begin
+  update invite_codes
+  set used_by = user_id_input, used_at = now()
+  where code = code_input and used_by is null
+  returning role, created_by into v_role, v_coach_id;
 
--- Trigger para crear perfil automáticamente al registrarse
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
-BEGIN
-  INSERT INTO profiles (id, email, role)
-  VALUES (
-    NEW.id,
-    NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'role', 'client')
+  get diagnostics v_count = row_count;
+
+  if v_count > 0 and v_role = 'client' and v_coach_id is not null then
+    insert into public.clients (user_id, coach_id)
+    values (user_id_input, v_coach_id)
+    on conflict (user_id) do nothing;
+  end if;
+
+  return v_count > 0;
+end;
+$$;
+
+
+--
+-- Name: handle_new_user(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.handle_new_user() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+begin
+  insert into public.profiles (id, email, full_name, role)
+  values (
+    new.id,
+    new.email,
+    new.raw_user_meta_data->>'full_name',
+    coalesce(new.raw_user_meta_data->>'role', 'client')
   );
-  RETURN NEW;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+  return new;
+end;
+$$;
 
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION handle_new_user();
 
--- Trigger para actualizar updated_at automáticamente
-CREATE OR REPLACE FUNCTION update_updated_at()
-RETURNS TRIGGER AS $$
+--
+-- Name: update_updated_at(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_updated_at() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
 BEGIN
   NEW.updated_at = NOW();
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$;
 
-CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON profiles
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
 
-CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON clients
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+--
+-- Name: validate_invite_code(text); Type: FUNCTION; Schema: public; Owner: -
+--
 
-CREATE TRIGGER update_routines_updated_at BEFORE UPDATE ON routines
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE FUNCTION public.validate_invite_code(code_input text) RETURNS text
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+declare
+  v_role text;
+begin
+  select role into v_role
+  from invite_codes
+  where code = code_input and used_by is null;
 
-CREATE TRIGGER update_exercises_updated_at BEFORE UPDATE ON exercises
-  FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+  return v_role;
+end;
+$$;
 
--- ============================================================
--- ROW LEVEL SECURITY (RLS)
--- Cada usuario solo ve sus propios datos
--- ============================================================
 
-ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
-ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
-ALTER TABLE routines ENABLE ROW LEVEL SECURITY;
-ALTER TABLE routine_days ENABLE ROW LEVEL SECURITY;
-ALTER TABLE routine_exercises ENABLE ROW LEVEL SECURITY;
-ALTER TABLE workout_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE set_logs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE feedback ENABLE ROW LEVEL SECURITY;
-ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+SET default_tablespace = '';
 
--- Profiles: cada uno ve el suyo
-CREATE POLICY "Users can view own profile"
-  ON profiles FOR SELECT USING (auth.uid() = id);
+SET default_table_access_method = heap;
 
-CREATE POLICY "Users can update own profile"
-  ON profiles FOR UPDATE USING (auth.uid() = id);
+--
+-- Name: clients; Type: TABLE; Schema: public; Owner: -
+--
 
--- Clients: el coach ve todos sus clientes; el cliente ve solo el suyo
-CREATE POLICY "Coach can view their clients"
-  ON clients FOR SELECT
-  USING (
-    coach_id = auth.uid()
-    OR user_id = auth.uid()
-  );
+CREATE TABLE public.clients (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    user_id uuid,
+    coach_id uuid,
+    birth_date date,
+    weight_kg numeric(5,2),
+    height_cm integer,
+    goal text,
+    training_experience text,
+    notes_coach text,
+    is_active boolean DEFAULT true,
+    stripe_customer_id text,
+    subscription_status text DEFAULT 'inactive'::text,
+    subscription_end_date timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    stripe_subscription_id text,
+    stripe_price_id text,
+    payment_method text,
+    CONSTRAINT clients_payment_method_check CHECK ((payment_method = ANY (ARRAY['cash'::text, 'transfer'::text, 'paypal'::text]))),
+    CONSTRAINT clients_subscription_status_check CHECK ((subscription_status = ANY (ARRAY['active'::text, 'inactive'::text, 'past_due'::text, 'canceled'::text, 'trialing'::text]))),
+    CONSTRAINT clients_training_experience_check CHECK ((training_experience = ANY (ARRAY['beginner'::text, 'intermediate'::text, 'advanced'::text])))
+);
 
-CREATE POLICY "Coach can manage their clients"
-  ON clients FOR ALL
-  USING (coach_id = auth.uid());
 
--- Exercises: el coach ve y gestiona las suyas; los clientes solo lectura
-CREATE POLICY "Coach manages their exercises"
-  ON exercises FOR ALL
-  USING (coach_id = auth.uid());
+--
+-- Name: exercises; Type: TABLE; Schema: public; Owner: -
+--
 
-CREATE POLICY "Clients can view exercises from their coach"
-  ON exercises FOR SELECT
-  USING (
-    coach_id IN (
-      SELECT coach_id FROM clients WHERE user_id = auth.uid()
-    )
-  );
+CREATE TABLE public.exercises (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    coach_id uuid,
+    name text NOT NULL,
+    description text,
+    video_url text,
+    video_thumbnail_url text,
+    muscle_group text,
+    secondary_muscles text[],
+    equipment text,
+    movement_pattern text,
+    technique_tips text,
+    common_mistakes text,
+    is_active boolean DEFAULT true,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
 
--- Routines: el coach gestiona; el cliente ve la suya
-CREATE POLICY "Coach manages routines"
-  ON routines FOR ALL
-  USING (coach_id = auth.uid());
 
-CREATE POLICY "Client views own routine"
-  ON routines FOR SELECT
-  USING (
-    client_id IN (
-      SELECT id FROM clients WHERE user_id = auth.uid()
-    )
-  );
+--
+-- Name: feedback; Type: TABLE; Schema: public; Owner: -
+--
 
--- Workout logs: el cliente gestiona los suyos; el coach los puede ver
-CREATE POLICY "Client manages own workout logs"
-  ON workout_logs FOR ALL
-  USING (
-    client_id IN (
-      SELECT id FROM clients WHERE user_id = auth.uid()
-    )
-  );
+CREATE TABLE public.feedback (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    coach_id uuid,
+    client_id uuid,
+    workout_log_id uuid,
+    routine_exercise_id uuid,
+    type text,
+    message text NOT NULL,
+    is_read boolean DEFAULT false,
+    read_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT feedback_type_check CHECK ((type = ANY (ARRAY['correction'::text, 'tip'::text, 'encouragement'::text, 'general'::text, 'weight_adjustment'::text])))
+);
 
-CREATE POLICY "Coach views client workout logs"
-  ON workout_logs FOR SELECT
-  USING (
-    client_id IN (
-      SELECT id FROM clients WHERE coach_id = auth.uid()
-    )
-  );
 
--- Set logs: siguen la misma lógica que workout_logs
-CREATE POLICY "Client manages own set logs"
-  ON set_logs FOR ALL
-  USING (
-    workout_log_id IN (
-      SELECT id FROM workout_logs WHERE client_id IN (
-        SELECT id FROM clients WHERE user_id = auth.uid()
-      )
-    )
-  );
+--
+-- Name: invite_codes; Type: TABLE; Schema: public; Owner: -
+--
 
-CREATE POLICY "Coach views set logs"
-  ON set_logs FOR SELECT
-  USING (
-    workout_log_id IN (
-      SELECT id FROM workout_logs WHERE client_id IN (
-        SELECT id FROM clients WHERE coach_id = auth.uid()
-      )
-    )
-  );
+CREATE TABLE public.invite_codes (
+    code text NOT NULL,
+    role text DEFAULT 'client'::text NOT NULL,
+    created_by uuid,
+    used_by uuid,
+    used_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT invite_codes_role_check CHECK ((role = ANY (ARRAY['client'::text, 'coach'::text])))
+);
 
--- Feedback: el coach gestiona; el cliente lee el suyo
-CREATE POLICY "Coach manages feedback"
-  ON feedback FOR ALL
-  USING (coach_id = auth.uid());
 
-CREATE POLICY "Client views own feedback"
-  ON feedback FOR SELECT
-  USING (
-    client_id IN (
-      SELECT id FROM clients WHERE user_id = auth.uid()
-    )
-  );
+--
+-- Name: monthly_goals; Type: TABLE; Schema: public; Owner: -
+--
 
-CREATE POLICY "Client can mark feedback as read"
-  ON feedback FOR UPDATE
-  USING (
-    client_id IN (
-      SELECT id FROM clients WHERE user_id = auth.uid()
-    )
-  );
+CREATE TABLE public.monthly_goals (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid NOT NULL,
+    month date NOT NULL,
+    main_goal text NOT NULL,
+    weight_kg numeric,
+    motivation_level integer,
+    improve_note text,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT monthly_goals_motivation_level_check CHECK (((motivation_level >= 1) AND (motivation_level <= 5)))
+);
 
--- ============================================================
--- ÍNDICES para mejorar performance de consultas frecuentes
--- ============================================================
 
-CREATE INDEX idx_clients_coach_id ON clients(coach_id);
-CREATE INDEX idx_clients_user_id ON clients(user_id);
-CREATE INDEX idx_routines_client_id ON routines(client_id);
-CREATE INDEX idx_routine_days_routine_id ON routine_days(routine_id);
-CREATE INDEX idx_routine_exercises_day_id ON routine_exercises(day_id);
-CREATE INDEX idx_workout_logs_client_id ON workout_logs(client_id);
-CREATE INDEX idx_workout_logs_date ON workout_logs(workout_date DESC);
-CREATE INDEX idx_set_logs_workout_log_id ON set_logs(workout_log_id);
-CREATE INDEX idx_feedback_client_id ON feedback(client_id);
-CREATE INDEX idx_feedback_unread ON feedback(client_id, is_read) WHERE is_read = FALSE;
-CREATE INDEX idx_exercises_coach_id ON exercises(coach_id);
+--
+-- Name: monthly_reviews; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.monthly_reviews (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid NOT NULL,
+    coach_id uuid,
+    month date NOT NULL,
+    summary text,
+    next_month_goals text,
+    plan_adjustments text,
+    completed_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: profiles; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.profiles (
+    id uuid NOT NULL,
+    email text NOT NULL,
+    full_name text,
+    avatar_url text,
+    role text NOT NULL,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT profiles_role_check CHECK ((role = ANY (ARRAY['coach'::text, 'client'::text])))
+);
+
+
+--
+-- Name: push_subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.push_subscriptions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    client_id uuid NOT NULL,
+    endpoint text NOT NULL,
+    p256dh text NOT NULL,
+    auth text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: routine_days; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.routine_days (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    routine_id uuid,
+    day_number integer NOT NULL,
+    name text NOT NULL,
+    description text,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: routine_exercises; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.routine_exercises (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    day_id uuid,
+    exercise_id uuid,
+    order_index integer NOT NULL,
+    sets integer NOT NULL,
+    reps_min integer,
+    reps_max integer,
+    rir_target integer,
+    rest_seconds integer,
+    weight_suggestion text,
+    coach_notes text,
+    is_optional boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: routines; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.routines (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid,
+    coach_id uuid,
+    name text NOT NULL,
+    description text,
+    objective text,
+    duration_weeks integer,
+    is_active boolean DEFAULT true,
+    starts_at date,
+    ends_at date,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: set_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.set_logs (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    workout_log_id uuid,
+    routine_exercise_id uuid,
+    set_number integer NOT NULL,
+    weight_kg numeric(6,2),
+    reps integer,
+    rir integer,
+    tempo text,
+    client_notes text,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT set_logs_rir_check CHECK (((rir >= 0) AND (rir <= 10)))
+);
+
+
+--
+-- Name: subscriptions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.subscriptions (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid,
+    stripe_subscription_id text NOT NULL,
+    stripe_price_id text,
+    status text NOT NULL,
+    current_period_start timestamp with time zone,
+    current_period_end timestamp with time zone,
+    canceled_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now(),
+    updated_at timestamp with time zone DEFAULT now()
+);
+
+
+--
+-- Name: workout_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.workout_logs (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid,
+    routine_day_id uuid,
+    workout_date date DEFAULT CURRENT_DATE NOT NULL,
+    started_at timestamp with time zone,
+    finished_at timestamp with time zone,
+    overall_feeling integer,
+    energy_level integer,
+    client_notes text,
+    is_completed boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT now(),
+    CONSTRAINT workout_logs_energy_level_check CHECK (((energy_level >= 1) AND (energy_level <= 5))),
+    CONSTRAINT workout_logs_overall_feeling_check CHECK (((overall_feeling >= 1) AND (overall_feeling <= 5)))
+);
+
+
+--
+-- Name: workout_set_logs; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.workout_set_logs (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    workout_log_id uuid NOT NULL,
+    routine_exercise_id uuid,
+    set_number integer NOT NULL,
+    weight_kg numeric,
+    reps_completed integer,
+    rir_actual integer,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: clients clients_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: clients clients_stripe_customer_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_stripe_customer_id_key UNIQUE (stripe_customer_id);
+
+
+--
+-- Name: clients clients_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_user_id_key UNIQUE (user_id);
+
+
+--
+-- Name: exercises exercises_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercises
+    ADD CONSTRAINT exercises_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: feedback feedback_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback
+    ADD CONSTRAINT feedback_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: invite_codes invite_codes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invite_codes
+    ADD CONSTRAINT invite_codes_pkey PRIMARY KEY (code);
+
+
+--
+-- Name: monthly_goals monthly_goals_client_id_month_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_goals
+    ADD CONSTRAINT monthly_goals_client_id_month_key UNIQUE (client_id, month);
+
+
+--
+-- Name: monthly_goals monthly_goals_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_goals
+    ADD CONSTRAINT monthly_goals_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: monthly_reviews monthly_reviews_client_id_month_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_reviews
+    ADD CONSTRAINT monthly_reviews_client_id_month_key UNIQUE (client_id, month);
+
+
+--
+-- Name: monthly_reviews monthly_reviews_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_reviews
+    ADD CONSTRAINT monthly_reviews_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: profiles profiles_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: push_subscriptions push_subscriptions_endpoint_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_subscriptions
+    ADD CONSTRAINT push_subscriptions_endpoint_key UNIQUE (endpoint);
+
+
+--
+-- Name: push_subscriptions push_subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_subscriptions
+    ADD CONSTRAINT push_subscriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: routine_days routine_days_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routine_days
+    ADD CONSTRAINT routine_days_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: routine_exercises routine_exercises_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routine_exercises
+    ADD CONSTRAINT routine_exercises_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: routines routines_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routines
+    ADD CONSTRAINT routines_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: set_logs set_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.set_logs
+    ADD CONSTRAINT set_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subscriptions subscriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriptions
+    ADD CONSTRAINT subscriptions_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: subscriptions subscriptions_stripe_subscription_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriptions
+    ADD CONSTRAINT subscriptions_stripe_subscription_id_key UNIQUE (stripe_subscription_id);
+
+
+--
+-- Name: workout_logs workout_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_logs
+    ADD CONSTRAINT workout_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: workout_set_logs workout_set_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_set_logs
+    ADD CONSTRAINT workout_set_logs_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: idx_clients_coach_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_clients_coach_id ON public.clients USING btree (coach_id);
+
+
+--
+-- Name: idx_clients_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_clients_user_id ON public.clients USING btree (user_id);
+
+
+--
+-- Name: idx_exercises_coach_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_exercises_coach_id ON public.exercises USING btree (coach_id);
+
+
+--
+-- Name: idx_feedback_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_feedback_client_id ON public.feedback USING btree (client_id);
+
+
+--
+-- Name: idx_feedback_unread; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_feedback_unread ON public.feedback USING btree (client_id, is_read) WHERE (is_read = false);
+
+
+--
+-- Name: idx_routine_days_routine_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_routine_days_routine_id ON public.routine_days USING btree (routine_id);
+
+
+--
+-- Name: idx_routine_exercises_day_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_routine_exercises_day_id ON public.routine_exercises USING btree (day_id);
+
+
+--
+-- Name: idx_routines_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_routines_client_id ON public.routines USING btree (client_id);
+
+
+--
+-- Name: idx_set_logs_workout_log_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_set_logs_workout_log_id ON public.set_logs USING btree (workout_log_id);
+
+
+--
+-- Name: idx_workout_logs_client_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_workout_logs_client_id ON public.workout_logs USING btree (client_id);
+
+
+--
+-- Name: idx_workout_logs_date; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_workout_logs_date ON public.workout_logs USING btree (workout_date DESC);
+
+
+--
+-- Name: clients update_clients_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_clients_updated_at BEFORE UPDATE ON public.clients FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+--
+-- Name: exercises update_exercises_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_exercises_updated_at BEFORE UPDATE ON public.exercises FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+--
+-- Name: profiles update_profiles_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_profiles_updated_at BEFORE UPDATE ON public.profiles FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+--
+-- Name: routines update_routines_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_routines_updated_at BEFORE UPDATE ON public.routines FOR EACH ROW EXECUTE FUNCTION public.update_updated_at();
+
+
+--
+-- Name: clients clients_coach_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: clients clients_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.clients
+    ADD CONSTRAINT clients_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: exercises exercises_coach_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.exercises
+    ADD CONSTRAINT exercises_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
+-- Name: feedback feedback_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback
+    ADD CONSTRAINT feedback_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: feedback feedback_coach_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback
+    ADD CONSTRAINT feedback_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: feedback feedback_routine_exercise_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback
+    ADD CONSTRAINT feedback_routine_exercise_id_fkey FOREIGN KEY (routine_exercise_id) REFERENCES public.routine_exercises(id) ON DELETE SET NULL;
+
+
+--
+-- Name: feedback feedback_workout_log_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.feedback
+    ADD CONSTRAINT feedback_workout_log_id_fkey FOREIGN KEY (workout_log_id) REFERENCES public.workout_logs(id) ON DELETE SET NULL;
+
+
+--
+-- Name: invite_codes invite_codes_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invite_codes
+    ADD CONSTRAINT invite_codes_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: invite_codes invite_codes_used_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.invite_codes
+    ADD CONSTRAINT invite_codes_used_by_fkey FOREIGN KEY (used_by) REFERENCES auth.users(id);
+
+
+--
+-- Name: monthly_goals monthly_goals_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_goals
+    ADD CONSTRAINT monthly_goals_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id);
+
+
+--
+-- Name: monthly_reviews monthly_reviews_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_reviews
+    ADD CONSTRAINT monthly_reviews_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id);
+
+
+--
+-- Name: monthly_reviews monthly_reviews_coach_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.monthly_reviews
+    ADD CONSTRAINT monthly_reviews_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES public.profiles(id);
+
+
+--
+-- Name: profiles profiles_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.profiles
+    ADD CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: push_subscriptions push_subscriptions_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_subscriptions
+    ADD CONSTRAINT push_subscriptions_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: routine_days routine_days_routine_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routine_days
+    ADD CONSTRAINT routine_days_routine_id_fkey FOREIGN KEY (routine_id) REFERENCES public.routines(id) ON DELETE CASCADE;
+
+
+--
+-- Name: routine_exercises routine_exercises_day_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routine_exercises
+    ADD CONSTRAINT routine_exercises_day_id_fkey FOREIGN KEY (day_id) REFERENCES public.routine_days(id) ON DELETE CASCADE;
+
+
+--
+-- Name: routine_exercises routine_exercises_exercise_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routine_exercises
+    ADD CONSTRAINT routine_exercises_exercise_id_fkey FOREIGN KEY (exercise_id) REFERENCES public.exercises(id) ON DELETE SET NULL;
+
+
+--
+-- Name: routines routines_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routines
+    ADD CONSTRAINT routines_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: routines routines_coach_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.routines
+    ADD CONSTRAINT routines_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES public.profiles(id) ON DELETE SET NULL;
+
+
+--
+-- Name: set_logs set_logs_routine_exercise_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.set_logs
+    ADD CONSTRAINT set_logs_routine_exercise_id_fkey FOREIGN KEY (routine_exercise_id) REFERENCES public.routine_exercises(id) ON DELETE SET NULL;
+
+
+--
+-- Name: set_logs set_logs_workout_log_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.set_logs
+    ADD CONSTRAINT set_logs_workout_log_id_fkey FOREIGN KEY (workout_log_id) REFERENCES public.workout_logs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: subscriptions subscriptions_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.subscriptions
+    ADD CONSTRAINT subscriptions_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: workout_logs workout_logs_client_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_logs
+    ADD CONSTRAINT workout_logs_client_id_fkey FOREIGN KEY (client_id) REFERENCES public.clients(id) ON DELETE CASCADE;
+
+
+--
+-- Name: workout_logs workout_logs_routine_day_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_logs
+    ADD CONSTRAINT workout_logs_routine_day_id_fkey FOREIGN KEY (routine_day_id) REFERENCES public.routine_days(id) ON DELETE SET NULL;
+
+
+--
+-- Name: workout_set_logs workout_set_logs_routine_exercise_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_set_logs
+    ADD CONSTRAINT workout_set_logs_routine_exercise_id_fkey FOREIGN KEY (routine_exercise_id) REFERENCES public.routine_exercises(id);
+
+
+--
+-- Name: workout_set_logs workout_set_logs_workout_log_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_set_logs
+    ADD CONSTRAINT workout_set_logs_workout_log_id_fkey FOREIGN KEY (workout_log_id) REFERENCES public.workout_logs(id) ON DELETE CASCADE;
+
+
+--
+-- Name: feedback Client can mark feedback as read; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client can mark feedback as read" ON public.feedback FOR UPDATE USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: clients Client can update own stripe fields; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client can update own stripe fields" ON public.clients FOR UPDATE USING ((user_id = auth.uid())) WITH CHECK ((user_id = auth.uid()));
+
+
+--
+-- Name: monthly_goals Client manages own monthly goals; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client manages own monthly goals" ON public.monthly_goals USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid())))) WITH CHECK ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: push_subscriptions Client manages own push subscriptions; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client manages own push subscriptions" ON public.push_subscriptions USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid())))) WITH CHECK ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: set_logs Client manages own set logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client manages own set logs" ON public.set_logs USING ((workout_log_id IN ( SELECT workout_logs.id
+   FROM public.workout_logs
+  WHERE (workout_logs.client_id IN ( SELECT clients.id
+           FROM public.clients
+          WHERE (clients.user_id = auth.uid()))))));
+
+
+--
+-- Name: workout_set_logs Client manages own set logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client manages own set logs" ON public.workout_set_logs USING ((workout_log_id IN ( SELECT workout_logs.id
+   FROM public.workout_logs
+  WHERE (workout_logs.client_id IN ( SELECT clients.id
+           FROM public.clients
+          WHERE (clients.user_id = auth.uid()))))));
+
+
+--
+-- Name: workout_logs Client manages own workout logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client manages own workout logs" ON public.workout_logs USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: feedback Client views own feedback; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client views own feedback" ON public.feedback FOR SELECT USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: monthly_reviews Client views own monthly reviews; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client views own monthly reviews" ON public.monthly_reviews FOR SELECT USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: routines Client views own routine; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client views own routine" ON public.routines FOR SELECT USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: routine_days Client views own routine days; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client views own routine days" ON public.routine_days FOR SELECT USING ((routine_id IN ( SELECT r.id
+   FROM (public.routines r
+     JOIN public.clients c ON ((c.id = r.client_id)))
+  WHERE (c.user_id = auth.uid()))));
+
+
+--
+-- Name: routine_exercises Client views own routine exercises; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Client views own routine exercises" ON public.routine_exercises FOR SELECT USING ((day_id IN ( SELECT rd.id
+   FROM ((public.routine_days rd
+     JOIN public.routines r ON ((r.id = rd.routine_id)))
+     JOIN public.clients c ON ((c.id = r.client_id)))
+  WHERE (c.user_id = auth.uid()))));
+
+
+--
+-- Name: exercises Clients can view exercises from their coach; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Clients can view exercises from their coach" ON public.exercises FOR SELECT USING ((coach_id IN ( SELECT clients.coach_id
+   FROM public.clients
+  WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: clients Coach can manage their clients; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach can manage their clients" ON public.clients USING ((coach_id = auth.uid()));
+
+
+--
+-- Name: clients Coach can view their clients; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach can view their clients" ON public.clients FOR SELECT USING (((coach_id = auth.uid()) OR (user_id = auth.uid())));
+
+
+--
+-- Name: profiles Coach can view their clients profiles; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach can view their clients profiles" ON public.profiles FOR SELECT USING ((id IN ( SELECT clients.user_id
+   FROM public.clients
+  WHERE (clients.coach_id = auth.uid()))));
+
+
+--
+-- Name: monthly_reviews Coach manages client monthly reviews; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages client monthly reviews" ON public.monthly_reviews USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.coach_id = auth.uid())))) WITH CHECK ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.coach_id = auth.uid()))));
+
+
+--
+-- Name: feedback Coach manages feedback; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages feedback" ON public.feedback USING ((coach_id = auth.uid()));
+
+
+--
+-- Name: routine_days Coach manages routine days; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages routine days" ON public.routine_days USING ((routine_id IN ( SELECT routines.id
+   FROM public.routines
+  WHERE (routines.coach_id = auth.uid()))));
+
+
+--
+-- Name: routine_exercises Coach manages routine exercises; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages routine exercises" ON public.routine_exercises USING ((day_id IN ( SELECT rd.id
+   FROM (public.routine_days rd
+     JOIN public.routines r ON ((r.id = rd.routine_id)))
+  WHERE (r.coach_id = auth.uid()))));
+
+
+--
+-- Name: routines Coach manages routines; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages routines" ON public.routines USING ((coach_id = auth.uid()));
+
+
+--
+-- Name: exercises Coach manages their exercises; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages their exercises" ON public.exercises USING ((coach_id = auth.uid()));
+
+
+--
+-- Name: monthly_goals Coach views client monthly goals; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach views client monthly goals" ON public.monthly_goals FOR SELECT USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.coach_id = auth.uid()))));
+
+
+--
+-- Name: workout_set_logs Coach views client set logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach views client set logs" ON public.workout_set_logs FOR SELECT USING ((workout_log_id IN ( SELECT wl.id
+   FROM (public.workout_logs wl
+     JOIN public.clients c ON ((c.id = wl.client_id)))
+  WHERE (c.coach_id = auth.uid()))));
+
+
+--
+-- Name: workout_logs Coach views client workout logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach views client workout logs" ON public.workout_logs FOR SELECT USING ((client_id IN ( SELECT clients.id
+   FROM public.clients
+  WHERE (clients.coach_id = auth.uid()))));
+
+
+--
+-- Name: set_logs Coach views set logs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach views set logs" ON public.set_logs FOR SELECT USING ((workout_log_id IN ( SELECT workout_logs.id
+   FROM public.workout_logs
+  WHERE (workout_logs.client_id IN ( SELECT clients.id
+           FROM public.clients
+          WHERE (clients.coach_id = auth.uid()))))));
+
+
+--
+-- Name: profiles Users can update own profile; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING ((auth.uid() = id));
+
+
+--
+-- Name: profiles Users can view own profile; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING ((auth.uid() = id));
+
+
+--
+-- Name: clients; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: invite_codes coaches manage invite codes; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "coaches manage invite codes" ON public.invite_codes USING ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'coach'::text)) WITH CHECK ((((auth.jwt() -> 'user_metadata'::text) ->> 'role'::text) = 'coach'::text));
+
+
+--
+-- Name: exercises; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.exercises ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: feedback; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.feedback ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: invite_codes; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.invite_codes ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: monthly_goals; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.monthly_goals ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: monthly_reviews; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.monthly_reviews ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: profiles; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: push_subscriptions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.push_subscriptions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: routine_days; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.routine_days ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: routine_exercises; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.routine_exercises ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: routines; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.routines ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: set_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.set_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: subscriptions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: workout_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.workout_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: workout_set_logs; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.workout_set_logs ENABLE ROW LEVEL SECURITY;
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict pdYw84uqTraHpcKkIuP7p2OeTtcbdX3ZIr2bwKVyaftmdL8xPkPA3mpbUx059Oc
+
