@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { CoachBottomNav } from "@/components/coach/coach-bottom-nav";
 import { CoachHeader } from "@/components/coach/coach-header";
 import { CoachSidebar } from "@/components/coach/coach-sidebar";
+import { PageTransition } from "@/components/motion/page-transition";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 
 export default async function CoachLayout({
@@ -21,7 +22,9 @@ export default async function CoachLayout({
       <CoachHeader profile={profile} />
       <div className="flex">
         <CoachSidebar />
-        <main className="min-w-0 flex-1 p-6 pb-24 md:pb-6">{children}</main>
+        <main className="min-w-0 flex-1 p-6 pb-24 md:pb-6">
+          <PageTransition>{children}</PageTransition>
+        </main>
       </div>
       <CoachBottomNav />
     </div>

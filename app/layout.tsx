@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, DM_Sans } from "next/font/google";
 import { InstallBanner } from "@/components/install-banner";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { TouchActiveFix } from "@/components/touch-active-fix";
 import "./globals.css";
 
 // Bebas Neue: títulos y números grandes de alto impacto. DM Sans: cuerpo y UI.
@@ -63,6 +64,7 @@ export default function RootLayout({
         {children}
         <InstallBanner />
         <ServiceWorkerRegister />
+        <TouchActiveFix />
       </body>
     </html>
   );

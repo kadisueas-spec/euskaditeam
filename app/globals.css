@@ -130,6 +130,39 @@
   }
   html {
     @apply font-sans;
+    /* Evita el "rebote" de scroll de página completa típico de Safari/PWA
+       (pull-to-refresh, overscroll fantasma). Los contenedores internos que
+       necesiten su propio scroll siguen funcionando normal. */
+    overscroll-behavior: none;
+  }
+  html,
+  body {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Feedback táctil instantáneo en toda la app: :active dispara al instante
+     del toque (no hace falta esperar a soltar), sin animación de por medio.
+     touch-action: manipulation elimina el delay de ~300ms que iOS agrega
+     por defecto a los taps para detectar double-tap-to-zoom.
+     -webkit-tap-highlight-color saca el flash gris nativo de iOS/Android
+     para que se vea solo nuestro :active.
+     Los componentes que ya definen su propio active:scale-* (Tailwind)
+     ganan por estar en la capa "utilities", que Tailwind siempre carga
+     después de "base". */
+  a,
+  button,
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  a:active,
+  button:not(:disabled):active,
+  [role="button"]:active {
+    transform: scale(0.96);
+    opacity: 0.85;
+    transition: transform 0.1s ease-out, opacity 0.1s ease-out;
   }
 }
 
@@ -155,6 +188,9 @@
 @utility animate-fade-in-up {
   animation: fade-in-up 0.4s ease-out both;
 }
+@utility animate-page-in {
+  animation: page-in 0.18s ease-out both;
+}
 
 @keyframes glow-pulse {
   0%,
@@ -170,6 +206,17 @@
   from {
     opacity: 0;
     transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
   }
   to {
     opacity: 1;
