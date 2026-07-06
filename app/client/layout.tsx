@@ -20,14 +20,18 @@ export default async function ClientLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const profile = await getCurrentProfile();
+  // profile y clientRecord son independientes entre sí (ambos dependen solo
+  // del usuario ya validado por el middleware, no uno del otro) — antes se
+  // pedían en secuencia, ahora en paralelo.
+  const [profile, clientRecord] = await Promise.all([
+    getCurrentProfile(),
+    getCurrentClientRecord(),
+  ]);
 
   // Belt-and-suspenders: proxy.ts already enforces this optimistically via
   // user_metadata.role. This is the secure check against profiles.role.
   if (!profile) redirect("/login");
   if (profile.role !== "client") redirect("/coach/dashboard");
-
-  const clientRecord = await getCurrentClientRecord();
 
   // El vencimiento se calcula en cada request (no depende de un cron que
   // actualice subscription_status), así el bloqueo aplica al instante.
@@ -57,14 +61,17 @@ export default async function ClientLayout({
     );
   }
 
-  const monthlyGoal = await getCurrentMonthGoal();
+  // Ídem: goal y unreadFeedbackCount no dependen entre sí (ambos reusan el
+  // clientRecord ya cacheado arriba, no requieren una nueva validación).
+  const [monthlyGoal, unreadFeedbackCount] = await Promise.all([
+    getCurrentMonthGoal(),
+    getUnreadFeedbackCount(),
+  ]);
   if (!monthlyGoal) {
     // Full-screen takeover: no other client route is reachable until the
     // client completes their goal for the current month.
     return <MonthlyGoalModal />;
   }
-
-  const unreadFeedbackCount = await getUnreadFeedbackCount();
 
   return (
     <div className="flex min-h-svh flex-col bg-[#080808] text-white">

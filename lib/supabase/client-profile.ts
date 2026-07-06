@@ -1,5 +1,6 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 
 export type ClientRecord = {
   id: string;
@@ -16,21 +17,20 @@ export type ClientRecord = {
 
 // cache(): varias funciones de este módulo llaman a getCurrentClientRecord()
 // de forma independiente dentro del mismo request (layout, stats, my-month,
-// etc.) — sin memoizar, cada llamada repetía el mismo round trip a Supabase
-// (incluyendo auth.getUser(), que también pega contra el servidor).
+// etc.) — se memoiza para pagar la consulta a "clients" una sola vez.
+// getAuthUser() ya no pega contra Supabase (lee el resultado que dejó el
+// middleware), así que esto queda en 1 sola consulta real.
 export const getCurrentClientRecord = cache(async function getCurrentClientRecord(): Promise<ClientRecord | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const authUser = await getAuthUser();
+  if (!authUser) return null;
 
+  const supabase = await createClient();
   const { data } = await supabase
     .from("clients")
     .select(
       "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date"
     )
-    .eq("user_id", user.id)
+    .eq("user_id", authUser.id)
     .single();
 
   if (!data) return null;
