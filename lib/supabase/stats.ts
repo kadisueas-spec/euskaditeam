@@ -25,29 +25,49 @@ export type ClientStats = {
   adherencePercent: number;
 };
 
-function computeStreak(datesDesc: string[]): number {
-  if (datesDesc.length === 0) return 0;
+// C2: la racha ya no cuenta días consecutivos (entrenar lunes y no poder
+// entrenar el fin de semana rompía la racha aunque el cliente haya cumplido
+// su plan de 3 o 4 días/semana). Ahora cuenta semanas consecutivas
+// (lunes-domingo) en las que se llegó a la cantidad de días planificados
+// por la rutina activa.
+function mondayKeyFor(dateStr: string): string {
+  const d = new Date(`${dateStr}T00:00:00Z`);
+  const day = d.getUTCDay(); // 0=domingo, 1=lunes, ..., 6=sábado
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  return new Date(d.getTime() - diffToMonday * DAY_MS).toISOString().slice(0, 10);
+}
 
-  const today = new Date();
-  today.setUTCHours(0, 0, 0, 0);
-  const todayMs = today.getTime();
+function previousMondayKey(mondayKey: string): string {
+  return new Date(new Date(`${mondayKey}T00:00:00Z`).getTime() - 7 * DAY_MS)
+    .toISOString()
+    .slice(0, 10);
+}
 
-  const mostRecentMs = new Date(`${datesDesc[0]}T00:00:00Z`).getTime();
-  const gapFromToday = Math.round((todayMs - mostRecentMs) / DAY_MS);
-  if (gapFromToday > 1) return 0;
+function computeWeeklyStreak(datesDesc: string[], plannedPerWeek: number): number {
+  if (plannedPerWeek <= 0 || datesDesc.length === 0) return 0;
 
-  let streak = 1;
-  let prevMs = mostRecentMs;
-  for (let i = 1; i < datesDesc.length; i++) {
-    const curMs = new Date(`${datesDesc[i]}T00:00:00Z`).getTime();
-    const diff = Math.round((prevMs - curMs) / DAY_MS);
-    if (diff === 1) {
-      streak++;
-      prevMs = curMs;
-    } else if (diff > 1) {
-      break;
-    }
+  const countByWeekStart = new Map<string, number>();
+  for (const d of datesDesc) {
+    const key = mondayKeyFor(d);
+    countByWeekStart.set(key, (countByWeekStart.get(key) ?? 0) + 1);
   }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  let cursor = mondayKeyFor(todayStr);
+  let streak = 0;
+
+  // La semana en curso suma a la racha si ya se cumplió el plan, pero no la
+  // corta si todavía no se cumplió (la semana no terminó).
+  if ((countByWeekStart.get(cursor) ?? 0) >= plannedPerWeek) {
+    streak++;
+  }
+  cursor = previousMondayKey(cursor);
+
+  while ((countByWeekStart.get(cursor) ?? 0) >= plannedPerWeek) {
+    streak++;
+    cursor = previousMondayKey(cursor);
+  }
+
   return streak;
 }
 
@@ -125,11 +145,11 @@ export async function getClientStats(): Promise<ClientStats> {
 
   const allLogRows = allLogs ?? [];
   const distinctDatesDesc = Array.from(new Set(allLogRows.map((l) => l.workout_date)));
-  const streak = computeStreak(distinctDatesDesc);
+  const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
+  const streak = computeWeeklyStreak(distinctDatesDesc, plannedDaysPerWeek);
 
   const trainedThisMonth = distinctDatesDesc.filter((d) => d.startsWith(monthPrefix)).length;
 
-  const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
   const weeksElapsedThisMonth = Math.ceil(now.getUTCDate() / 7);
   const plannedTotal = plannedDaysPerWeek * weeksElapsedThisMonth;
   const adherencePercent = plannedTotal > 0

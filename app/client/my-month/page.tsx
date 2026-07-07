@@ -6,6 +6,16 @@ import {
   getMyMonthUnlockedData,
 } from "@/lib/supabase/my-month";
 
+const WEEKDAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
+
+// C1: "Días del mes" tiene que verse como un calendario real lunes-domingo
+// (con el día 1 en la columna que le corresponde), no como una tira de 1 a
+// 30/31 sin relación con la semana.
+function mondayIndexOfFirstDay(monthPrefix: string): number {
+  const day = new Date(`${monthPrefix}-01T00:00:00Z`).getUTCDay(); // 0=domingo
+  return day === 0 ? 6 : day - 1; // 0=lunes ... 6=domingo
+}
+
 export default async function MyMonthPage() {
   const progress = await getMyMonthProgress();
 
@@ -55,6 +65,9 @@ export default async function MyMonthPage() {
       : 0;
   const monthPrefix = new Date().toISOString().slice(0, 7);
   const trainedSet = new Set(trainedDates);
+  const leadingBlanks = mondayIndexOfFirstDay(monthPrefix);
+  const trailingBlanks =
+    (7 - ((leadingBlanks + totalDaysInMonth) % 7)) % 7;
 
   return (
     <div className="flex flex-col gap-4">
@@ -79,7 +92,7 @@ export default async function MyMonthPage() {
               {streak}
               <span className="text-lg text-[#888888]">
                 {" "}
-                día{streak === 1 ? "" : "s"}
+                semana{streak === 1 ? "" : "s"}
               </span>
             </p>
           </div>
@@ -101,6 +114,17 @@ export default async function MyMonthPage() {
       <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
         <p className="mb-3 text-sm font-medium text-white">Días del mes</p>
         <div className="grid grid-cols-7 gap-2">
+          {WEEKDAY_LABELS.map((w, i) => (
+            <span
+              key={`h-${i}`}
+              className="flex items-center justify-center text-[10px] font-semibold text-[#555555]"
+            >
+              {w}
+            </span>
+          ))}
+          {Array.from({ length: leadingBlanks }, (_, i) => (
+            <span key={`b-${i}`} />
+          ))}
           {Array.from({ length: totalDaysInMonth }, (_, i) => {
             const dayNum = i + 1;
             const dateStr = `${monthPrefix}-${String(dayNum).padStart(2, "0")}`;
@@ -119,6 +143,9 @@ export default async function MyMonthPage() {
               </span>
             );
           })}
+          {Array.from({ length: trailingBlanks }, (_, i) => (
+            <span key={`t-${i}`} />
+          ))}
         </div>
       </div>
 

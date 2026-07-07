@@ -45,6 +45,18 @@ export async function createMonthlyGoal(
     return { error: "No se pudo guardar. Intentá de nuevo." };
   }
 
+  // F4: "Mi Perfil" muestra clients.weight_kg/goal (el dato "vigente" del
+  // cliente), no los objetivos mensuales — sin este update quedaban en "-"
+  // para siempre, porque nada más los escribe.
+  const { error: clientUpdateError } = await supabase
+    .from("clients")
+    .update({ weight_kg: Number(weightKg), goal: mainGoal })
+    .eq("id", client.id);
+
+  if (clientUpdateError) {
+    console.error("createMonthlyGoal client update error:", clientUpdateError);
+  }
+
   revalidatePath("/", "layout");
   return undefined;
 }

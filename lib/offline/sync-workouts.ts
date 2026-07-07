@@ -1,21 +1,22 @@
-import { finishWorkout } from "@/app/client/log-workout/actions";
-import {
-  deletePendingWorkout,
-  getPendingWorkouts,
-} from "@/lib/offline/workout-store";
+import { addSet } from "@/app/client/log-workout/actions";
+import { deletePendingSet, getPendingSets } from "@/lib/offline/workout-store";
 
 export type SyncResult = { synced: number; failed: number };
 
+// Sincroniza las series que se guardaron localmente porque el guardado
+// directo al servidor falló (sin conexión durante el entrenamiento). El
+// workout_log ya existe en el servidor (se creó al abrir la pantalla,
+// online); acá solo faltan las series individuales.
 export async function syncPendingWorkouts(): Promise<SyncResult> {
-  const pending = await getPendingWorkouts();
+  const pending = await getPendingSets();
   let synced = 0;
   let failed = 0;
 
-  for (const workout of pending) {
+  for (const set of pending) {
     try {
-      const result = await finishWorkout(workout.payload);
+      const result = await addSet(set.payload);
       if ("success" in result) {
-        await deletePendingWorkout(workout.localId);
+        await deletePendingSet(set.localId);
         synced++;
       } else {
         failed++;

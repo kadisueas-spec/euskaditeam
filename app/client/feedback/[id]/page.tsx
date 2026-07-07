@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion/fade-in";
 import { FEEDBACK_TYPE_LABEL, FEEDBACK_TYPE_ICON } from "@/lib/constants/feedback";
-import { getFeedbackDetailAndMarkRead } from "@/lib/supabase/feedback";
+import { getFeedbackDetail } from "@/lib/supabase/feedback";
 import { formatDate } from "@/lib/utils/format-date";
+import { MarkReadOnMount } from "./mark-read-on-mount";
 
 export default async function FeedbackDetailPage({
   params,
@@ -10,7 +11,7 @@ export default async function FeedbackDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const feedback = await getFeedbackDetailAndMarkRead(id);
+  const feedback = await getFeedbackDetail(id);
 
   if (!feedback) notFound();
 
@@ -18,6 +19,7 @@ export default async function FeedbackDetailPage({
 
   return (
     <FadeIn className="flex flex-col gap-4">
+      <MarkReadOnMount id={feedback.id} alreadyRead={feedback.isRead} />
       <div className="flex items-center gap-3">
         <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#e8001c] text-white shadow-[0_0_16px_rgba(232,0,28,0.4)]">
           <Icon className="size-5" />

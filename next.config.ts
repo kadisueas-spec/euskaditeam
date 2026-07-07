@@ -26,6 +26,24 @@ const withPWA = require("next-pwa")({
         cacheableResponse: { statuses: [0, 200] },
       },
     },
+    // F6: el catch-all "others" que trae next-pwa por defecto (más abajo,
+    // via defaultRuntimeCaching) matchea CUALQUIER página del mismo origen,
+    // login incluido, y la guarda con NetworkFirst (10s de timeout, 24hs de
+    // cache). Eso es lo que causaba el "me pide login de nuevo" al reabrir
+    // la PWA: si la red tardaba en responder al reabrir la app, el service
+    // worker servía una versión vieja cacheada de la página en vez de
+    // esperar/redirigir según la sesión real. Las páginas son dinámicas y
+    // dependen de la cookie de sesión vigente, así que no deben cachearse
+    // nunca — excepto las dos rutas de rutina activa, que ya tienen su
+    // propio cache arriba a propósito para funcionar offline.
+    {
+      urlPattern: ({ request, url }: { request: Request; url: URL }) =>
+        self.origin === url.origin &&
+        request.mode === "navigate" &&
+        !url.pathname.startsWith("/client/my-routine") &&
+        !url.pathname.startsWith("/client/log-workout"),
+      handler: "NetworkOnly",
+    },
     ...defaultRuntimeCaching,
   ],
 });

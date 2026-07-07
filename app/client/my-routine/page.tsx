@@ -7,6 +7,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { getMyActiveRoutine } from "@/lib/supabase/client-routine";
 import { getMyFeedback } from "@/lib/supabase/feedback";
 import { FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
+import { formatRestTime } from "@/lib/utils/format-rest";
 
 function repsLabel(min: number | null, max: number | null) {
   if (min == null && max == null) return null;
@@ -95,7 +96,7 @@ export default async function MyRoutinePage() {
                           )}
                           {ex.restSeconds != null && (
                             <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-[#f5f5f5]">
-                              {ex.restSeconds}s descanso
+                              {formatRestTime(ex.restSeconds)} descanso
                             </span>
                           )}
                         </div>

@@ -5,6 +5,7 @@ import { Controller, useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABEL,
@@ -60,14 +61,13 @@ export function AccessForm({
               control={control}
               rules={{ required: true }}
               render={({ field }) => (
-                <select
+                <NativeSelect
                   id="payment_method"
                   name="payment_method"
                   value={field.value}
                   onChange={field.onChange}
                   onBlur={field.onBlur}
                   ref={field.ref}
-                  className="h-9 rounded-lg border border-input bg-transparent px-2.5 text-sm text-white"
                   required
                 >
                   <option value="" disabled>
@@ -78,7 +78,7 @@ export function AccessForm({
                       {PAYMENT_METHOD_LABEL[method]}
                     </option>
                   ))}
-                </select>
+                </NativeSelect>
               )}
             />
           </div>

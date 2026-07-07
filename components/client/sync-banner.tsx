@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { CheckCircle2, RefreshCw } from "lucide-react";
-import { countPendingWorkouts } from "@/lib/offline/workout-store";
+import { countPendingSets } from "@/lib/offline/workout-store";
 import { syncPendingWorkouts } from "@/lib/offline/sync-workouts";
 
 type SyncState = "idle" | "syncing" | "done";
@@ -15,7 +15,7 @@ export function SyncBanner() {
 
     async function runSync() {
       if (!navigator.onLine) return;
-      const pendingCount = await countPendingWorkouts();
+      const pendingCount = await countPendingSets();
       if (pendingCount === 0 || cancelled) return;
 
       setState("syncing");

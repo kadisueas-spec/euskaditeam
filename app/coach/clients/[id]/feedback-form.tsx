@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -26,9 +26,20 @@ export function FeedbackForm({
     FeedbackFormState,
     FormData
   >(action, undefined);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // D1: antes no había ninguna confirmación visible al enviar feedback — el
+  // botón volvía a "Dejar feedback" sin avisar nada, lo que en el celular se
+  // sentía como que el envío había quedado colgado. Ahora se limpia el
+  // formulario y se muestra una confirmación explícita.
+  useEffect(() => {
+    if (state && "success" in state) {
+      formRef.current?.reset();
+    }
+  }, [state]);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
       <div className="flex flex-col gap-2">
         <Label htmlFor="feedback-type">Tipo</Label>
         <NativeSelect id="feedback-type" name="type" defaultValue="general">
@@ -79,8 +90,11 @@ export function FeedbackForm({
         </div>
       </div>
 
-      {state?.error && (
+      {state && "error" in state && (
         <p className="text-sm text-destructive">{state.error}</p>
+      )}
+      {state && "success" in state && (
+        <p className="text-sm text-emerald-500">✓ Feedback enviado.</p>
       )}
 
       <Button type="submit" disabled={pending} className="w-fit">

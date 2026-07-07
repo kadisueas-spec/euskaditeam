@@ -102,12 +102,14 @@ export async function getUnreadFeedbackCount(): Promise<number> {
 
 export type FeedbackDetail = FeedbackItem;
 
-// Antes: 1 (client) + 1 (feedback) + 1 (update si no leído) + 3 (enrich) =
-// hasta 6 round trips. Ahora: client (memoizado) + 1 (feedback embebido) +
-// 1 (update, solo si hace falta) = hasta 2.
-export async function getFeedbackDetailAndMarkRead(
-  id: string
-): Promise<FeedbackDetail | null> {
+// D2: separado de la marca de "leído" (ver markFeedbackRead en
+// app/client/feedback/actions.ts). Antes esta función mutaba durante el
+// render de una página (GET), lo que deja is_read=true en la base pero no
+// invalida el router cache de Next — el badge de "mensajes nuevos" del
+// layout seguía mostrando el conteo viejo hasta un refresh completo. Ahora
+// es una lectura pura; la mutación vive en un Server Action que sí puede
+// llamar a revalidatePath.
+export async function getFeedbackDetail(id: string): Promise<FeedbackDetail | null> {
   const client = await getCurrentClientRecord();
   if (!client) return null;
 
@@ -123,14 +125,7 @@ export async function getFeedbackDetailAndMarkRead(
 
   if (!data) return null;
 
-  if (!data.is_read) {
-    await supabase
-      .from("feedback")
-      .update({ is_read: true, read_at: new Date().toISOString() })
-      .eq("id", id);
-  }
-
-  return { ...mapFeedbackRow(data), isRead: true };
+  return mapFeedbackRow(data);
 }
 
 export type SessionOption = { id: string; label: string };

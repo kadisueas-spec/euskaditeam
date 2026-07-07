@@ -34,7 +34,7 @@ export function StatsCharts({ stats }: { stats: ClientStats }) {
               {stats.streak}
               <span className="text-lg text-[#888888]">
                 {" "}
-                día{stats.streak === 1 ? "" : "s"}
+                semana{stats.streak === 1 ? "" : "s"}
               </span>
             </p>
           </div>

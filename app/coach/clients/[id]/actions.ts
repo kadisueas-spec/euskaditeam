@@ -9,7 +9,7 @@ import { PAYMENT_METHODS } from "@/lib/constants/access";
 import type { PaymentMethod } from "@/lib/constants/access";
 import { sendPushToClient } from "@/lib/push/send-push";
 
-export type FeedbackFormState = { error: string } | undefined;
+export type FeedbackFormState = { error: string } | { success: true } | undefined;
 
 export async function createFeedback(
   clientId: string,
@@ -56,7 +56,7 @@ export async function createFeedback(
   });
 
   revalidatePath(`/coach/clients/${clientId}`);
-  return undefined;
+  return { success: true };
 }
 
 export type MonthlyReviewFormState = { error: string } | undefined;

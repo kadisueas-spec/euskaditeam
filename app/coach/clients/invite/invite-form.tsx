@@ -13,7 +13,28 @@ export function InviteForm() {
   const [copied, setCopied] = useState(false);
 
   async function copyCode(code: string) {
-    await navigator.clipboard.writeText(code);
+    // Safari en iOS a veces no expone navigator.clipboard (contextos no
+    // seguros, versiones viejas) o lo bloquea silenciosamente — fallback al
+    // método clásico de textarea + execCommand, que funciona en todos lados.
+    try {
+      if (!navigator.clipboard) throw new Error("clipboard API no disponible");
+      await navigator.clipboard.writeText(code);
+    } catch {
+      const textarea = document.createElement("textarea");
+      textarea.value = code;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      try {
+        document.execCommand("copy");
+      } catch {
+        // Sin forma de copiar automáticamente; el código sigue visible en
+        // pantalla para copiarlo a mano.
+      }
+      document.body.removeChild(textarea);
+    }
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

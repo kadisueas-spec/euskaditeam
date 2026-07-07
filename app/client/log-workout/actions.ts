@@ -3,18 +3,166 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 
+export type LoggedSet = {
+  id: string;
+  routineExerciseId: string;
+  setNumber: number;
+  weightKg: number | null;
+  reps: number | null;
+  rir: number | null;
+};
+
+export type InProgressWorkout = {
+  workoutLogId: string;
+  loggedSets: LoggedSet[];
+};
+
+// A1: cada serie se guarda en el servidor apenas se completa (no se espera
+// a "Finalizar"), en un workout_log con is_completed=false. Si el cliente
+// cierra la app y vuelve, esta función encuentra ese mismo registro en
+// curso (por client+día+fecha) en vez de crear uno nuevo, y devuelve todas
+// las series ya guardadas para reconstruir dónde había quedado.
+export async function getOrCreateInProgressWorkout(
+  dayId: string
+): Promise<InProgressWorkout | { error: string }> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data: existing } = await supabase
+    .from("workout_logs")
+    .select("id")
+    .eq("client_id", client.id)
+    .eq("routine_day_id", dayId)
+    .eq("workout_date", today)
+    .eq("is_completed", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let workoutLogId = existing?.id as string | undefined;
+
+  if (!workoutLogId) {
+    const { data: created, error } = await supabase
+      .from("workout_logs")
+      .insert({
+        client_id: client.id,
+        routine_day_id: dayId,
+        workout_date: today,
+        started_at: new Date().toISOString(),
+        is_completed: false,
+      })
+      .select("id")
+      .single();
+
+    if (error || !created) {
+      console.error("getOrCreateInProgressWorkout insert error:", error);
+      return { error: "No se pudo iniciar el entrenamiento." };
+    }
+    workoutLogId = created.id;
+  }
+
+  const { data: sets } = await supabase
+    .from("workout_set_logs")
+    .select("id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual")
+    .eq("workout_log_id", workoutLogId)
+    .order("set_number", { ascending: true });
+
+  return {
+    workoutLogId: workoutLogId as string,
+    loggedSets: (sets ?? []).map((s) => ({
+      id: s.id,
+      routineExerciseId: s.routine_exercise_id ?? "",
+      setNumber: s.set_number,
+      weightKg: s.weight_kg,
+      reps: s.reps_completed,
+      rir: s.rir_actual,
+    })),
+  };
+}
+
+export type AddSetInput = {
+  workoutLogId: string;
+  routineExerciseId: string;
+  setNumber: number;
+  weightKg: number | null;
+  reps: number | null;
+  rir: number | null;
+};
+
+export type AddSetResult = { success: true; id: string } | { error: string };
+
+export async function addSet(input: AddSetInput): Promise<AddSetResult> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("workout_set_logs")
+    .insert({
+      workout_log_id: input.workoutLogId,
+      routine_exercise_id: input.routineExerciseId,
+      set_number: input.setNumber,
+      weight_kg: input.weightKg,
+      reps_completed: input.reps,
+      rir_actual: input.rir,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    console.error("addSet error:", error);
+    return { error: "No se pudo guardar la serie." };
+  }
+
+  return { success: true, id: data.id };
+}
+
+export type UpdateSetInput = {
+  weightKg: number | null;
+  reps: number | null;
+  rir: number | null;
+};
+
+// A4: permite corregir una serie ya guardada dentro del entrenamiento en
+// curso (o de una sesión pasada, ver Bloque B2).
+export async function updateSet(
+  setId: string,
+  patch: UpdateSetInput
+): Promise<{ success: true } | { error: string }> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("workout_set_logs")
+    .update({
+      weight_kg: patch.weightKg,
+      reps_completed: patch.reps,
+      rir_actual: patch.rir,
+    })
+    .eq("id", setId);
+
+  if (error) {
+    console.error("updateSet error:", error);
+    return { error: "No se pudo actualizar la serie." };
+  }
+
+  return { success: true };
+}
+
 export type FinishWorkoutInput = {
-  dayId: string;
-  exercises: {
-    routineExerciseId: string;
-    sets: { weightKg: number | null; reps: number | null; rir: number | null }[];
-  }[];
+  workoutLogId: string;
   energyLevel: number;
   notes: string;
 };
 
 export type FinishWorkoutResult = { success: true } | { error: string };
 
+// Las series ya están guardadas (una por una, ver addSet). Acá solo se
+// marca el entrenamiento como completo con el feeling/notas finales.
 export async function finishWorkout(
   input: FinishWorkoutInput
 ): Promise<FinishWorkoutResult> {
@@ -22,51 +170,80 @@ export async function finishWorkout(
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
   const supabase = await createClient();
-  const now = new Date().toISOString();
-
-  const { data: log, error: logError } = await supabase
+  const { error } = await supabase
     .from("workout_logs")
-    .insert({
-      client_id: client.id,
-      routine_day_id: input.dayId,
-      workout_date: now.slice(0, 10),
-      started_at: now,
-      finished_at: now,
+    .update({
+      is_completed: true,
+      finished_at: new Date().toISOString(),
       energy_level: input.energyLevel,
       client_notes: input.notes || null,
-      is_completed: true,
     })
-    .select("id")
-    .single();
+    .eq("id", input.workoutLogId);
 
-  if (logError || !log) {
-    console.error("finishWorkout log insert error:", logError);
-    return { error: "No se pudo guardar el entrenamiento." };
-  }
-
-  const setRows = input.exercises.flatMap((ex) =>
-    ex.sets.map((set, index) => ({
-      workout_log_id: log.id,
-      routine_exercise_id: ex.routineExerciseId,
-      set_number: index + 1,
-      weight_kg: set.weightKg,
-      reps_completed: set.reps,
-      rir_actual: set.rir,
-    }))
-  );
-
-  if (setRows.length > 0) {
-    const { error: setsError } = await supabase
-      .from("workout_set_logs")
-      .insert(setRows);
-
-    if (setsError) {
-      console.error("finishWorkout sets insert error:", setsError);
-      return {
-        error: "El entrenamiento se guardó pero hubo un error con las series.",
-      };
-    }
+  if (error) {
+    console.error("finishWorkout error:", error);
+    return { error: "No se pudo finalizar el entrenamiento." };
   }
 
   return { success: true };
+}
+
+export type PreviousSetValue = {
+  routineExerciseId: string;
+  setNumber: number;
+  weightKg: number | null;
+  reps: number | null;
+  rir: number | null;
+};
+
+type PreviousSetRow = {
+  routine_exercise_id: string | null;
+  set_number: number;
+  weight_kg: number | null;
+  reps_completed: number | null;
+  rir_actual: number | null;
+  workout_logs: { workout_date: string; is_completed: boolean } | null;
+};
+
+// A5: trae, en una sola consulta, el último valor cargado (en un
+// entrenamiento ya completado, no el actual) para cada ejercicio+serie de
+// este día, para autocompletar los campos con lo que se usó la vez
+// anterior.
+export async function getPreviousSetsForExercises(
+  routineExerciseIds: string[]
+): Promise<PreviousSetValue[]> {
+  if (routineExerciseIds.length === 0) return [];
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("workout_set_logs")
+    .select(
+      `routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual,
+       workout_logs!inner ( workout_date, is_completed )`
+    )
+    .in("routine_exercise_id", routineExerciseIds)
+    .eq("workout_logs.is_completed", true)
+    .order("created_at", { ascending: false })
+    .returns<PreviousSetRow[]>();
+
+  // Para cada combinación ejercicio+serie, nos quedamos con la de fecha
+  // más reciente (RLS ya garantiza que son solo los registros de este
+  // cliente).
+  const latestByKey = new Map<string, PreviousSetRow>();
+  for (const row of data ?? []) {
+    if (!row.routine_exercise_id || !row.workout_logs) continue;
+    const key = `${row.routine_exercise_id}-${row.set_number}`;
+    const current = latestByKey.get(key);
+    if (!current || row.workout_logs.workout_date > current.workout_logs!.workout_date) {
+      latestByKey.set(key, row);
+    }
+  }
+
+  return Array.from(latestByKey.values()).map((row) => ({
+    routineExerciseId: row.routine_exercise_id!,
+    setNumber: row.set_number,
+    weightKg: row.weight_kg,
+    reps: row.reps_completed,
+    rir: row.rir_actual,
+  }));
 }

@@ -75,13 +75,13 @@ export default async function ClientLayout({
 
   return (
     <div className="flex min-h-svh flex-col bg-[#080808] text-white">
-      <header className="gradient-section sticky top-0 z-10 flex items-center justify-center gap-2 border-b border-[#1e1e1e] px-4 py-4">
+      <header className="gradient-section sticky top-0 z-10 flex items-center justify-center gap-2 border-b border-[#1e1e1e] px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <Image src="/brand/euskadi-logo.png" alt="" width={22} height={22} />
         <span className="font-display text-lg tracking-wide text-[#f5f5f5] uppercase">
           Euskadi Team
         </span>
       </header>
-      <div className="sticky top-[65px] z-10 flex flex-col">
+      <div className="sticky top-[calc(65px+env(safe-area-inset-top))] z-10 flex flex-col">
         <OfflineBanner />
         <SyncBanner />
         {unreadFeedbackCount > 0 && (

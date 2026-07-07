@@ -1,0 +1,379 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
+import { FadeIn } from "@/components/motion/fade-in";
+import type { ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
+import { updateRoutine } from "../../actions";
+
+type ExerciseRow = {
+  key: string;
+  id?: string;
+  exerciseId: string;
+  sets: string;
+  repsMin: string;
+  repsMax: string;
+  rir: string;
+  restSeconds: string;
+  notes: string;
+};
+
+type DayRow = {
+  key: string;
+  id?: string;
+  name: string;
+  exercises: ExerciseRow[];
+};
+
+function newExerciseRow(): ExerciseRow {
+  return {
+    key: crypto.randomUUID(),
+    exerciseId: "",
+    sets: "",
+    repsMin: "",
+    repsMax: "",
+    rir: "",
+    restSeconds: "",
+    notes: "",
+  };
+}
+
+function newDayRow(index: number): DayRow {
+  return { key: crypto.randomUUID(), name: `Día ${index}`, exercises: [] };
+}
+
+function daysFromRoutine(routine: RoutineDetail): DayRow[] {
+  return routine.days.map((d) => ({
+    key: d.id,
+    id: d.id,
+    name: d.name,
+    exercises: d.exercises.map((ex) => ({
+      key: ex.id,
+      id: ex.id,
+      exerciseId: ex.exerciseId,
+      sets: String(ex.sets),
+      repsMin: ex.repsMin != null ? String(ex.repsMin) : "",
+      repsMax: ex.repsMax != null ? String(ex.repsMax) : "",
+      rir: ex.rirTarget != null ? String(ex.rirTarget) : "",
+      restSeconds: ex.restSeconds != null ? String(ex.restSeconds) : "",
+      notes: ex.notes ?? "",
+    })),
+  }));
+}
+
+export function RoutineEditor({
+  routine,
+  exercises,
+}: {
+  routine: RoutineDetail;
+  exercises: ExerciseOption[];
+}) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const [name, setName] = useState(routine.name);
+  const [description, setDescription] = useState(routine.description ?? "");
+  const [objective, setObjective] = useState(routine.objective ?? "");
+  const [days, setDays] = useState<DayRow[]>(() => daysFromRoutine(routine));
+
+  function addDay() {
+    setDays((prev) => [...prev, newDayRow(prev.length + 1)]);
+  }
+
+  function removeDay(key: string) {
+    setDays((prev) => prev.filter((d) => d.key !== key));
+  }
+
+  function updateDayName(key: string, value: string) {
+    setDays((prev) =>
+      prev.map((d) => (d.key === key ? { ...d, name: value } : d))
+    );
+  }
+
+  function addExercise(dayKey: string) {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.key === dayKey
+          ? { ...d, exercises: [...d.exercises, newExerciseRow()] }
+          : d
+      )
+    );
+  }
+
+  function removeExercise(dayKey: string, exerciseKey: string) {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.key === dayKey
+          ? { ...d, exercises: d.exercises.filter((e) => e.key !== exerciseKey) }
+          : d
+      )
+    );
+  }
+
+  function updateExercise(
+    dayKey: string,
+    exerciseKey: string,
+    patch: Partial<ExerciseRow>
+  ) {
+    setDays((prev) =>
+      prev.map((d) =>
+        d.key === dayKey
+          ? {
+              ...d,
+              exercises: d.exercises.map((e) =>
+                e.key === exerciseKey ? { ...e, ...patch } : e
+              ),
+            }
+          : d
+      )
+    );
+  }
+
+  function handleSubmit() {
+    if (!name.trim()) return setError("El nombre es obligatorio.");
+    if (days.length === 0) return setError("Agregá al menos un día.");
+    if (days.some((d) => !d.name.trim()))
+      return setError("Todos los días necesitan un nombre.");
+    for (const day of days) {
+      for (const ex of day.exercises) {
+        if (!ex.exerciseId) {
+          setError(`Elegí un ejercicio en "${day.name}".`);
+          return;
+        }
+        if (!ex.sets) {
+          setError(`Falta "series" en un ejercicio de "${day.name}".`);
+          return;
+        }
+      }
+    }
+    setError(null);
+
+    startTransition(async () => {
+      const result = await updateRoutine(routine.id, {
+        name,
+        description,
+        objective,
+        days: days.map((d) => ({
+          id: d.id,
+          name: d.name,
+          exercises: d.exercises.map((e) => ({
+            id: e.id,
+            exerciseId: e.exerciseId,
+            sets: Number(e.sets),
+            repsMin: e.repsMin ? Number(e.repsMin) : null,
+            repsMax: e.repsMax ? Number(e.repsMax) : null,
+            rir: e.rir ? Number(e.rir) : null,
+            restSeconds: e.restSeconds ? Number(e.restSeconds) : null,
+            notes: e.notes || null,
+          })),
+        })),
+      });
+
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+
+      const target = `/coach/routines/${routine.id}`;
+      router.push(
+        result.warning ? `${target}?warning=${encodeURIComponent(result.warning)}` : target
+      );
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6">
+      <FadeIn className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="routine-name">Nombre</Label>
+          <Input
+            id="routine-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="routine-description">Descripción</Label>
+          <Textarea
+            id="routine-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            rows={3}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="routine-objective">Objetivo</Label>
+          <Input
+            id="routine-objective"
+            value={objective}
+            onChange={(e) => setObjective(e.target.value)}
+            placeholder="Ej: Hipertrofia, fuerza, pérdida de grasa"
+          />
+        </div>
+      </FadeIn>
+
+      <FadeIn className="flex flex-col gap-6">
+        {days.map((day, index) => (
+          <div key={day.key} className="rounded-2xl border border-[#1e1e1e] p-4">
+            <div className="mb-3 flex items-center gap-3">
+              <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#e8001c] font-display text-sm text-white">
+                {index + 1}
+              </span>
+              <Input
+                value={day.name}
+                onChange={(e) => updateDayName(day.key, e.target.value)}
+                className="flex-1"
+              />
+              <button
+                type="button"
+                onClick={() => removeDay(day.key)}
+                aria-label="Eliminar día"
+                className="flex size-8 items-center justify-center rounded-md text-[#888888] transition-transform active:scale-90 hover:bg-white/10 hover:text-white"
+              >
+                <Trash2 className="size-4" />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {day.exercises.map((ex) => (
+                <div
+                  key={ex.key}
+                  className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-3 sm:grid-cols-6"
+                >
+                  <div className="col-span-2 sm:col-span-2">
+                    <Label className="text-xs">Ejercicio</Label>
+                    <NativeSelect
+                      value={ex.exerciseId}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, {
+                          exerciseId: e.target.value,
+                        })
+                      }
+                    >
+                      <option value="" disabled>
+                        Elegir
+                      </option>
+                      {exercises.map((opt) => (
+                        <option key={opt.id} value={opt.id}>
+                          {opt.name}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  <div>
+                    <Label className="text-xs">Series</Label>
+                    <Input
+                      type="number"
+                      min={1}
+                      value={ex.sets}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, { sets: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Reps mín</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={ex.repsMin}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, { repsMin: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Reps máx</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={ex.repsMax}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, { repsMax: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">RIR</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={ex.rir}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, { rir: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Descanso (seg)</Label>
+                    <Input
+                      type="number"
+                      min={0}
+                      value={ex.restSeconds}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, {
+                          restSeconds: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+                  <div className="col-span-2 sm:col-span-5">
+                    <Label className="text-xs">Notas</Label>
+                    <Input
+                      value={ex.notes}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, { notes: e.target.value })
+                      }
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeExercise(day.key, ex.key)}
+                    aria-label="Eliminar ejercicio"
+                    className="flex size-8 items-center justify-center self-end rounded-md text-[#888888] transition-transform active:scale-90 hover:bg-white/10 hover:text-white"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => addExercise(day.key)}
+                className="w-fit"
+              >
+                <Plus className="size-4" /> Agregar ejercicio
+              </Button>
+            </div>
+          </div>
+        ))}
+
+        <Button variant="outline" onClick={addDay} className="w-fit">
+          <Plus className="size-4" /> Agregar día
+        </Button>
+      </FadeIn>
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <div className="flex gap-3">
+        <Button
+          variant="outline"
+          onClick={() => router.push(`/coach/routines/${routine.id}`)}
+          disabled={pending}
+        >
+          Cancelar
+        </Button>
+        <Button onClick={handleSubmit} disabled={pending}>
+          {pending ? "Guardando..." : "Guardar cambios"}
+        </Button>
+      </div>
+    </div>
+  );
+}

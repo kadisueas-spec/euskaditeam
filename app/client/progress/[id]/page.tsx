@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getWorkoutLogDetail } from "@/lib/supabase/workout-history";
 import { formatDate } from "@/lib/utils/format-date";
+import { EditableSetRow } from "./editable-set-row";
 
 export default async function WorkoutLogDetailPage({
   params,
@@ -58,18 +59,7 @@ export default async function WorkoutLogDetailPage({
               <CardContent>
                 <ul className="flex flex-col gap-2">
                   {sets.map((set) => (
-                    <li
-                      key={set.id}
-                      className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2 text-sm"
-                    >
-                      <span className="text-[#888888]">
-                        Serie {set.setNumber}
-                      </span>
-                      <span className="font-mono text-white">
-                        {set.weightKg ?? "-"} kg · {set.repsCompleted ?? "-"} reps
-                        {set.rirActual != null ? ` · RIR ${set.rirActual}` : ""}
-                      </span>
-                    </li>
+                    <EditableSetRow key={set.id} set={set} />
                   ))}
                 </ul>
               </CardContent>

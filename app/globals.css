@@ -164,6 +164,17 @@
     opacity: 0.85;
     transition: transform 0.1s ease-out, opacity 0.1s ease-out;
   }
+
+  /* F3: el <select> del trigger usa texto claro (tema oscuro), pero ese
+     color se hereda a las <option> del desplegable — el sistema operativo
+     casi siempre pinta esa lista con fondo blanco/claro (no es algo que
+     podamos re-stylear vía CSS), y texto claro sobre fondo claro queda
+     ilegible. Se fuerza texto oscuro solo en las opciones, explícito, sin
+     depender de qué se herede. */
+  select option {
+    color: #111827;
+    background-color: #ffffff;
+  }
 }
 
 /* Efectos premium reutilizables — Euskadi Team.
