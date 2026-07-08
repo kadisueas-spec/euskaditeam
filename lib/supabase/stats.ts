@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
+import { mondayKeyFor, previousMondayKey } from "@/lib/utils/week";
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 function weekLabel(startMs: number) {
   return new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit" }).format(
@@ -30,19 +30,6 @@ export type ClientStats = {
 // su plan de 3 o 4 días/semana). Ahora cuenta semanas consecutivas
 // (lunes-domingo) en las que se llegó a la cantidad de días planificados
 // por la rutina activa.
-function mondayKeyFor(dateStr: string): string {
-  const d = new Date(`${dateStr}T00:00:00Z`);
-  const day = d.getUTCDay(); // 0=domingo, 1=lunes, ..., 6=sábado
-  const diffToMonday = day === 0 ? 6 : day - 1;
-  return new Date(d.getTime() - diffToMonday * DAY_MS).toISOString().slice(0, 10);
-}
-
-function previousMondayKey(mondayKey: string): string {
-  return new Date(new Date(`${mondayKey}T00:00:00Z`).getTime() - 7 * DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-}
-
 function computeWeeklyStreak(datesDesc: string[], plannedPerWeek: number): number {
   if (plannedPerWeek <= 0 || datesDesc.length === 0) return 0;
 

@@ -155,6 +155,32 @@ todo el mes.
     iOS (no solo "es iPhone"), ya que Chrome/Firefox en iOS no muestran el
     mismo flujo de instalación.
 
+### Fase 8 — Métricas Avanzadas de Entrenamiento
+Objetivo: darle al coach una vista de evaluación de progreso real (pensada
+para el cierre de mes) basada en los datos que el cliente ya carga al
+registrar entrenamientos (`workout_set_logs`: peso, reps y RIR por serie) y
+el grupo muscular de cada ejercicio (`exercises.muscle_group`). No hace
+falta ninguna tabla nueva — todo se calcula agregando estos datos.
+33. Capa de cálculo (`lib/supabase/metrics.ts`): tonelaje (series × reps ×
+    carga) por grupo muscular, por ejercicio y total; series efectivas por
+    grupo muscular por semana (toda serie cargada cuenta como efectiva —
+    el schema no distingue series de calentamiento); volumen por sesión;
+    distribución de intensidad por RIR (% de series en RIR ≥3, 2, 1 y 0,
+    contado por cantidad de series, no por tonelaje); evolución de carga
+    por ejercicio. Las sesiones no finalizadas también cuentan (las series
+    ya están guardadas en el servidor apenas se completan, ver Fase 3/A).
+    Filtro de rango con tres granularidades: Semana, Mes y Bloque (el
+    bloque es un mesociclo estandarizado de 4 semanas, no una tabla de la
+    base — se calcula agrupando semanas de a 4).
+34. Tab "Métricas" en `/coach/clients/[id]` (junto a "Resumen"): tonelaje
+    por grupo muscular en el tiempo, tonelaje y carga por ejercicio
+    (selector de ejercicio), distribución RIR por semana/mes/bloque —
+    pensada para evaluar el progreso del cliente a fin de mes.
+35. Versión resumida en `/client/progress/stats` para el cliente: tonelaje
+    total del período, tonelaje por grupo muscular y distribución RIR
+    simplificada (sin desglose ejercicio por ejercicio, eso queda solo
+    para la vista del coach).
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)

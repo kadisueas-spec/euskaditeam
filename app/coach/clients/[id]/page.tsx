@@ -3,6 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeIn } from "@/components/motion/fade-in";
 import { FeedbackList } from "@/components/coach/feedback-list";
+import { ClientDetailTabs } from "@/components/coach/client-detail-tabs";
+import { ClientMetricsTab } from "@/components/coach/client-metrics-tab";
 import { getClientDetail } from "@/lib/supabase/clients";
 import {
   getClientRoutineExercisesForSelect,
@@ -10,6 +12,7 @@ import {
   getRecentSessionsForSelect,
 } from "@/lib/supabase/feedback";
 import { getMonthlyReviewFormData } from "@/lib/supabase/monthly-review";
+import { getClientMetrics, type ClientMetrics, type MetricsRange } from "@/lib/supabase/metrics";
 import { getAccessDisplayStatus, PAYMENT_METHOD_LABEL } from "@/lib/constants/access";
 import type { PaymentMethod } from "@/lib/constants/access";
 import { formatDate } from "@/lib/utils/format-date";
@@ -43,12 +46,22 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
-  const [feedback, sessions, exercises, monthlyReviewData] = await Promise.all([
-    getFeedbackForClient(id),
-    getRecentSessionsForSelect(id),
-    getClientRoutineExercisesForSelect(id),
-    getMonthlyReviewFormData(id),
-  ]);
+  const [feedback, sessions, exercises, monthlyReviewData, metricsWeek, metricsMonth, metricsBlock] =
+    await Promise.all([
+      getFeedbackForClient(id),
+      getRecentSessionsForSelect(id),
+      getClientRoutineExercisesForSelect(id),
+      getMonthlyReviewFormData(id),
+      getClientMetrics(id, "week"),
+      getClientMetrics(id, "month"),
+      getClientMetrics(id, "block"),
+    ]);
+
+  const metricsByRange: Record<MetricsRange, ClientMetrics> = {
+    week: metricsWeek,
+    month: metricsMonth,
+    block: metricsBlock,
+  };
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -60,6 +73,10 @@ export default async function ClientDetailPage({
         <p className="text-sm text-[#888888]">{client.email}</p>
       </div>
 
+      <ClientDetailTabs
+        metricas={<ClientMetricsTab metricsByRange={metricsByRange} />}
+        resumen={
+          <>
       <FadeIn delay={0}>
         <Card className="border-[#1e1e1e] bg-[#111111]">
           <CardHeader>
@@ -233,6 +250,9 @@ export default async function ClientDetailPage({
           </CardContent>
         </Card>
       </FadeIn>
+          </>
+        }
+      />
     </div>
   );
 }
