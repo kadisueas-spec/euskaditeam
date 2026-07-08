@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-// Fase 8: tabs simples con CSS puro (mismo patrón visual que los pasos del
+// Fase 9: tabs simples con CSS puro (mismo patrón visual que los pasos del
 // creador de rutina). Ambos paneles quedan montados y se ocultan con
 // `hidden` en vez de desmontarse, para no perder el estado del selector de
 // ejercicio ni volver a animar el FadeIn al cambiar de tab.

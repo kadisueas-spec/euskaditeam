@@ -26,7 +26,7 @@ const tooltipProps = {
   labelStyle: { color: "#fff" },
 };
 
-// Fase 8: versión resumida para el cliente — sin desglose ejercicio por
+// Fase 9: versión resumida para el cliente — sin desglose ejercicio por
 // ejercicio (eso queda para la vista del coach en /coach/clients/[id]).
 export function MetricsSummary({
   metricsByRange,

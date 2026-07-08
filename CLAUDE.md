@@ -155,7 +155,7 @@ todo el mes.
     iOS (no solo "es iPhone"), ya que Chrome/Firefox en iOS no muestran el
     mismo flujo de instalación.
 
-### Fase 8 — Métricas Avanzadas de Entrenamiento
+### Fase 9 — Métricas Avanzadas de Entrenamiento
 Objetivo: darle al coach una vista de evaluación de progreso real (pensada
 para el cierre de mes) basada en los datos que el cliente ya carga al
 registrar entrenamientos (`workout_set_logs`: peso, reps y RIR por serie) y

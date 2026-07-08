@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
 
-// Fase 8 — Métricas Avanzadas de Entrenamiento. Todo se calcula agregando
+// Fase 9 — Métricas Avanzadas de Entrenamiento. Todo se calcula agregando
 // workout_set_logs (peso/reps/RIR por serie) + exercises.muscle_group, no
 // hace falta ninguna tabla nueva. Toda serie cargada cuenta como "efectiva"
 // (el schema no distingue calentamiento de series de trabajo), y las

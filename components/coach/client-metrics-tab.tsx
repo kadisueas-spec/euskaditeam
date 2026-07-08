@@ -41,7 +41,7 @@ const tooltipProps = {
   labelStyle: { color: "#fff" },
 };
 
-// Fase 8: pensado para que el coach evalúe el progreso del cliente a fin
+// Fase 9: pensado para que el coach evalúe el progreso del cliente a fin
 // de mes. Las tres granularidades ya vienen calculadas desde el server (ver
 // lib/supabase/metrics.ts) — acá solo se elige cuál mostrar, sin refetch.
 export function ClientMetricsTab({
