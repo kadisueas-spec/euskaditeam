@@ -1,7 +1,8 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
+import { getCurrentClientRecord, type ClientRecord } from "@/lib/supabase/client-profile";
+import { sendPushToCoach } from "@/lib/push/send-push";
 
 export type LoggedSet = {
   id: string;
@@ -161,6 +162,52 @@ export type FinishWorkoutInput = {
 
 export type FinishWorkoutResult = { success: true } | { error: string };
 
+// Push al coach cuando el cliente CRUZA el 80% de adherencia del mes (no
+// cuando ya está arriba de 80%, para no repetir el aviso en cada sesión
+// posterior). Compara la adherencia antes/después de esta sesión usando
+// fechas distintas entrenadas, igual que getClientStats() en stats.ts.
+async function notifyCoachIfAdherenceCrossed80({
+  client,
+  workoutDate,
+  monthLogDates,
+  plannedDaysPerWeek,
+  now,
+}: {
+  client: ClientRecord;
+  workoutDate: string | undefined;
+  monthLogDates: string[];
+  plannedDaysPerWeek: number;
+  now: Date;
+}): Promise<void> {
+  if (!client.coachId || !workoutDate || plannedDaysPerWeek <= 0) return;
+
+  const weeksElapsedThisMonth = Math.ceil(now.getUTCDate() / 7);
+  const plannedTotal = plannedDaysPerWeek * weeksElapsedThisMonth;
+  if (plannedTotal <= 0) return;
+
+  const beforeDates = new Set(monthLogDates);
+  const beforePercent = (beforeDates.size / plannedTotal) * 100;
+  if (beforePercent >= 80) return;
+
+  const afterDates = new Set(beforeDates).add(workoutDate);
+  const afterPercent = (afterDates.size / plannedTotal) * 100;
+  if (afterPercent < 80) return;
+
+  const supabase = await createClient();
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email")
+    .eq("id", client.userId)
+    .single();
+  const clientName = profile?.full_name ?? profile?.email ?? "Tu cliente";
+
+  await sendPushToCoach(client.coachId, {
+    title: `${clientName} ya completó el 80% de su rutina este mes 🔥`,
+    body: "Revisá su progreso en tu panel.",
+    url: `/coach/clients/${client.id}`,
+  });
+}
+
 // Las series ya están guardadas (una por una, ver addSet). Acá solo se
 // marca el entrenamiento como completo con el feeling/notas finales.
 export async function finishWorkout(
@@ -170,6 +217,33 @@ export async function finishWorkout(
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
   const supabase = await createClient();
+  const now = new Date();
+  const monthPrefix = now.toISOString().slice(0, 7);
+
+  const [{ data: workoutLog }, { data: monthLogs }, { data: activeRoutine }] =
+    await Promise.all([
+      supabase
+        .from("workout_logs")
+        .select("workout_date")
+        .eq("id", input.workoutLogId)
+        .single(),
+      supabase
+        .from("workout_logs")
+        .select("workout_date")
+        .eq("client_id", client.id)
+        .eq("is_completed", true)
+        .gte("workout_date", `${monthPrefix}-01`),
+      supabase
+        .from("routines")
+        .select("id, routine_days(count)")
+        .eq("client_id", client.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .returns<{ id: string; routine_days: { count: number }[] } | null>(),
+    ]);
+
   const { error } = await supabase
     .from("workout_logs")
     .update({
@@ -184,6 +258,14 @@ export async function finishWorkout(
     console.error("finishWorkout error:", error);
     return { error: "No se pudo finalizar el entrenamiento." };
   }
+
+  notifyCoachIfAdherenceCrossed80({
+    client,
+    workoutDate: workoutLog?.workout_date,
+    monthLogDates: (monthLogs ?? []).map((l) => l.workout_date),
+    plannedDaysPerWeek: activeRoutine?.routine_days[0]?.count ?? 0,
+    now,
+  }).catch((err) => console.error("finishWorkout adherence push error:", err));
 
   return { success: true };
 }

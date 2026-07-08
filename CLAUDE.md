@@ -154,6 +154,29 @@ todo el mes.
     Mejora de paso: `InstallBanner` ahora detecta específicamente Safari en
     iOS (no solo "es iPhone"), ya que Chrome/Firefox en iOS no muestran el
     mismo flujo de instalación.
+32.1. Push notifications ampliadas — ahora también al **coach**, no solo al
+    cliente: `push_subscriptions` pasa a soportar `coach_id` además de
+    `client_id` (nullable + CHECK de que se use exactamente uno de los
+    dos — ver migración `supabase/migrations/20260708_coach_push_subscriptions.sql`,
+    hay que correrla a mano en el SQL Editor del Dashboard, igual que las
+    Edge Functions). El coach recibe el mismo prompt de activación que el
+    cliente (`components/coach/push-permission-prompt.tsx`), la primera vez
+    que abre el dashboard.
+    - Al cliente: push "Tenés nueva rutina disponible 💪" cuando el coach
+      crea o edita su rutina (`createRoutine`/`updateRoutine`).
+    - Al coach: push "[cliente] ya completó el 80% de su rutina este mes 🔥"
+      la primera vez que la adherencia del mes cruza el 80% (se compara
+      antes/después de cada sesión completada en `finishWorkout`, así no
+      se repite en cada sesión posterior una vez que ya se cruzó).
+    - Al coach: recordatorio de mesociclo por terminar, 7 y 2 días antes
+      (chequeo diario en `daily-checks` sobre `routines.ends_at`, que ahora
+      sí se completa — `duration_weeks`/`starts_at`/`ends_at` ya existían en
+      el schema pero no se usaban desde ningún lado; se agregaron los
+      campos "Duración (semanas)" y "Fecha de inicio" al creador/editor de
+      rutina, default 4 semanas = un mesociclo).
+    - Alerta en el dashboard del coach — "[cliente] no tiene rutina
+      activa" — cuando un cliente activo no tiene ninguna rutina vigente
+      (`getNoActiveRoutineAlerts` en `lib/supabase/routines.ts`).
 
 ### Fase 9 — Métricas Avanzadas de Entrenamiento
 Objetivo: darle al coach una vista de evaluación de progreso real (pensada

@@ -62,6 +62,8 @@ export function RoutineWizard({
   const [description, setDescription] = useState("");
   const [objective, setObjective] = useState("");
   const [clientId, setClientId] = useState("");
+  const [durationWeeks, setDurationWeeks] = useState("4");
+  const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [days, setDays] = useState<DayRow[]>([]);
 
   function goToStep2() {
@@ -154,6 +156,8 @@ export function RoutineWizard({
         description,
         objective,
         clientId,
+        durationWeeks: Number(durationWeeks) || 4,
+        startsAt,
         days: days.map((d) => ({
           name: d.name,
           exercises: d.exercises.map((e) => ({
@@ -238,6 +242,27 @@ export function RoutineWizard({
                 </option>
               ))}
             </NativeSelect>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="routine-duration">Duración (semanas)</Label>
+              <Input
+                id="routine-duration"
+                type="number"
+                min={1}
+                value={durationWeeks}
+                onChange={(e) => setDurationWeeks(e.target.value)}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="routine-starts-at">Fecha de inicio</Label>
+              <Input
+                id="routine-starts-at"
+                type="date"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </div>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button onClick={goToStep2} className="w-fit">

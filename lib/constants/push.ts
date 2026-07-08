@@ -8,3 +8,4 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
 }
 
 export const PUSH_PROMPTED_KEY = "fitcoach:push-prompted";
+export const PUSH_PROMPTED_KEY_COACH = "fitcoach:push-prompted-coach";

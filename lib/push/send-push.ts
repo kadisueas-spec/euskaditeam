@@ -13,21 +13,13 @@ export type PushPayload = {
   url?: string;
 };
 
-// Envía una push a todos los dispositivos suscriptos de un cliente. Borra
-// las suscripciones que el navegador ya invalidó (410 Gone / 404).
-export async function sendPushToClient(
-  clientId: string,
-  payload: PushPayload
+type Subscription = { id: string; endpoint: string; p256dh: string; auth: string };
+
+async function deliver(
+  subscriptions: Subscription[],
+  payload: PushPayload,
+  supabase: ReturnType<typeof createAdminClient>
 ): Promise<void> {
-  const supabase = createAdminClient();
-
-  const { data: subscriptions } = await supabase
-    .from("push_subscriptions")
-    .select("id, endpoint, p256dh, auth")
-    .eq("client_id", clientId);
-
-  if (!subscriptions || subscriptions.length === 0) return;
-
   await Promise.all(
     subscriptions.map(async (sub) => {
       try {
@@ -43,9 +35,45 @@ export async function sendPushToClient(
         if (statusCode === 404 || statusCode === 410) {
           await supabase.from("push_subscriptions").delete().eq("id", sub.id);
         } else {
-          console.error("sendPushToClient error:", error);
+          console.error("sendPush error:", error);
         }
       }
     })
   );
+}
+
+// Envía una push a todos los dispositivos suscriptos de un cliente. Borra
+// las suscripciones que el navegador ya invalidó (410 Gone / 404).
+export async function sendPushToClient(
+  clientId: string,
+  payload: PushPayload
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const { data: subscriptions } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("client_id", clientId);
+
+  if (!subscriptions || subscriptions.length === 0) return;
+
+  await deliver(subscriptions, payload, supabase);
+}
+
+// Igual que sendPushToClient pero para el coach — avisos de mesociclo por
+// terminar y de adherencia del cliente (ver Fase 7, push notifications).
+export async function sendPushToCoach(
+  coachId: string,
+  payload: PushPayload
+): Promise<void> {
+  const supabase = createAdminClient();
+
+  const { data: subscriptions } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("coach_id", coachId);
+
+  if (!subscriptions || subscriptions.length === 0) return;
+
+  await deliver(subscriptions, payload, supabase);
 }

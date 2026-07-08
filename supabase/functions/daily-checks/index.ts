@@ -40,6 +40,28 @@ async function sendPushToClient(clientId, payload) {
   }
 }
 
+async function sendPushToCoach(coachId, payload) {
+  const { data: subs } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth")
+    .eq("coach_id", coachId);
+
+  for (const sub of subs ?? []) {
+    try {
+      await webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        JSON.stringify(payload)
+      );
+    } catch (error) {
+      if (error?.statusCode === 404 || error?.statusCode === 410) {
+        await supabase.from("push_subscriptions").delete().eq("id", sub.id);
+      } else {
+        console.error("daily-checks coach push error:", error);
+      }
+    }
+  }
+}
+
 function isMonthEndToday(date) {
   const totalDays = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)
@@ -55,6 +77,10 @@ function daysAgo(dateStr, now) {
     now.getUTCDate()
   );
   return Math.round((today - then) / 86400000);
+}
+
+function daysUntil(dateStr, now) {
+  return -daysAgo(dateStr, now);
 }
 
 Deno.serve(async () => {
@@ -90,6 +116,35 @@ Deno.serve(async () => {
         url: "/client/my-routine",
       });
     }
+  }
+
+  // Avisos al coach de mesociclo por terminar (7 y 2 días antes). Al
+  // correr una vez por día, el chequeo por día exacto (=== 7, === 2) evita
+  // mandar el mismo aviso más de una vez.
+  const { data: routines } = await supabase
+    .from("routines")
+    .select(
+      `id, ends_at, coach_id,
+       clients ( id, profiles!clients_user_id_fkey ( full_name, email ) )`
+    )
+    .eq("is_active", true)
+    .not("ends_at", "is", null);
+
+  for (const routine of routines ?? []) {
+    if (!routine.coach_id || !routine.ends_at) continue;
+    const days = daysUntil(routine.ends_at, now);
+    if (days !== 7 && days !== 2) continue;
+
+    const clientName =
+      routine.clients?.profiles?.full_name ??
+      routine.clients?.profiles?.email ??
+      "Tu cliente";
+
+    await sendPushToCoach(routine.coach_id, {
+      title: `El mesociclo de ${clientName} termina en ${days} día${days === 1 ? "" : "s"}`,
+      body: "Preparale la siguiente rutina con tiempo.",
+      url: routine.clients?.id ? `/coach/clients/${routine.clients.id}` : "/coach/dashboard",
+    });
   }
 
   return new Response("ok");

@@ -277,11 +277,16 @@ CREATE TABLE public.profiles (
 
 CREATE TABLE public.push_subscriptions (
     id uuid DEFAULT gen_random_uuid() NOT NULL,
-    client_id uuid NOT NULL,
+    client_id uuid,
     endpoint text NOT NULL,
     p256dh text NOT NULL,
     auth text NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    coach_id uuid,
+    CONSTRAINT push_subscriptions_owner_check CHECK (
+        ((client_id IS NOT NULL) AND (coach_id IS NULL))
+        OR ((client_id IS NULL) AND (coach_id IS NOT NULL))
+    )
 );
 
 
@@ -800,6 +805,14 @@ ALTER TABLE ONLY public.push_subscriptions
 
 
 --
+-- Name: push_subscriptions push_subscriptions_coach_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.push_subscriptions
+    ADD CONSTRAINT push_subscriptions_coach_id_fkey FOREIGN KEY (coach_id) REFERENCES public.profiles(id) ON DELETE CASCADE;
+
+
+--
 -- Name: routine_days routine_days_routine_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -920,6 +933,13 @@ CREATE POLICY "Client manages own monthly goals" ON public.monthly_goals USING (
   WHERE (clients.user_id = auth.uid())))) WITH CHECK ((client_id IN ( SELECT clients.id
    FROM public.clients
   WHERE (clients.user_id = auth.uid()))));
+
+
+--
+-- Name: push_subscriptions Client manages own push subscriptions; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Coach manages own push subscriptions" ON public.push_subscriptions USING ((coach_id = auth.uid())) WITH CHECK ((coach_id = auth.uid()));
 
 
 --

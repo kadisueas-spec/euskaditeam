@@ -112,8 +112,12 @@ export type RoutineDetail = {
   name: string;
   description: string | null;
   objective: string | null;
+  clientId: string | null;
   clientName: string | null;
   isActive: boolean;
+  durationWeeks: number | null;
+  startsAt: string | null;
+  endsAt: string | null;
   days: RoutineDayDetail[];
 };
 
@@ -123,6 +127,10 @@ type RoutineDetailRow = {
   description: string | null;
   objective: string | null;
   is_active: boolean;
+  client_id: string | null;
+  duration_weeks: number | null;
+  starts_at: string | null;
+  ends_at: string | null;
   clients: {
     profiles: { full_name: string | null; email: string } | null;
   } | null;
@@ -156,7 +164,8 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
   const { data: routine } = await supabase
     .from("routines")
     .select(
-      `id, name, description, objective, is_active,
+      `id, name, description, objective, is_active, client_id,
+       duration_weeks, starts_at, ends_at,
        clients ( profiles!clients_user_id_fkey ( full_name, email ) ),
        routine_days (
          id, name, day_number,
@@ -182,11 +191,15 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
     name: routine.name,
     description: routine.description,
     objective: routine.objective,
+    clientId: routine.client_id,
     clientName:
       routine.clients?.profiles?.full_name ??
       routine.clients?.profiles?.email ??
       null,
     isActive: routine.is_active,
+    durationWeeks: routine.duration_weeks,
+    startsAt: routine.starts_at,
+    endsAt: routine.ends_at,
     days: days.map((d) => ({
       id: d.id,
       name: d.name,
@@ -207,4 +220,41 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
         })),
     })),
   };
+}
+
+export type NoActiveRoutineAlert = { clientId: string; clientName: string };
+
+type ClientRoutineCheckRow = {
+  id: string;
+  profiles: { full_name: string | null; email: string } | null;
+  routines: { is_active: boolean; ends_at: string | null }[];
+};
+
+// Push/dashboard: un cliente activo sin ninguna rutina vigente (activa y
+// sin vencer) — típicamente porque su mesociclo terminó y el coach todavía
+// no le asignó el siguiente.
+export async function getNoActiveRoutineAlerts(): Promise<NoActiveRoutineAlert[]> {
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from("clients")
+    .select(
+      `id, profiles!clients_user_id_fkey ( full_name, email ),
+       routines ( is_active, ends_at )`
+    )
+    .eq("is_active", true)
+    .returns<ClientRoutineCheckRow[]>();
+
+  return (data ?? [])
+    .filter((c) => {
+      const hasValidRoutine = c.routines.some(
+        (r) => r.is_active && (!r.ends_at || r.ends_at >= today)
+      );
+      return !hasValidRoutine;
+    })
+    .map((c) => ({
+      clientId: c.id,
+      clientName: c.profiles?.full_name ?? c.profiles?.email ?? "Cliente",
+    }));
 }

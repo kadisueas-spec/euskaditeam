@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getCoachDashboardData } from "@/lib/supabase/dashboard";
 import { getMonthEndAlerts } from "@/lib/supabase/monthly-review";
+import { getNoActiveRoutineAlerts } from "@/lib/supabase/routines";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { formatDate } from "@/lib/utils/format-date";
 
@@ -22,10 +23,12 @@ export default async function CoachDashboardPage() {
   const [
     { activeCount, inactiveCount, expiringSoon, recentLogs, staleClients },
     monthEndAlerts,
+    noActiveRoutineAlerts,
     profile,
   ] = await Promise.all([
     getCoachDashboardData(),
     getMonthEndAlerts(),
+    getNoActiveRoutineAlerts(),
     getCurrentProfile(),
   ]);
   const firstName = (profile?.full_name?.trim().split(" ")[0] ?? "Coach").toUpperCase();
@@ -39,16 +42,26 @@ export default async function CoachDashboardPage() {
         <div className="mt-1.5 h-0.5 w-10 bg-[#e8001c]" />
       </div>
 
-      {monthEndAlerts.length > 0 && (
+      {(monthEndAlerts.length > 0 || noActiveRoutineAlerts.length > 0) && (
         <div className="flex flex-col gap-2">
           {monthEndAlerts.map((alert) => (
             <Link
-              key={alert.clientId}
+              key={`month-${alert.clientId}`}
               href={`/coach/clients/${alert.clientId}`}
               className="flex items-center gap-2 rounded-lg border border-[#e8001c]/40 bg-[#e8001c]/10 p-3 text-sm text-white hover:bg-[#e8001c]/20"
             >
               <Flag className="size-4 shrink-0 text-[#e8001c]" />
               El mes de {alert.clientName} terminó — dejale tu resumen
+            </Link>
+          ))}
+          {noActiveRoutineAlerts.map((alert) => (
+            <Link
+              key={`no-routine-${alert.clientId}`}
+              href={`/coach/clients/${alert.clientId}`}
+              className="flex items-center gap-2 rounded-lg border border-[#e8001c]/40 bg-[#e8001c]/10 p-3 text-sm text-white hover:bg-[#e8001c]/20"
+            >
+              <AlertTriangle className="size-4 shrink-0 text-[#e8001c]" />
+              {alert.clientName} no tiene rutina activa
             </Link>
           ))}
         </div>

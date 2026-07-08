@@ -81,6 +81,12 @@ export function RoutineEditor({
   const [name, setName] = useState(routine.name);
   const [description, setDescription] = useState(routine.description ?? "");
   const [objective, setObjective] = useState(routine.objective ?? "");
+  const [durationWeeks, setDurationWeeks] = useState(
+    routine.durationWeeks != null ? String(routine.durationWeeks) : "4"
+  );
+  const [startsAt, setStartsAt] = useState(
+    routine.startsAt ?? new Date().toISOString().slice(0, 10)
+  );
   const [days, setDays] = useState<DayRow[]>(() => daysFromRoutine(routine));
 
   function addDay() {
@@ -160,6 +166,8 @@ export function RoutineEditor({
         name,
         description,
         objective,
+        durationWeeks: Number(durationWeeks) || 4,
+        startsAt,
         days: days.map((d) => ({
           id: d.id,
           name: d.name,
@@ -216,6 +224,27 @@ export function RoutineEditor({
             onChange={(e) => setObjective(e.target.value)}
             placeholder="Ej: Hipertrofia, fuerza, pérdida de grasa"
           />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="routine-duration">Duración (semanas)</Label>
+            <Input
+              id="routine-duration"
+              type="number"
+              min={1}
+              value={durationWeeks}
+              onChange={(e) => setDurationWeeks(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="routine-starts-at">Fecha de inicio</Label>
+            <Input
+              id="routine-starts-at"
+              type="date"
+              value={startsAt}
+              onChange={(e) => setStartsAt(e.target.value)}
+            />
+          </div>
         </div>
       </FadeIn>
 

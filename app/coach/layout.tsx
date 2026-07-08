@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { CoachBottomNav } from "@/components/coach/coach-bottom-nav";
 import { CoachHeader } from "@/components/coach/coach-header";
 import { CoachSidebar } from "@/components/coach/coach-sidebar";
+import { CoachPushPermissionPrompt } from "@/components/coach/push-permission-prompt";
 import { PageTransition } from "@/components/motion/page-transition";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 
@@ -27,6 +28,7 @@ export default async function CoachLayout({
         </main>
       </div>
       <CoachBottomNav />
+      <CoachPushPermissionPrompt />
     </div>
   );
 }

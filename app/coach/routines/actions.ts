@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendPushToClient } from "@/lib/push/send-push";
 
 export type RoutineExerciseInput = {
   id?: string;
@@ -25,8 +26,20 @@ export type CreateRoutineInput = {
   description: string;
   objective: string;
   clientId: string;
+  durationWeeks: number;
+  startsAt: string;
   days: RoutineDayInput[];
 };
+
+// Push notifications: mesociclo = duración estandarizada en semanas a
+// partir de una fecha de inicio (routines.starts_at/duration_weeks/ends_at
+// ya existían en el schema pero no se usaban desde ningún lado). ends_at se
+// recalcula siempre server-side, nunca lo manda el cliente.
+function computeEndsAt(startsAt: string, durationWeeks: number): string {
+  const start = new Date(`${startsAt}T00:00:00Z`);
+  const end = new Date(start.getTime() + durationWeeks * 7 * 24 * 60 * 60 * 1000);
+  return end.toISOString().slice(0, 10);
+}
 
 export type CreateRoutineResult = { success: true; id: string } | { error: string };
 
@@ -43,6 +56,9 @@ export async function createRoutine(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
+  const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
+  const startsAt = input.startsAt || new Date().toISOString().slice(0, 10);
+
   const { data: routine, error: routineError } = await supabase
     .from("routines")
     .insert({
@@ -51,6 +67,9 @@ export async function createRoutine(
       name: input.name.trim(),
       description: input.description.trim() || null,
       objective: input.objective.trim() || null,
+      duration_weeks: durationWeeks,
+      starts_at: startsAt,
+      ends_at: computeEndsAt(startsAt, durationWeeks),
     })
     .select("id")
     .single();
@@ -99,6 +118,14 @@ export async function createRoutine(
     }
   }
 
+  sendPushToClient(input.clientId, {
+    title: "Tenés nueva rutina disponible 💪",
+    body: input.name.trim(),
+    url: "/client/my-routine",
+  }).catch((error) => {
+    console.error("createRoutine push error:", error);
+  });
+
   return { success: true, id: routine.id };
 }
 
@@ -128,17 +155,25 @@ export async function updateRoutine(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { error: routineError } = await supabase
+  const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
+  const startsAt = input.startsAt || new Date().toISOString().slice(0, 10);
+
+  const { data: updatedRoutine, error: routineError } = await supabase
     .from("routines")
     .update({
       name: input.name.trim(),
       description: input.description.trim() || null,
       objective: input.objective.trim() || null,
+      duration_weeks: durationWeeks,
+      starts_at: startsAt,
+      ends_at: computeEndsAt(startsAt, durationWeeks),
     })
     .eq("id", routineId)
-    .eq("coach_id", user.id);
+    .eq("coach_id", user.id)
+    .select("client_id")
+    .single();
 
-  if (routineError) {
+  if (routineError || !updatedRoutine) {
     console.error("updateRoutine routine update error:", routineError);
     return { error: "No se pudo actualizar la rutina." };
   }
@@ -258,6 +293,16 @@ export async function updateRoutine(
 
   revalidatePath(`/coach/routines/${routineId}`);
   revalidatePath("/client/my-routine");
+
+  if (updatedRoutine.client_id) {
+    sendPushToClient(updatedRoutine.client_id, {
+      title: "Tenés nueva rutina disponible 💪",
+      body: input.name.trim(),
+      url: "/client/my-routine",
+    }).catch((error) => {
+      console.error("updateRoutine push error:", error);
+    });
+  }
 
   if (blockedCount > 0) {
     return {

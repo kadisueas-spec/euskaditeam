@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getRoutineDetail } from "@/lib/supabase/routines";
 import { formatRestTime } from "@/lib/utils/format-rest";
+import { formatDate } from "@/lib/utils/format-date";
 
 function repsLabel(min: number | null, max: number | null) {
   if (min == null && max == null) return null;
@@ -56,6 +57,12 @@ export default async function RoutineDetailPage({
         {routine.objective && (
           <p className="mt-1 text-sm text-[#888888]">
             Objetivo: {routine.objective}
+          </p>
+        )}
+        {routine.endsAt && (
+          <p className="mt-1 text-sm text-[#888888]">
+            Mesociclo: {routine.startsAt && `${formatDate(routine.startsAt)} — `}
+            {formatDate(routine.endsAt)}
           </p>
         )}
         {routine.description && (
