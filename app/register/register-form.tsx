@@ -1,10 +1,9 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { ArrowRight, Eye, EyeOff, Lock, Mail, Ticket, User } from "lucide-react";
+import { AuthInput } from "@/components/auth/auth-input";
 import { register, type RegisterState } from "./actions";
 
 export function RegisterForm() {
@@ -12,6 +11,7 @@ export function RegisterForm() {
     register,
     undefined
   );
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (state && "error" in state && state.debug) {
@@ -21,64 +21,107 @@ export function RegisterForm() {
 
   if (state && "success" in state) {
     return (
-      <p className="text-sm text-[#888888]">
-        Cuenta creada. Revisá tu email para confirmar la cuenta y después{" "}
-        <Link href="/login" className="text-white underline underline-offset-4">
-          iniciá sesión
-        </Link>
-        .
-      </p>
+      <div className="flex flex-col gap-3">
+        <h2 className="font-display text-3xl tracking-wide text-white uppercase">
+          Crear cuenta
+        </h2>
+        <p className="text-sm text-[#888888]">
+          Cuenta creada. Revisá tu email para confirmar la cuenta y después{" "}
+          <Link href="/login" className="font-medium text-[#e8001c]">
+            iniciá sesión
+          </Link>
+          .
+        </p>
+      </div>
     );
   }
 
   return (
-    <form action={action} className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="fullName">Nombre completo</Label>
-        <Input id="fullName" name="fullName" autoComplete="name" required className="h-11 border-[#333]" />
+    <form action={action} className="flex flex-col gap-5">
+      <div>
+        <h2 className="font-display text-3xl tracking-wide text-white uppercase">
+          Crear cuenta
+        </h2>
+        <p className="mt-1 text-sm text-[#888888]">Sumate al equipo</p>
       </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
+
+      <div className="flex flex-col gap-3">
+        <AuthInput
+          icon={User}
+          id="fullName"
+          name="fullName"
+          autoComplete="name"
+          placeholder="Nombre completo"
+          required
+        />
+        <AuthInput
+          icon={Mail}
           id="email"
           name="email"
           type="email"
           autoComplete="email"
+          placeholder="Email"
           required
-          className="h-11 border-[#333]"
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Contraseña</Label>
-        <Input
+        <AuthInput
+          icon={Lock}
           id="password"
           name="password"
-          type="password"
+          type={showPassword ? "text" : "password"}
           autoComplete="new-password"
+          placeholder="Contraseña"
           minLength={8}
           required
-          className="h-11 border-[#333]"
+          rightSlot={
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
+              className="flex size-9 items-center justify-center text-[#888888] active:text-white"
+            >
+              {showPassword ? (
+                <EyeOff className="size-5" />
+              ) : (
+                <Eye className="size-5" />
+              )}
+            </button>
+          }
         />
-      </div>
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="code">Código de invitación</Label>
-        <Input
+        <AuthInput
+          icon={Ticket}
           id="code"
           name="code"
           autoComplete="off"
-          className="h-11 border-[#333] uppercase"
+          placeholder="Código de invitación"
+          className="uppercase placeholder:normal-case"
           required
         />
       </div>
+
       {state?.error && (
         <p className="text-sm text-destructive">{state.error}</p>
       )}
-      <Button type="submit" disabled={pending} className="mt-2 h-11 text-base">
-        {pending ? "Creando cuenta..." : "Crear cuenta"}
-      </Button>
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl font-display text-xl tracking-widest text-white uppercase shadow-[0_0_24px_rgba(232,0,28,0.45)] disabled:opacity-60"
+        style={{
+          background: "linear-gradient(to right, #e8001c, #ff4d4d)",
+        }}
+      >
+        {pending ? (
+          "Creando cuenta..."
+        ) : (
+          <>
+            Crear cuenta <ArrowRight className="size-5" />
+          </>
+        )}
+      </button>
+
       <p className="text-center text-sm text-[#888888]">
         ¿Ya tenés cuenta?{" "}
-        <Link href="/login" className="text-white underline underline-offset-4">
+        <Link href="/login" className="font-medium text-[#e8001c]">
           Ingresá
         </Link>
       </p>
