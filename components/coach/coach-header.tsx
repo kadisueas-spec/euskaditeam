@@ -10,7 +10,7 @@ function initials(name: string | null, email: string) {
 
 export function CoachHeader({ profile }: { profile: Profile }) {
   return (
-    <header className="gradient-section sticky top-0 z-30 flex min-h-[65px] items-center justify-between border-b border-[#1e1e1e] px-4 pt-[env(safe-area-inset-top)] md:px-6">
+    <header className="gradient-section z-30 flex min-h-[65px] shrink-0 items-center justify-between border-b border-[#1e1e1e] px-4 pt-[env(safe-area-inset-top)] md:px-6">
       <span className="flex items-center gap-2 font-display text-xl tracking-wide text-[#f5f5f5] uppercase">
         <Image src="/brand/euskadi-logo.png" alt="" width={26} height={26} />
         Euskadi Team <span className="text-[#e8001c]">Coach</span>

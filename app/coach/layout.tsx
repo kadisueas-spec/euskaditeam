@@ -18,12 +18,15 @@ export default async function CoachLayout({
   if (!profile) redirect("/login");
   if (profile.role !== "coach") redirect("/client/my-routine");
 
+  // h-dvh + único scroll interno en <main>, ver el comentario largo en
+  // app/client/layout.tsx: evita que la nav (antes position:fixed) deje un
+  // hueco vacío abajo en pantallas cortas como /coach/clients en iOS.
   return (
-    <div className="min-h-svh bg-[#080808] text-white">
+    <div className="flex h-dvh flex-col bg-[#080808] text-white">
       <CoachHeader profile={profile} />
-      <div className="flex">
+      <div className="flex flex-1 overflow-hidden">
         <CoachSidebar />
-        <main className="min-w-0 flex-1 p-6 pb-24 md:pb-6">
+        <main className="momentum-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain p-6">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>

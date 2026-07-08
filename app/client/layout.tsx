@@ -43,7 +43,7 @@ export default async function ClientLayout({
     )
   ) {
     return (
-      <div className="flex min-h-svh flex-col items-center justify-center gap-4 bg-[#080808] px-6 text-center text-white">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-[#080808] px-6 text-center text-white">
         <Lock className="size-10 text-[#e8001c]" />
         <h1 className="text-xl font-semibold">Tu acceso está inactivo</h1>
         <p className="text-sm text-[#888888]">
@@ -73,15 +73,26 @@ export default async function ClientLayout({
     return <MonthlyGoalModal />;
   }
 
+  // h-dvh + único scroll interno en <main> a propósito (en vez de min-h-svh +
+  // nav con position:fixed + padding-bottom "adivinado" para compensarlo):
+  // en iOS, un elemento fixed en una página que NO necesita scroll puede
+  // calcularse contra un viewport de layout más alto que el visual (deja
+  // espacio "fantasma" para una barra de URL que en PWA/standalone no
+  // existe), dejando un hueco vacío debajo de la barra — pasaba en login,
+  // /coach/clients y /client/profile porque son las pantallas más cortas,
+  // no en el resto porque su contenido ya fuerza scroll real. Con la nav
+  // como último hijo normal de un flex column de altura fija, no hace
+  // falta position:fixed ni el padding-bottom mágico: main ocupa
+  // exactamente lo que sobra y la nav siempre queda pegada abajo.
   return (
-    <div className="flex min-h-svh flex-col bg-[#080808] text-white">
-      <header className="gradient-section sticky top-0 z-10 flex items-center justify-center gap-2 border-b border-[#1e1e1e] px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+    <div className="flex h-dvh flex-col bg-[#080808] text-white">
+      <header className="gradient-section shrink-0 flex items-center justify-center gap-2 border-b border-[#1e1e1e] px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <Image src="/brand/euskadi-logo.png" alt="" width={22} height={22} />
         <span className="font-display text-lg tracking-wide text-[#f5f5f5] uppercase">
           Euskadi Team
         </span>
       </header>
-      <div className="sticky top-[calc(65px+env(safe-area-inset-top))] z-10 flex flex-col">
+      <div className="flex shrink-0 flex-col">
         <OfflineBanner />
         <SyncBanner />
         {unreadFeedbackCount > 0 && (
@@ -96,7 +107,7 @@ export default async function ClientLayout({
           </Link>
         )}
       </div>
-      <main className="flex-1 px-4 py-5 pb-[calc(72px+env(safe-area-inset-bottom))]">
+      <main className="momentum-scroll flex-1 overflow-y-auto overscroll-contain px-4 py-5">
         <PageTransition>{children}</PageTransition>
       </main>
       <PushPermissionPrompt />

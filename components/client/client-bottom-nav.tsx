@@ -22,7 +22,7 @@ export function ClientBottomNav({
   }
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-[#1e1e1e] bg-[rgba(8,8,8,0.85)] backdrop-blur-[20px] pb-[env(safe-area-inset-bottom)]">
+    <nav className="z-20 flex shrink-0 border-t border-[#1e1e1e] bg-[rgba(8,8,8,0.85)] backdrop-blur-[20px] pb-[env(safe-area-inset-bottom)]">
       {CLIENT_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = tappedHref === href || (tappedHref === null && pathname.startsWith(href));
         const showBadge = href === "/client/feedback" && unreadFeedbackCount > 0;

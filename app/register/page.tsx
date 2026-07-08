@@ -4,7 +4,7 @@ import { RegisterForm } from "./register-form";
 
 export default function RegisterPage() {
   return (
-    <main className="flex min-h-svh flex-col bg-[#080808]">
+    <main className="flex h-dvh flex-col bg-[#080808]">
       <AuthHero subtitle="Sumate al equipo" />
       <AuthCard>
         <RegisterForm />

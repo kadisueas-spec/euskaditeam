@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 // viejo (ver components/motion/fade-in.tsx).
 export function AuthCard({ children }: { children: ReactNode }) {
   return (
-    <div className="animate-slide-up-in relative z-10 -mt-8 flex flex-1 flex-col rounded-t-[32px] bg-[#111111] px-6 pt-8 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
+    <div className="animate-slide-up-in momentum-scroll relative z-10 -mt-8 flex flex-1 flex-col overflow-y-auto overscroll-contain rounded-t-[32px] bg-[#111111] px-6 pt-8 pb-[calc(env(safe-area-inset-bottom)+2rem)]">
       <div className="mx-auto flex w-full max-w-sm flex-1 flex-col">
         {children}
       </div>

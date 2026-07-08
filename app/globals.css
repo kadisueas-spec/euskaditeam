@@ -205,6 +205,9 @@
 @utility animate-slide-up-in {
   animation: slide-up-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+@utility momentum-scroll {
+  -webkit-overflow-scrolling: touch;
+}
 
 @keyframes glow-pulse {
   0%,

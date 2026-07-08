@@ -15,7 +15,7 @@ export function CoachSidebar() {
   }
 
   return (
-    <nav className="hidden md:sticky md:top-[65px] md:flex md:h-[calc(100svh-65px)] md:w-56 md:shrink-0 md:flex-col md:gap-1 md:border-r md:border-[#1e1e1e] md:bg-[#111111] md:p-4">
+    <nav className="hidden md:flex md:h-full md:w-56 md:shrink-0 md:flex-col md:gap-1 md:overflow-y-auto md:border-r md:border-[#1e1e1e] md:bg-[#111111] md:p-4">
       {COACH_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
         const active = tappedHref === href || (tappedHref === null && pathname.startsWith(href));
         return (

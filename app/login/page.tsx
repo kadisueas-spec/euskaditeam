@@ -15,7 +15,7 @@ export default async function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-svh flex-col bg-[#080808]">
+    <main className="flex h-dvh flex-col bg-[#080808]">
       <AuthHero subtitle="Acá empieza tu progreso" />
       <AuthCard>
         <LoginForm />
