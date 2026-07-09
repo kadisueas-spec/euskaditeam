@@ -21,41 +21,53 @@ export default function SafeAreaDiagnosticPage() {
   const [rows, setRows] = useState<Row[]>([]);
   const [tick, setTick] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [fatalError, setFatalError] = useState<string | null>(null);
 
   useEffect(() => {
-    // env() no se puede leer directo desde JS — se mide con un elemento
-    // sonda cuya altura/padding depende de env(), y se lee su bounding box
-    // ya renderizado.
-    const probeBottom = document.createElement("div");
-    probeBottom.style.cssText =
-      "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;";
-    document.body.appendChild(probeBottom);
+    // El primer intento quedó en blanco porque algo tiraba una excepción
+    // temprano dentro del efecto y, sin try/catch, useEffect cortaba antes
+    // de llegar a setRows — sin ningún indicio de qué había fallado. Ahora
+    // cualquier error se muestra en pantalla en vez de dejar el panel vacío.
+    try {
+      measure();
+    } catch (e) {
+      setFatalError(e instanceof Error ? `${e.message}\n${e.stack}` : String(e));
+    }
 
-    const probeTop = document.createElement("div");
-    probeTop.style.cssText =
-      "position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none;";
-    document.body.appendChild(probeTop);
+    function measure() {
+      // env() no se puede leer directo desde JS — se mide con un elemento
+      // sonda cuya altura/padding depende de env(), y se lee su bounding
+      // box ya renderizado.
+      const probeBottom = document.createElement("div");
+      probeBottom.style.cssText =
+        "position:fixed;bottom:0;left:0;width:1px;height:env(safe-area-inset-bottom);visibility:hidden;pointer-events:none;";
+      document.body.appendChild(probeBottom);
 
-    const container = document.querySelector(
-      "[data-diagnostic-container]"
-    ) as HTMLElement | null;
-    const navWrap = document.querySelector("[data-diagnostic-nav]");
-    const nav = navWrap?.querySelector("nav") ?? null;
-    const itemsRow = nav?.firstElementChild as HTMLElement | null;
-    const safeSpacer = nav?.lastElementChild as HTMLElement | null;
-    const root = document.documentElement;
-    const body = document.body;
+      const probeTop = document.createElement("div");
+      probeTop.style.cssText =
+        "position:fixed;top:0;left:0;width:1px;height:env(safe-area-inset-top);visibility:hidden;pointer-events:none;";
+      document.body.appendChild(probeTop);
 
-    const cs = (el: Element | null) => (el ? getComputedStyle(el) : null);
-    const navRect = nav?.getBoundingClientRect();
-    const itemsRect = itemsRow?.getBoundingClientRect();
-    const safeSpacerRect = safeSpacer?.getBoundingClientRect();
+      const container = document.querySelector(
+        "[data-diagnostic-container]"
+      ) as HTMLElement | null;
+      const navWrap = document.querySelector("[data-diagnostic-nav]");
+      const nav = navWrap?.querySelector("nav") ?? null;
+      const itemsRow = nav?.firstElementChild as HTMLElement | null;
+      const safeSpacer = nav?.lastElementChild as HTMLElement | null;
+      const root = document.documentElement;
+      const body = document.body;
 
-    const isStandalone =
-      window.matchMedia("(display-mode: standalone)").matches ||
-      (navigator as unknown as { standalone?: boolean }).standalone === true;
+      const cs = (el: Element | null) => (el ? getComputedStyle(el) : null);
+      const navRect = nav?.getBoundingClientRect();
+      const itemsRect = itemsRow?.getBoundingClientRect();
+      const safeSpacerRect = safeSpacer?.getBoundingClientRect();
 
-    const data: Row[] = [
+      const isStandalone =
+        window.matchMedia("(display-mode: standalone)").matches ||
+        (navigator as unknown as { standalone?: boolean }).standalone === true;
+
+      const data: Row[] = [
       { label: "── CONTEXTO ──", value: "" },
       {
         label: "Modo",
@@ -142,17 +154,18 @@ export default function SafeAreaDiagnosticPage() {
         label: "nav franja safe-area — padding / margin",
         value: `${cs(safeSpacer)?.padding} / ${cs(safeSpacer)?.margin}`,
       },
-    ];
+      ];
 
-    setRows(data);
-    probeBottom.remove();
-    probeTop.remove();
+      setRows(data);
+      probeBottom.remove();
+      probeTop.remove();
+    }
   }, [tick]);
 
   function copyAll() {
-    const text = rows
-      .map((r) => (r.value ? `${r.label}: ${r.value}` : r.label))
-      .join("\n");
+    const text =
+      (fatalError ? `ERROR FATAL:\n${fatalError}\n\n` : "") +
+      rows.map((r) => (r.value ? `${r.label}: ${r.value}` : r.label)).join("\n");
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -185,6 +198,19 @@ export default function SafeAreaDiagnosticPage() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        {fatalError && (
+          <div className="mb-4 rounded-lg border border-[#e8001c] bg-[#e8001c]/10 p-3">
+            <p className="text-xs font-bold text-[#e8001c]">
+              La medición tiró un error (esto también es un dato útil):
+            </p>
+            <pre className="mt-2 text-xs whitespace-pre-wrap text-white">
+              {fatalError}
+            </pre>
+          </div>
+        )}
+        {!fatalError && rows.length === 0 && (
+          <p className="text-xs text-[#888888]">Midiendo...</p>
+        )}
         <div className="flex flex-col gap-0.5">
           {rows.map((r, i) =>
             r.value === "" ? (
