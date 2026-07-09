@@ -14,14 +14,13 @@ export function CoachBottomNav() {
     setTappedHref(null);
   }
 
-  // Ver el comentario largo en components/client/client-bottom-nav.tsx:
-  // misma estructura en dos capas (fila de ítems con blur + franja de safe
-  // area sólida aparte) para garantizar que el fondo llegue pintado hasta
-  // el borde físico, sin depender de que el backdrop-blur cubra bien el
-  // padding-box hasta el último píxel en iOS.
+  // Ver el comentario largo en components/client/client-bottom-nav.tsx: dos
+  // capas, mismo negro sólido #080808 en ambas, sin blur ni transparencia
+  // (el blur+transparencia dejaba un negro sutilmente distinto entre la
+  // fila de ítems y la franja de safe area — se veía como una costura).
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e] md:hidden">
-      <div className="flex bg-[rgba(8,8,8,0.85)] backdrop-blur-[20px]">
+      <div className="flex bg-[#080808]">
         {COACH_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = tappedHref === href || (tappedHref === null && pathname.startsWith(href));
           return (

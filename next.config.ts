@@ -13,9 +13,20 @@ const withPWA = require("next-pwa")({
     // (separado del bucket genérico "others" de next-pwa, que comparte 32
     // entradas con toda la app y podría desalojarlas) para que SIEMPRE
     // queden disponibles offline.
+    //
+    // Hardening (no confirmado como causa raíz de un bug puntual, ver
+    // conversación): este urlPattern matcheaba por pathname solamente. next-pwa
+    // ya registra la ruta con method "GET" internamente, así que en la
+    // práctica un POST (Server Action) nunca la matchea — pero eso depende
+    // de un detalle interno de next-pwa/Workbox, no de este archivo. Dejar
+    // request.mode === "navigate" explícito acá (igual que ya hace el
+    // catch-all de abajo) hace la intención inequívoca en el código fuente:
+    // esta regla es solo para el documento de la página, nunca para
+    // mutaciones — sin depender de ese detalle interno para estar seguros.
     {
-      urlPattern: ({ url }: { url: URL }) =>
+      urlPattern: ({ request, url }: { request: Request; url: URL }) =>
         self.origin === url.origin &&
+        request.mode === "navigate" &&
         (url.pathname.startsWith("/client/my-routine") ||
           url.pathname.startsWith("/client/log-workout")),
       handler: "NetworkFirst",

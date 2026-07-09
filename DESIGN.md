@@ -147,6 +147,8 @@ Paleta de dos temperaturas: negro absoluto como base silenciosa, rojo vibrante c
 
 **The No-Gray-Shadow Rule.** En dark mode las sombras grises tradicionales se ven sucias. La separación entre superficies se resuelve con bordes/ring sutiles y con la propia luz del rojo, nunca con `box-shadow` gris difuso.
 
+**The Solid-Seam Rule.** Cuando dos superficies negras adyacentes deben leerse como una sola pieza (la nav y su franja de safe area, por ejemplo), las dos van en el mismo hex sólido — nunca una opaca y la otra semitransparente+blur. El blur desenfoca lo que hay detrás y da un negro sutilmente distinto al sólido, aunque el hex de base sea el mismo; la costura se nota.
+
 ## 3. Typography
 
 **Display Font:** Bebas Neue (con fallback sans-serif)
@@ -205,7 +207,7 @@ El sistema es plano por defecto: no hay una biblioteca de `box-shadow` grises qu
 - **Error:** borde y ring en `--destructive` (mismo rojo, con opacidad reducida en el ring).
 
 ### Navigation
-- **Bottom nav (mobile, cliente y coach):** barra inferior en dos capas — fila de ítems (fondo negro semitransparente `rgba(8,8,8,0.85)` con `backdrop-filter: blur(20px)`, borde superior Borde Ceniza) más una franja aparte, sólida, en `#080808` puro con `height: env(safe-area-inset-bottom)` para la safe area. Las dos capas separadas garantizan que el fondo llegue pintado hasta el borde físico del teléfono sin depender de que el blur/opacidad se renderice bien hasta el último píxel del padding (inconsistente en iOS). Ítem activo en Rojo Euskadi, inactivo en Gris Cronómetro. Mínimo 44px de alto por touch target, feedback `active:scale-90`. Badge rojo circular para conteos sin leer (feedback nuevo).
+- **Bottom nav (mobile, cliente y coach):** barra inferior en dos capas — fila de ítems y franja de safe area — ambas en negro sólido `#080808` puro, sin blur ni transparencia (una versión anterior usaba `rgba(8,8,8,0.85)` + `backdrop-filter: blur(20px)` en la fila de ítems, pero eso desenfoca lo que hay detrás — cards, bordes, glows del contenido scrolleado — y el resultado no es el mismo negro exacto que la franja sólida de abajo; se veía una costura entre las dos capas). Con ambas capas 100% opacas y el mismo hex son un solo bloque visual continuo hasta el borde físico del teléfono. Borde superior Borde Ceniza. Ítem activo en Rojo Euskadi, inactivo en Gris Cronómetro. Mínimo 44px de alto por touch target, feedback `active:scale-90`. Badge rojo circular para conteos sin leer (feedback nuevo).
 
 ### Named Rules
 **The Root-Level Background Rule.** `html` lleva `bg-background` además de `body` (`app/globals.css`). Cada pantalla ya usa `h-dvh`/`min-h-dvh` en su propio contenedor, pero `dvh` se recalcula dinámicamente en iOS (barra de Safari, `safe-area-inset-bottom`) y puede quedar momentáneamente corto — sin el fondo también en `html`, ese hueco muestra el blanco por defecto de WebKit. Esta regla vive a nivel raíz a propósito: no se resuelve pantalla por pantalla, se resuelve una sola vez para toda la app.

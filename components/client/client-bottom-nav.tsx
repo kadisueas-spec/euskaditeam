@@ -21,18 +21,17 @@ export function ClientBottomNav({
     setTappedHref(null);
   }
 
-  // Estructura en dos capas, no un único <nav> con padding-bottom: la fila
-  // de ítems lleva el fondo semitransparente + blur (necesita algo detrás
-  // para desenfocar); la franja de la safe area es un <div> aparte, con
-  // color sólido #080808 y altura fija en env(safe-area-inset-bottom) —
-  // así el borde inferior real siempre queda pintado sólido, sin depender
-  // de que el blur/opacidad se renderice bien hasta el último píxel del
-  // padding-box (backdrop-filter en iOS es inconsistente ahí). El fondo
-  // llega al borde físico; los ítems (arriba) respetan la safe area sin
-  // que la rayita de gestos los tape.
+  // Dos capas, mismo color sólido #080808 en ambas (nada de blur ni
+  // transparencia): con rgba(8,8,8,.85)+backdrop-blur, la fila de ítems
+  // desenfocaba lo que había DETRÁS (cards, bordes, glows del contenido
+  // scrolleado) y el resultado no era el mismo negro exacto que la franja
+  // sólida de la safe area de abajo — se veía una costura/banda separada.
+  // Con las dos capas 100% opacas y del mismo hex, son un solo bloque
+  // visual continuo hasta el borde físico, sin dependencia de qué haya
+  // detrás para desenfocar.
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e]">
-      <div className="flex bg-[rgba(8,8,8,0.85)] backdrop-blur-[20px]">
+      <div className="flex bg-[#080808]">
         {CLIENT_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const active = tappedHref === href || (tappedHref === null && pathname.startsWith(href));
           const showBadge = href === "/client/feedback" && unreadFeedbackCount > 0;
