@@ -107,7 +107,7 @@ export default async function ClientLayout({
           </Link>
         )}
       </div>
-      <main className="momentum-scroll flex-1 overflow-y-auto overscroll-contain px-4 py-5">
+      <main className="momentum-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5">
         <PageTransition>{children}</PageTransition>
       </main>
       <PushPermissionPrompt />

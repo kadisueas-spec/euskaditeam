@@ -24,9 +24,9 @@ export default async function CoachLayout({
   return (
     <div className="flex h-dvh flex-col bg-[#080808] text-white">
       <CoachHeader profile={profile} />
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
         <CoachSidebar />
-        <main className="momentum-scroll min-w-0 flex-1 overflow-y-auto overscroll-contain p-6">
+        <main className="momentum-scroll min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain p-6">
           <PageTransition>{children}</PageTransition>
         </main>
       </div>
