@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-09T13:57:38Z",
+  "title": "Design System: Euskadi Team",
+  "extensions": {
+    "colorMeta": {
+      "primary": {
+        "role": "primary",
+        "displayName": "Rojo Euskadi",
+        "canonical": "#E8001C",
+        "tonalRamp": ["#2B0006", "#4A0009", "#6E000E", "#970013", "#C20018", "#E8001C", "#FF4D4D", "#FF9494"]
+      },
+      "primary-glow-end": {
+        "role": "primary",
+        "displayName": "Glow Rojo Claro",
+        "canonical": "#FF4D4D",
+        "tonalRamp": ["#4A0009", "#6E000E", "#970013", "#C20018", "#E8001C", "#FF4D4D", "#FF9494", "#FFD1D1"]
+      },
+      "background": {
+        "role": "neutral",
+        "displayName": "Negro Vestuario",
+        "canonical": "#080808",
+        "tonalRamp": ["#080808", "#141414", "#1E1E1E", "#2A2A2A", "#3D3D3D", "#5C5C5C", "#888888", "#F5F5F5"]
+      },
+      "surface-card": {
+        "role": "neutral",
+        "displayName": "Carbón",
+        "canonical": "#111111",
+        "tonalRamp": ["#080808", "#111111", "#1E1E1E", "#2A2A2A", "#3D3D3D", "#5C5C5C", "#888888", "#F5F5F5"]
+      },
+      "surface-elevated": {
+        "role": "neutral",
+        "displayName": "Grafito",
+        "canonical": "#1A1A1A",
+        "tonalRamp": ["#080808", "#1A1A1A", "#242424", "#2A2A2A", "#3D3D3D", "#5C5C5C", "#888888", "#F5F5F5"]
+      },
+      "border": {
+        "role": "neutral",
+        "displayName": "Borde Ceniza",
+        "canonical": "#1E1E1E",
+        "tonalRamp": ["#080808", "#141414", "#1E1E1E", "#2A2A2A", "#3D3D3D", "#5C5C5C", "#888888", "#F5F5F5"]
+      },
+      "border-subtle": {
+        "role": "neutral",
+        "displayName": "Borde Ceniza Claro",
+        "canonical": "#2A2A2A",
+        "tonalRamp": ["#141414", "#1E1E1E", "#2A2A2A", "#333333", "#3D3D3D", "#5C5C5C", "#888888", "#F5F5F5"]
+      },
+      "text-primary": {
+        "role": "neutral",
+        "displayName": "Blanco Hueso",
+        "canonical": "#F5F5F5",
+        "tonalRamp": ["#080808", "#2A2A2A", "#5C5C5C", "#888888", "#AAAAAA", "#CCCCCC", "#E8E8E8", "#F5F5F5"]
+      },
+      "text-secondary": {
+        "role": "neutral",
+        "displayName": "Gris Neblina",
+        "canonical": "#C9C9C9",
+        "tonalRamp": ["#080808", "#2A2A2A", "#5C5C5C", "#888888", "#A8A8A8", "#C9C9C9", "#DDDDDD", "#F5F5F5"]
+      },
+      "text-muted": {
+        "role": "neutral",
+        "displayName": "Gris Cronómetro",
+        "canonical": "#888888",
+        "tonalRamp": ["#080808", "#1E1E1E", "#333333", "#555555", "#666666", "#888888", "#AAAAAA", "#CCCCCC"]
+      },
+      "text-faint": {
+        "role": "neutral",
+        "displayName": "Gris Ícono",
+        "canonical": "#666666",
+        "tonalRamp": ["#080808", "#1E1E1E", "#2A2A2A", "#333333", "#555555", "#666666", "#888888", "#AAAAAA"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Bebas Neue mayúscula — títulos de marca y cifras protagonistas (peso, reps, RIR, racha)." },
+      "hero-wordmark": { "displayName": "Hero Wordmark", "purpose": "Anton mayúscula — excepción puntual solo para el wordmark 'Euskadi Team' del hero de auth (login/registro/recuperar). No reemplaza Display en el resto de la app." },
+      "title": { "displayName": "Title", "purpose": "DM Sans 700 — encabezados de card, nombres de ejercicio/rutina." },
+      "body": { "displayName": "Body", "purpose": "DM Sans 400 — texto de contenido general, listas, descripciones." },
+      "label": { "displayName": "Label", "purpose": "DM Sans 500 — navegación, badges, formularios chicos." }
+    },
+    "shadows": [
+      { "name": "glow-red", "value": "0 0 20px rgba(232, 0, 28, 0.4)", "purpose": "Resplandor del botón primario en reposo." },
+      { "name": "glow-red-hover", "value": "0 0 28px rgba(232, 0, 28, 0.55)", "purpose": "Resplandor del botón primario en hover/focus." },
+      { "name": "glow-red-sm", "value": "0 0 12px rgba(232, 0, 28, 0.3)", "purpose": "Resplandor reducido para elementos secundarios que igual necesitan destacar." },
+      { "name": "glow-pulse", "value": "animation: glow-pulse 2.4s ease-in-out infinite (0 0 12px rgba(232,0,28,.35) ↔ 0 0 28px rgba(232,0,28,.65))", "purpose": "Reservado para momentos de intensidad: récords, celebraciones, el candado de 'Mi Mes'." }
+    ],
+    "motion": [
+      { "name": "tap-feedback", "value": "transform 0.1s ease-out, opacity 0.1s ease-out (scale(0.96), opacity(0.85) on :active)", "purpose": "Feedback táctil instantáneo en todo elemento tocable." },
+      { "name": "fade-in-up", "value": "0.4s ease-out (translateY(12px) → 0, opacity 0 → 1)", "purpose": "Entrada de contenido general." },
+      { "name": "page-in", "value": "0.18s ease-out (translateY(6px) → 0, opacity 0 → 1)", "purpose": "Transición entre páginas." },
+      { "name": "slide-up-in", "value": "0.5s cubic-bezier(0.16, 1, 0.3, 1) (translateY(48px) → 0, opacity 0 → 1)", "purpose": "Entrada del AuthCard deslizándose sobre el hero." }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "CTA principal — degradado rojo con glow permanente, reservado para la acción más importante de la pantalla.",
+      "html": "<button class=\"ds-btn-primary\">Empezar</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; gap: 6px; border-radius: 10px; border: none; background: linear-gradient(135deg, #E8001C, #FF4D4D); color: #F5F5F5; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; box-shadow: 0 0 20px rgba(232,0,28,0.4); transition: filter 0.2s, box-shadow 0.2s, transform 0.1s, opacity 0.1s; cursor: pointer; } .ds-btn-primary:hover { filter: brightness(1.1); box-shadow: 0 0 28px rgba(232,0,28,0.55); } .ds-btn-primary:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(232,0,28,0.5); } .ds-btn-primary:active { transform: scale(0.96); opacity: 0.85; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "refersTo": "button-outline",
+      "description": "Acción secundaria — sin degradado ni glow, para no competir con el CTA principal.",
+      "html": "<button class=\"ds-btn-outline\">Cancelar</button>",
+      "css": ".ds-btn-outline { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 10px; border-radius: 10px; border: 1px solid #1E1E1E; background: #080808; color: #F5F5F5; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; transition: background 0.2s, transform 0.1s, opacity 0.1s; cursor: pointer; } .ds-btn-outline:hover { background: #111111; } .ds-btn-outline:focus-visible { outline: none; border-color: #E8001C; box-shadow: 0 0 0 3px rgba(232,0,28,0.5); } .ds-btn-outline:active { transform: scale(0.96); opacity: 0.85; }"
+    },
+    {
+      "name": "Status Badge",
+      "kind": "chip",
+      "refersTo": "badge-default",
+      "description": "Estado de suscripción, alertas del dashboard del coach, conteos sin leer.",
+      "html": "<span class=\"ds-badge\">Activo</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; justify-content: center; height: 20px; padding: 2px 8px; border-radius: 9999px; background: #E8001C; color: #F5F5F5; font-family: 'DM Sans', sans-serif; font-size: 12px; font-weight: 500; white-space: nowrap; }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Contenedor estándar — sin sombra, separación por ring sutil que se enciende en rojo al hover.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-header\">Rutina de hoy</div><div class=\"ds-card-body\">Torso — Empuje · 5 ejercicios</div></div>",
+      "css": ".ds-card { background: #111111; border-radius: 14px; padding: 16px; outline: 1px solid rgba(245,245,245,0.1); transition: outline-color 0.3s; } .ds-card:hover { outline-color: #E8001C; } .ds-card-header { font-family: 'DM Sans', sans-serif; font-weight: 700; font-size: 16px; color: #F5F5F5; margin-bottom: 4px; } .ds-card-body { font-family: 'DM Sans', sans-serif; font-size: 14px; color: #888888; }"
+    },
+    {
+      "name": "Standard Input",
+      "kind": "input",
+      "refersTo": "input-standard",
+      "description": "Campo de formulario estándar — coach y cliente, foco en rojo.",
+      "html": "<input class=\"ds-input\" placeholder=\"Peso (kg)\" />",
+      "css": ".ds-input { height: 32px; width: 100%; padding: 4px 10px; border-radius: 10px; border: 1px solid #1E1E1E; background: transparent; color: #F5F5F5; font-family: 'DM Sans', sans-serif; font-size: 14px; outline: none; transition: border-color 0.2s, box-shadow 0.2s; } .ds-input::placeholder { color: #888888; } .ds-input:focus-visible { border-color: #E8001C; box-shadow: 0 0 0 3px rgba(232,0,28,0.5); }"
+    },
+    {
+      "name": "Auth Input",
+      "kind": "input",
+      "refersTo": "input-auth",
+      "description": "Input premium con ícono — login y registro. Signature component del sistema.",
+      "html": "<div class=\"ds-input-auth-wrap\"><svg class=\"ds-input-auth-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2\" y=\"4\" width=\"20\" height=\"16\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/></svg><input class=\"ds-input-auth\" type=\"email\" placeholder=\"tu@email.com\" /></div>",
+      "css": ".ds-input-auth-wrap { position: relative; display: flex; align-items: center; } .ds-input-auth-icon { position: absolute; left: 16px; width: 20px; height: 20px; color: #666666; pointer-events: none; } .ds-input-auth { height: 56px; width: 100%; padding: 0 16px 0 48px; border-radius: 18px; border: 1px solid #2A2A2A; background: #1A1A1A; color: #F5F5F5; font-family: 'DM Sans', sans-serif; font-size: 16px; outline: none; transition: border-color 0.2s; } .ds-input-auth::placeholder { color: #666666; } .ds-input-auth:focus { border-color: #E8001C; }"
+    },
+    {
+      "name": "Bottom Navigation",
+      "kind": "nav",
+      "refersTo": "bottom-nav",
+      "description": "Navegación fija inferior — signature component, fondo con blur, ítem activo en rojo, badge de conteos.",
+      "html": "<nav class=\"ds-bottom-nav\"><a href=\"#\" class=\"ds-nav-item ds-nav-item-active\"><span class=\"ds-nav-icon-wrap\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"20\" height=\"20\"><path d=\"M6 9v6M18 9v6M4 12h16M2 9v6M22 9v6\"/></svg><span class=\"ds-nav-badge\">3</span></span><span>Rutina</span></a><a href=\"#\" class=\"ds-nav-item\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"20\" height=\"20\"><path d=\"M3 3v18h18\"/><path d=\"m19 9-5 5-4-4-3 3\"/></svg><span>Progreso</span></a></nav>",
+      "css": ".ds-bottom-nav { display: flex; border-top: 1px solid #1E1E1E; background: rgba(8,8,8,0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding-bottom: env(safe-area-inset-bottom); } .ds-nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 44px; padding: 8px 0; font-family: 'DM Sans', sans-serif; font-size: 12px; color: #888888; text-decoration: none; transition: color 0.15s, transform 0.1s; } .ds-nav-item-active { color: #E8001C; } .ds-nav-item:active { transform: scale(0.9); background: rgba(255,255,255,0.1); } .ds-nav-icon-wrap { position: relative; } .ds-nav-badge { position: absolute; top: -6px; right: -8px; display: flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 9999px; background: #E8001C; color: #fff; font-size: 10px; font-weight: 700; line-height: 16px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El coach en la esquina del ring",
+    "overview": "Euskadi Team se siente como ese entrenador que te empuja fuerte porque cree en vos: exigente, sin vueltas, pero siempre a tu favor. Nada decorativo de más — como un coach que no pierde tiempo en chachará, cada elemento de la interfaz tiene un propósito. Los momentos de intensidad (un récord, el cierre de mes, terminar el entrenamiento) se sienten como esa arenga en la esquina: potentes y motivadores, no un chime genérico de 'logro desbloqueado'.\n\nLa legibilidad manda sobre cualquier sutileza: el cliente típico usa la app parado en el gimnasio, con la pantalla al sol y apuro entre series, así que la información tiene que entrar de un vistazo. La firmeza visual (negro, rojo, tipografía condensada y grande) transmite autoridad, equilibrada por una voz cercana en los textos — exigente en el tono, cómodo en el uso.\n\nEste sistema rechaza explícitamente el look genérico de SaaS (gradientes violeta-azul, el 'hero-metric template', grids de cards idénticas), cualquier estética de app de fitness de descarga masiva (colores pasteles, íconos redondeados genéricos, tono 'amigable' edulcorado), y los tells de IA ya identificados: eyebrows en mayúsculas arriba de cada sección, bordes laterales de color como acento, texto con gradiente, glassmorphism decorativo.",
+    "keyCharacteristics": [
+      "Negro absoluto como base, no gris oscuro genérico — el rojo es la única fuente de calidez.",
+      "Los números (peso, reps, RIR, series) son protagonistas: grandes, en Bebas Neue, nunca escondidos en texto chico.",
+      "Profundidad por borde/ring y luz, no por sombra gris.",
+      "El glow rojo es un recurso reservado para el CTA principal y los momentos de intensidad — no omnipresente.",
+      "Touch targets grandes y feedback táctil instantáneo (:active con scale), pensados para uso con apuro, a veces con guantes o manos sudadas."
+    ],
+    "rules": [
+      { "name": "The Red Restraint Rule", "body": "El rojo con glow es un recurso reservado, no un color de fondo. Se usa en el CTA principal de cada pantalla y en momentos de intensidad (récords, cierre de mes, entrenamiento completado) — nunca en todos los botones ni en elementos secundarios.", "section": "colors" },
+      { "name": "The No-Gray-Shadow Rule", "body": "En dark mode las sombras grises tradicionales se ven sucias. La separación entre superficies se resuelve con bordes/ring sutiles y con la propia luz del rojo, nunca con box-shadow gris difuso.", "section": "colors" },
+      { "name": "The Numbers-Are-Protagonists Rule", "body": "Peso, reps, RIR y series son el contenido real de esta app. Van siempre en Bebas Neue, grandes — nunca en texto chico gris ni escondidos dentro de una oración.", "section": "typography" },
+      { "name": "The One-Exception Rule", "body": "Anton existe en el sistema únicamente para el wordmark del hero de auth. Cualquier otro título grande usa Bebas Neue (Display); no se agregan más fuentes de impacto sin pasar de nuevo por esta discusión.", "section": "typography" },
+      { "name": "The Three-Level Rule", "body": "Fondo base (#080808) < superficie de card (#111111 con borde #1E1E1E) < elemento activo/destacado (borde o glow rojo). Nunca más de tres niveles de profundidad visible en una misma pantalla.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do usar Bebas Neue en mayúsculas para todo número o título protagonista (peso, reps, RIR, cifras de racha).",
+      "Do reservar el glow rojo (glow-red, glow-pulse) para el CTA principal de cada pantalla y momentos de intensidad — récords, cierre de mes, entrenamiento completado.",
+      "Do mantener touch targets de mínimo 44×44px en toda la UI de cliente.",
+      "Do respetar prefers-reduced-motion en toda animación (transiciones, glows, celebraciones, el candado de 'Mi Mes') — con reduced motion activado, mostrar la versión sin esas animaciones, nunca una versión rota o a medio hacer.",
+      "Do resolver jerarquía y profundidad con bordes/ring sutiles y luz roja, no con sombra."
+    ],
+    "donts": [
+      "Don't usar gradientes violeta-azul ni el 'hero-metric template' genérico de SaaS.",
+      "Don't repetir grids de cards idénticas sin jerarquía — cada card debe ganarse su lugar.",
+      "Don't usar colores pasteles, íconos redondeados genéricos ni un tono 'amigable' edulcorado — esto es una app de atleta serio, no una app de fitness de descarga masiva.",
+      "Don't usar eyebrows en mayúsculas arriba de cada sección, bordes laterales de color como acento, texto con gradiente, o glassmorphism decorativo — tells de IA ya identificados y explícitamente prohibidos.",
+      "Don't usar box-shadow gris difuso para simular elevación — en este fondo negro absoluto se ve sucio; usar borde/ring o glow rojo en su lugar.",
+      "Don't usar el rojo como color de fondo o relleno decorativo — es un acento reservado, no un color de superficie."
+    ]
+  }
+}

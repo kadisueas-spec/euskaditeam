@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bebas_Neue, DM_Sans } from "next/font/google";
+import { Bebas_Neue, DM_Sans, Anton } from "next/font/google";
 import { InstallBanner } from "@/components/install-banner";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { TouchActiveFix } from "@/components/touch-active-fix";
@@ -14,6 +14,15 @@ const bebasNeue = Bebas_Neue({
 
 const dmSans = DM_Sans({
   variable: "--font-dm-sans",
+  subsets: ["latin"],
+});
+
+// Anton: SOLO el wordmark "Euskadi Team" del hero de auth (font-hero en
+// globals.css). Excepción puntual confirmada con Luis — el resto de la app
+// sigue en Bebas Neue. Ver DESIGN.md.
+const anton = Anton({
+  variable: "--font-anton",
+  weight: "400",
   subsets: ["latin"],
 });
 
@@ -58,7 +67,7 @@ export default function RootLayout({
   return (
     <html
       lang="es"
-      className={`${bebasNeue.variable} ${dmSans.variable} h-full antialiased`}
+      className={`${bebasNeue.variable} ${dmSans.variable} ${anton.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         {children}

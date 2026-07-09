@@ -241,3 +241,23 @@ cargarse como secrets de las Supabase Edge Functions, no solo en `.env.local`.)
 - El registro de series debe funcionar offline y sincronizar al reconectarse
 - Evitar hover states — en mobile no existen; usar active/focus states
 - El coach puede usar la app desde desktop; el cliente principalmente desde mobile
+
+## Identidad de marca (referencia rápida)
+
+**Euskadi Team** — app de entrenamiento personalizado de Luis Mineur. Tono:
+directo y exigente, pero cercano y motivador (un coach que empuja fuerte
+porque cree en vos).
+
+- **Colores:** negro `#080808` (fondo) + rojo `#E8001C` (acento, uso
+  reservado — CTA y momentos de intensidad) + blanco `#F5F5F5` (texto).
+- **Tipografía:** Bebas Neue para títulos y números protagonistas
+  (peso/reps/RIR), DM Sans para todo lo demás.
+- **Estilo:** plano, sin sombras grises — jerarquía por borde/ring y glow
+  rojo. Nada de gradientes violeta-azul ni look genérico de SaaS o de app
+  de fitness masiva.
+
+**Fuente de verdad para diseño:** [`PRODUCT.md`](PRODUCT.md) (identidad,
+usuarios, principios estratégicos) y [`DESIGN.md`](DESIGN.md) (colores,
+tipografía, componentes, tokens). Ante cualquier diferencia con este
+resumen, esos archivos mandan — este bloque es solo un puntero rápido,
+no se actualiza en paralelo.
