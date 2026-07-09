@@ -91,6 +91,18 @@ export function LoginForm() {
           Creá tu cuenta
         </Link>
       </p>
+
+      {/* EXPERIMENTAL — link temporal para llegar a /dev-safe-area desde la
+          PWA instalada. "Agregar a pantalla de inicio" en iOS usa el
+          start_url del manifest ("/") en vez de la URL exacta que estabas
+          viendo, así que cualquier acceso directo nuevo cae siempre acá.
+          Se borra apenas terminemos de diagnosticar. */}
+      <Link
+        href="/dev-safe-area"
+        className="text-center text-xs text-[#555555] underline"
+      >
+        [diagnóstico temporal]
+      </Link>
     </form>
   );
 }
