@@ -132,7 +132,7 @@ Paleta de dos temperaturas: negro absoluto como base silenciosa, rojo vibrante c
 - **Glow Rojo Claro** (#FF4D4D): extremo cálido del gradiente `gradient-accent` (135deg) usado en el botón primario — da sensación de energía sin diluir el rojo base.
 
 ### Neutral
-- **Negro Vestuario** (#080808): fondo base de toda la app (`--background`). La app es siempre dark; no existe un tema claro.
+- **Negro Vestuario** (#080808): fondo base de toda la app (`--background`). La app es siempre dark; no existe un tema claro. Aplicado en **`html` y `body`** (no solo `body`) para que no haya franja blanca visible en el borde inferior en iOS cuando `dvh` se recalcula (barra de Safari, safe-area-inset-bottom) — ver `app/globals.css`.
 - **Carbón** (#111111): superficie de cards, popovers, sidebar y campos de formulario estándar (`--card`, `--secondary`, `--muted`).
 - **Grafito** (#1A1A1A): superficie de los inputs premium de autenticación (`AuthInput`) — un tono más claro que Carbón para separarse visualmente del fondo del `AuthCard`.
 - **Borde Ceniza** (#1E1E1E): borde/divisor estándar en toda la app (`--border`, `--input`, `--accent`).
@@ -207,6 +207,9 @@ El sistema es plano por defecto: no hay una biblioteca de `box-shadow` grises qu
 ### Navigation
 - **Bottom nav (mobile, cliente y coach):** barra fija inferior, fondo negro semitransparente (`rgba(8,8,8,0.85)`) con `backdrop-filter: blur(20px)`, borde superior Borde Ceniza. Ítem activo en Rojo Euskadi, inactivo en Gris Cronómetro. Mínimo 44px de alto por touch target, feedback `active:scale-90`. Badge rojo circular para conteos sin leer (feedback nuevo).
 
+### Named Rules
+**The Root-Level Background Rule.** `html` lleva `bg-background` además de `body` (`app/globals.css`). Cada pantalla ya usa `h-dvh`/`min-h-dvh` en su propio contenedor, pero `dvh` se recalcula dinámicamente en iOS (barra de Safari, `safe-area-inset-bottom`) y puede quedar momentáneamente corto — sin el fondo también en `html`, ese hueco muestra el blanco por defecto de WebKit. Esta regla vive a nivel raíz a propósito: no se resuelve pantalla por pantalla, se resuelve una sola vez para toda la app.
+
 ### Hero + Ascending Card (signature, auth)
 Patrón adoptado para login/registro/recuperar contraseña: un hero superior con degradado **radial** (`#2A0508 → #1A0306 → #080808`, centrado en 50% 50%) — el rojo irradia desde el centro exacto donde está el tridente y se apaga parejo hacia los cuatro bordes, así el ícono se lee centrado en el panel sin importar el alto de la pantalla (antes era un degradado lineal 180deg y el tridente se veía descentrado porque la mitad superior quedaba mucho más negra que la inferior). El tridente (228px, +10% sobre el tamaño base) es el objeto central del hero — más grande que el wordmark a propósito — con un glow rojo propio (`drop-shadow(0 0 36px rgba(232,0,28,0.45))`) más un halo difuso detrás (`blur-100px`, 35% opacidad). El wordmark "Euskadi Team" va debajo, más chico, en Anton (ver Typography § Hero Wordmark) — un lockup tipo firma, no un título que compita con el tridente. Seguido de una tarjeta (`AuthCard`) que sube y se superpone al hero con esquinas superiores muy redondeadas (32px) y `margin-top` negativo, animada con `slide-up-in` (0.5s, `cubic-bezier(0.16,1,0.3,1)`, sin dependencias de motion libraries — CSS puro para que funcione en Safari iOS viejo). Dentro, los inputs usan la variante premium (`AuthInput`): 56px de alto, ícono a la izquierda, fondo Grafito, borde Borde Ceniza Claro, foco en Rojo Euskadi.
 
@@ -218,6 +221,7 @@ Patrón adoptado para login/registro/recuperar contraseña: un hero superior con
 - **Do** mantener touch targets de mínimo 44×44px en toda la UI de cliente.
 - **Do** respetar `prefers-reduced-motion` en toda animación (transiciones, glows, celebraciones, el candado de "Mi Mes") — con reduced motion activado, mostrar la versión sin esas animaciones, nunca una versión rota o a medio hacer.
 - **Do** resolver jerarquía y profundidad con bordes/ring sutiles y luz roja, no con sombra.
+- **Do** mantener `bg-background` en `html` (no solo en `body`) para que nunca aparezca una franja blanca en los bordes en iOS — ver The Root-Level Background Rule.
 
 ### Don't:
 - **Don't** usar gradientes violeta-azul ni el "hero-metric template" genérico de SaaS.

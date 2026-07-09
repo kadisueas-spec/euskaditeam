@@ -133,7 +133,17 @@
     @apply bg-background text-foreground;
   }
   html {
-    @apply font-sans;
+    /* bg-background acá (no solo en body) es la corrección global de la
+       "franja muerta" en el borde inferior de iOS: cada pantalla ya usa
+       h-dvh en su contenedor raíz, pero dvh se recalcula dinámicamente
+       (barra de Safari, safe-area-inset-bottom, animaciones de entrada de
+       página) y puede quedar, por un instante o unos px, por debajo del
+       viewport real. Cuando eso pasa se ve lo que hay DETRÁS de <body> —
+       que sin esto es el blanco por defecto de WebKit — en vez del negro
+       de la marca. Con html también en negro, cualquier hueco de ese tipo
+       es invisible (negro sobre negro) en TODA la app, sin tocar pantalla
+       por pantalla. Ver DESIGN.md § Elevation / Do's and Don'ts. */
+    @apply font-sans bg-background;
     /* Evita el "rebote" de scroll de página completa típico de Safari/PWA
        (pull-to-refresh, overscroll fantasma). Los contenedores internos que
        necesiten su propio scroll siguen funcionando normal. */

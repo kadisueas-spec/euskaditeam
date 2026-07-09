@@ -69,7 +69,12 @@ export default function RootLayout({
       lang="es"
       className={`${bebasNeue.variable} ${dmSans.variable} ${anton.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">
+      {/* min-h-dvh (no min-h-full): min-h-full depende de una cadena de
+          alturas en porcentaje (html 100% -> body 100%) que en iOS no
+          siempre recalcula al toque con la barra dinámica de Safari o el
+          safe-area-inset-bottom. dvh es el viewport real, dinámico, mismo
+          criterio que ya usa cada layout (h-dvh) para su contenedor raíz. */}
+      <body className="min-h-dvh flex flex-col">
         {children}
         <InstallBanner />
         <ServiceWorkerRegister />
