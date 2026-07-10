@@ -50,6 +50,15 @@ export default async function MyRoutinePage() {
         {routine.objective && (
           <p className="text-sm text-[#888888]">Objetivo: {routine.objective}</p>
         )}
+        {/* EXPERIMENTAL — activa el panel de SafeAreaProbe (?diag=1). En
+            standalone no hay barra de direcciones para agregarlo a mano.
+            Se borra junto con el resto de las herramientas de diagnóstico. */}
+        <Link
+          href="/client/my-routine?diag=1"
+          className="mt-1 inline-block text-xs text-[#555555] underline"
+        >
+          [medir safe area]
+        </Link>
       </div>
 
       {routine.days.map((day, dayIndex) => (
