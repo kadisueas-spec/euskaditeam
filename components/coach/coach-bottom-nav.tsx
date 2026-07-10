@@ -21,9 +21,12 @@ export function CoachBottomNav() {
   // Franja de safe area achicada a min(env(...), 10px) — el valor completo
   // dejaba mucho espacio vacío entre los íconos y la rayita de gestos.
   // Fila de ítems: primer ajuste achicó la caja (h-8, ícono size-4) pero
-  // eso también empequeñeció el contenido. Ahora se agranda de nuevo
-  // (h-11, 44px) con íconos y texto proporcionalmente más grandes
-  // (size-5, texto sm) para que llenen la caja sin aire muerto.
+  // eso también empequeñeció el contenido. Ahora la caja es más alta
+  // (h-[50px]) con íconos y texto grandes (size-5, texto sm). Sin
+  // justify-center: ver el comentario largo en client-bottom-nav.tsx —
+  // pt-[10px] deja el mismo espacio arriba (hasta la línea divisoria) que
+  // abajo (los 10px de la franja de safe area), en vez de que el ícono
+  // quede pegado a la línea de arriba con más aire abajo.
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e] md:hidden">
       <div className="flex bg-[#080808]">
@@ -34,7 +37,7 @@ export function CoachBottomNav() {
               key={href}
               href={href}
               onClick={() => setTappedHref(href)}
-              className={`flex h-11 flex-1 flex-col items-center justify-center gap-1 text-xs transition-[color,transform] active:scale-90 active:bg-white/10 ${
+              className={`flex h-[50px] flex-1 flex-col items-center gap-1 pt-[10px] text-xs transition-[color,transform] active:scale-90 active:bg-white/10 ${
                 active ? "text-[#e8001c]" : "text-[#888888]"
               }`}
             >

@@ -43,11 +43,17 @@ export function ClientBottomNav({
   // Fila de ítems: la caja original (min-h-44 + py-2) era mucho más alta
   // que su contenido, dejando los íconos chicos con mucho aire. Un primer
   // ajuste achicó la CAJA (h-8, ícono size-4) pero eso también empequeñeció
-  // el contenido. Ahora se agranda la caja de nuevo (h-11, 44px — vuelve a
-  // coincidir con el mínimo de touch target de Apple) pero con íconos y
-  // texto proporcionalmente más grandes (size-5, texto sm) para que el
-  // contenido llene la caja de punta a punta, centrado, sin el aire
-  // muerto de la versión original.
+  // el contenido. Ahora la caja es más alta (h-[50px]) con íconos y texto
+  // grandes (size-5, texto sm).
+  //
+  // El ícono NO va centrado con justify-center: la franja de safe area de
+  // abajo (10px) ya empuja visualmente el contenido hacia arriba respecto
+  // de la rayita de gestos, así que centrar dentro de la caja del ícono
+  // solamente deja el ícono pegado a la línea divisoria de arriba y con
+  // más aire abajo (safe area + padding) que arriba. pt-[10px] en vez de
+  // justify-center: mismo espacio (10px) arriba (hasta la línea
+  // divisoria) que abajo (los 10px de la franja de safe area), sin dejar
+  // padding extra propio — el contenido llena el resto de la caja.
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e]">
       <div className="flex bg-[#080808]">
@@ -59,7 +65,7 @@ export function ClientBottomNav({
               key={href}
               href={href}
               onClick={() => setTappedHref(href)}
-              className={`flex h-11 flex-1 flex-col items-center justify-center gap-1 text-xs transition-[color,transform] active:scale-90 active:bg-white/10 ${
+              className={`flex h-[50px] flex-1 flex-col items-center gap-1 pt-[10px] text-xs transition-[color,transform] active:scale-90 active:bg-white/10 ${
                 active ? "text-[#e8001c]" : "text-[#888888]"
               }`}
             >
