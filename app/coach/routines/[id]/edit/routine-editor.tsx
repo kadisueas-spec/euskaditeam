@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
 import { FadeIn } from "@/components/motion/fade-in";
+import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import type { ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
 import { updateRoutine } from "../../actions";
 
@@ -249,6 +250,7 @@ export function RoutineEditor({
       </FadeIn>
 
       <FadeIn className="flex flex-col gap-6">
+        <PlannedMetricsPanel days={days} exercises={exercises} />
         {days.map((day, index) => (
           <div key={day.key} className="rounded-2xl border border-[#1e1e1e] p-4">
             <div className="mb-3 flex items-center gap-3">
