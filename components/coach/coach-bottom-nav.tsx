@@ -18,6 +18,8 @@ export function CoachBottomNav() {
   // capas, mismo negro sólido #080808 en ambas, sin blur ni transparencia
   // (el blur+transparencia dejaba un negro sutilmente distinto entre la
   // fila de ítems y la franja de safe area — se veía como una costura).
+  // Franja de safe area achicada a min(env(...), 10px) — el valor completo
+  // dejaba mucho espacio vacío entre los íconos y la rayita de gestos.
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e] md:hidden">
       <div className="flex bg-[#080808]">
@@ -38,7 +40,7 @@ export function CoachBottomNav() {
           );
         })}
       </div>
-      <div className="h-[env(safe-area-inset-bottom)] shrink-0 bg-[#080808]" />
+      <div className="h-[min(env(safe-area-inset-bottom),10px)] shrink-0 bg-[#080808]" />
     </nav>
   );
 }

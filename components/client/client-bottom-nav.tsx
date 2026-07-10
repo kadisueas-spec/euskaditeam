@@ -29,6 +29,16 @@ export function ClientBottomNav({
   // Con las dos capas 100% opacas y del mismo hex, son un solo bloque
   // visual continuo hasta el borde físico, sin dependencia de qué haya
   // detrás para desenfocar.
+  //
+  // La franja de safe area usaba el valor COMPLETO de env(safe-area-inset-
+  // bottom) (34px en la mayoría de los iPhone) como bloque vacío — eso es
+  // lo que Luis reportó como "mucho espacio muerto" comparando con otras
+  // apps de referencia. Se cambia a min(env(...), 10px): un colchón chico
+  // fijo en vez del alto completo de la zona de gestos, para que los
+  // íconos queden bien pegados abajo. El toque sigue funcionando cerca del
+  // borde (el gesto de "volver al home" de iOS necesita un swipe desde el
+  // borde, no se dispara con un tap simple), solo se pierde el respiro
+  // visual completo que exige el HIG — decisión de Luis, no un default.
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e]">
       <div className="flex bg-[#080808]">
@@ -57,7 +67,7 @@ export function ClientBottomNav({
           );
         })}
       </div>
-      <div className="h-[env(safe-area-inset-bottom)] shrink-0 bg-[#080808]" />
+      <div className="h-[min(env(safe-area-inset-bottom),10px)] shrink-0 bg-[#080808]" />
     </nav>
   );
 }
