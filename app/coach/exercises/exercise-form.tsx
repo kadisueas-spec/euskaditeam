@@ -28,14 +28,32 @@ export function ExerciseForm({
     FormData
   >(action, undefined);
 
+  // Los ejercicios globales (coach_id NULL, base compartida Euskadi) son de
+  // solo lectura: ni el coach que los creó puede editarlos una vez son
+  // globales (ver TAREA 1, jul-2026). RLS ya lo bloquea en el servidor;
+  // acá se deshabilita el form para que la UI no prometa algo que el
+  // guardado va a rechazar.
+  const readOnly = initialData?.isGlobal === true;
+  // El elegir "Global" vs "Propio" solo tiene sentido al crear: una vez
+  // creado no se puede cambiar de dueño desde la app.
+  const isCreating = !initialData;
+
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {readOnly && (
+        <div className="rounded-lg border border-[#e8001c]/30 bg-[#e8001c]/10 px-4 py-3 text-sm text-[#e8001c]">
+          Este es un ejercicio de la base global Euskadi. No se puede editar
+          ni borrar desde la app — es de solo lectura para todos los coaches.
+        </div>
+      )}
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="name">Nombre</Label>
         <Input
           id="name"
           name="name"
           required
+          disabled={readOnly}
           defaultValue={initialData?.name}
         />
       </div>
@@ -45,6 +63,7 @@ export function ExerciseForm({
         <NativeSelect
           id="muscle_group"
           name="muscle_group"
+          disabled={readOnly}
           defaultValue={initialData?.muscleGroup ?? ""}
         >
           <option value="" disabled>
@@ -65,6 +84,7 @@ export function ExerciseForm({
         <Input
           id="secondary_muscles"
           name="secondary_muscles"
+          disabled={readOnly}
           defaultValue={initialData?.secondaryMuscles.join(", ")}
           placeholder="Ej: Deltoides, Core"
         />
@@ -76,6 +96,7 @@ export function ExerciseForm({
           <Input
             id="equipment"
             name="equipment"
+            disabled={readOnly}
             defaultValue={initialData?.equipment ?? undefined}
             placeholder="Ej: Barra, Mancuernas"
           />
@@ -85,6 +106,7 @@ export function ExerciseForm({
           <Input
             id="movement_pattern"
             name="movement_pattern"
+            disabled={readOnly}
             defaultValue={initialData?.movementPattern ?? undefined}
             placeholder="Ej: Empuje horizontal"
           />
@@ -96,6 +118,7 @@ export function ExerciseForm({
         <Textarea
           id="description"
           name="description"
+          disabled={readOnly}
           defaultValue={initialData?.description ?? undefined}
           rows={3}
         />
@@ -106,6 +129,7 @@ export function ExerciseForm({
         <Textarea
           id="technique_tips"
           name="technique_tips"
+          disabled={readOnly}
           defaultValue={initialData?.techniqueTips ?? undefined}
           rows={3}
         />
@@ -116,6 +140,7 @@ export function ExerciseForm({
         <Textarea
           id="common_mistakes"
           name="common_mistakes"
+          disabled={readOnly}
           defaultValue={initialData?.commonMistakes ?? undefined}
           rows={3}
         />
@@ -127,6 +152,7 @@ export function ExerciseForm({
           id="video_url"
           name="video_url"
           type="url"
+          disabled={readOnly}
           defaultValue={
             initialData?.videoId
               ? `https://www.youtube.com/watch?v=${initialData.videoId}`
@@ -140,19 +166,64 @@ export function ExerciseForm({
         </p>
       </div>
 
+      {isCreating && (
+        <div className="flex flex-col gap-2">
+          <Label>Visibilidad</Label>
+          <div className="flex flex-col gap-2 rounded-lg border border-[#1e1e1e] p-3">
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="visibility"
+                value="own"
+                defaultChecked
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">Propio (solo para mí)</span>
+                <br />
+                <span className="text-xs text-[#888888]">
+                  Solo vos lo ves y lo podés editar o borrar.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="radio"
+                name="visibility"
+                value="global"
+                className="mt-1"
+              />
+              <span>
+                <span className="font-medium">
+                  Global (disponible para todos)
+                </span>
+                <br />
+                <span className="text-xs text-[#888888]">
+                  Se suma a la base Euskadi: lo ven todos los coaches y
+                  queda de solo lectura (nadie lo puede editar ni borrar
+                  desde la app, ni siquiera vos).
+                </span>
+              </span>
+            </label>
+          </div>
+        </div>
+      )}
+
       {state?.error && (
         <p className="text-sm text-destructive">{state.error}</p>
       )}
 
       <div className="flex gap-3">
-        <Button type="submit" disabled={pending}>
-          {pending ? "Guardando..." : "Guardar"}
-        </Button>
+        {!readOnly && (
+          <Button type="submit" disabled={pending}>
+            {pending ? "Guardando..." : "Guardar"}
+          </Button>
+        )}
         <Link
           href="/coach/exercises"
           className={buttonVariants({ variant: "outline" })}
         >
-          Cancelar
+          {readOnly ? "Volver" : "Cancelar"}
         </Link>
       </div>
     </form>

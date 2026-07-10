@@ -8,8 +8,13 @@ export type ExerciseListItem = {
   muscleGroup: string | null;
   equipment: string | null;
   videoId: string | null;
+  isGlobal: boolean;
 };
 
+// coach_id = NULL es un ejercicio "global" (base de Euskadi, compartida
+// entre todos los coaches — ver TAREA 1, jul-2026). RLS ya filtra qué fila
+// puede ver cada coach (las suyas + todas las globales); acá solo se
+// ordena para que las globales aparezcan primero en la biblioteca.
 export async function getExercisesList(
   muscleGroup?: string
 ): Promise<ExerciseListItem[]> {
@@ -17,7 +22,7 @@ export async function getExercisesList(
 
   let query = supabase
     .from("exercises")
-    .select("id, name, muscle_group, equipment, video_url")
+    .select("id, name, muscle_group, equipment, video_url, coach_id")
     .order("name", { ascending: true });
 
   if (muscleGroup) {
@@ -26,13 +31,19 @@ export async function getExercisesList(
 
   const { data } = await query;
 
-  return (data ?? []).map((e) => ({
+  const items = (data ?? []).map((e) => ({
     id: e.id,
     name: e.name,
     muscleGroup: e.muscle_group,
     equipment: e.equipment,
     videoId: e.video_url,
+    isGlobal: e.coach_id === null,
   }));
+
+  return items.sort((a, b) => {
+    if (a.isGlobal !== b.isGlobal) return a.isGlobal ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 }
 
 export type ExerciseDetail = {
@@ -46,6 +57,7 @@ export type ExerciseDetail = {
   movementPattern: string | null;
   techniqueTips: string | null;
   commonMistakes: string | null;
+  isGlobal: boolean;
 };
 
 export async function getExerciseDetail(
@@ -56,7 +68,7 @@ export async function getExerciseDetail(
   const { data } = await supabase
     .from("exercises")
     .select(
-      "id, name, description, video_url, muscle_group, secondary_muscles, equipment, movement_pattern, technique_tips, common_mistakes"
+      "id, name, description, video_url, muscle_group, secondary_muscles, equipment, movement_pattern, technique_tips, common_mistakes, coach_id"
     )
     .eq("id", id)
     .single();
@@ -74,5 +86,6 @@ export async function getExerciseDetail(
     movementPattern: data.movement_pattern,
     techniqueTips: data.technique_tips,
     commonMistakes: data.common_mistakes,
+    isGlobal: data.coach_id === null,
   };
 }

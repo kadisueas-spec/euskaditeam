@@ -98,11 +98,18 @@ export default async function ExercisesPage({
                         {exercise.equipment ?? "Sin equipo especificado"}
                       </p>
                     </div>
-                    {exercise.muscleGroup && (
-                      <Badge variant="secondary" className="w-fit">
-                        {exercise.muscleGroup}
-                      </Badge>
-                    )}
+                    <div className="flex flex-wrap gap-1.5">
+                      {exercise.isGlobal && (
+                        <Badge className="w-fit border-[#e8001c]/40 bg-[#e8001c]/15 text-[#e8001c]">
+                          Base Euskadi
+                        </Badge>
+                      )}
+                      {exercise.muscleGroup && (
+                        <Badge variant="secondary" className="w-fit">
+                          {exercise.muscleGroup}
+                        </Badge>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </Link>

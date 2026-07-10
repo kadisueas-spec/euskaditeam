@@ -62,9 +62,18 @@ export async function createExercise(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { error } = await supabase
-    .from("exercises")
-    .insert({ ...fields, video_url: videoId, coach_id: user.id });
+  // TAREA 1 (jul-2026): el coach elige si el ejercicio queda propio (solo
+  // él lo ve/edita) o global (base compartida Euskadi, coach_id NULL —
+  // visible para todos, de solo lectura una vez creado). Default "own" si
+  // el campo no llega por algún motivo, nunca se crea global sin que el
+  // coach lo elija explícitamente.
+  const isGlobal = formData.get("visibility") === "global";
+
+  const { error } = await supabase.from("exercises").insert({
+    ...fields,
+    video_url: videoId,
+    coach_id: isGlobal ? null : user.id,
+  });
 
   if (error) {
     console.error("createExercise error:", error);
@@ -87,6 +96,20 @@ export async function updateExercise(
   if (videoError) return { error: videoError };
 
   const supabase = await createClient();
+
+  // Defensa extra además de RLS (que ya bloquea el UPDATE si coach_id es
+  // NULL): un chequeo explícito acá da un mensaje claro en vez de que el
+  // UPDATE simplemente afecte 0 filas en silencio si alguien llega a este
+  // action saltándose la UI de solo lectura de la página de edición.
+  const { data: existing } = await supabase
+    .from("exercises")
+    .select("coach_id")
+    .eq("id", exerciseId)
+    .single();
+  if (existing && existing.coach_id === null) {
+    return { error: "Los ejercicios de la base global no se pueden editar." };
+  }
+
   const { error } = await supabase
     .from("exercises")
     .update({ ...fields, video_url: videoId })

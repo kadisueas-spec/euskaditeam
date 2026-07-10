@@ -18,7 +18,7 @@ export default async function EditExercisePage({
     <FadeIn className="flex max-w-xl flex-col gap-6">
       <div>
         <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
-          Editar ejercicio
+          {exercise.isGlobal ? "Ver ejercicio" : "Editar ejercicio"}
         </h1>
         <div className="mt-1.5 h-0.5 w-10 bg-[#e8001c]" />
       </div>
