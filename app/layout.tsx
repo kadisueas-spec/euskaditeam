@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, DM_Sans, Anton } from "next/font/google";
+import { AppHeightFix } from "@/components/app-height-fix";
 import { InstallBanner } from "@/components/install-banner";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { TouchActiveFix } from "@/components/touch-active-fix";
@@ -68,6 +69,12 @@ export default function RootLayout({
     <html
       lang="es"
       className={`${bebasNeue.variable} ${dmSans.variable} ${anton.variable} h-full antialiased`}
+      // AppHeightFix corre con strategy="beforeInteractive" y le agrega un
+      // style={--app-height} a este <html> ANTES de que React hidrate —
+      // React lo marca como mismatch de atributo (no de contenido, así que
+      // no revierte nada, solo avisa por consola). Es intencional: sin
+      // esto la advertencia ensucia la consola en cada carga.
+      suppressHydrationWarning
     >
       {/* min-h-dvh (no min-h-full): min-h-full depende de una cadena de
           alturas en porcentaje (html 100% -> body 100%) que en iOS no
@@ -75,6 +82,7 @@ export default function RootLayout({
           safe-area-inset-bottom. dvh es el viewport real, dinámico, mismo
           criterio que ya usa cada layout (h-dvh) para su contenedor raíz. */}
       <body className="min-h-dvh flex flex-col">
+        <AppHeightFix />
         {children}
         <InstallBanner />
         <ServiceWorkerRegister />

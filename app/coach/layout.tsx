@@ -21,8 +21,10 @@ export default async function CoachLayout({
   // h-dvh + único scroll interno en <main>, ver el comentario largo en
   // app/client/layout.tsx: evita que la nav (antes position:fixed) deje un
   // hueco vacío abajo en pantallas cortas como /coach/clients en iOS.
+  // h-[var(--app-height,100dvh)]: ver comentario en app/client/layout.tsx
+  // sobre por qué 100dvh a secas no alcanza en la PWA instalada.
   return (
-    <div className="flex h-dvh flex-col bg-[#080808] text-white">
+    <div className="flex h-[var(--app-height,100dvh)] flex-col bg-[#080808] text-white">
       <CoachHeader profile={profile} />
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <CoachSidebar />

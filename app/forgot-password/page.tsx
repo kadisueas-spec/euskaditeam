@@ -7,7 +7,7 @@ import { AuthCard } from "@/components/auth/auth-card";
 // solo evita que el link del login sea un 404.
 export default function ForgotPasswordPage() {
   return (
-    <main className="flex h-dvh flex-col bg-[#080808]">
+    <main className="flex h-[var(--app-height,100dvh)] flex-col bg-[#080808]">
       <AuthHero subtitle="Recuperar acceso" />
       <AuthCard>
         <div className="flex flex-col gap-3">

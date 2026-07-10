@@ -44,7 +44,7 @@ export default async function ClientLayout({
     )
   ) {
     return (
-      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-[#080808] px-6 text-center text-white">
+      <div className="flex h-[var(--app-height,100dvh)] flex-col items-center justify-center gap-4 bg-[#080808] px-6 text-center text-white">
         <Lock className="size-10 text-[#e8001c]" />
         <h1 className="text-xl font-semibold">Tu acceso está inactivo</h1>
         <p className="text-sm text-[#888888]">
@@ -85,8 +85,15 @@ export default async function ClientLayout({
   // como último hijo normal de un flex column de altura fija, no hace
   // falta position:fixed ni el padding-bottom mágico: main ocupa
   // exactamente lo que sobra y la nav siempre queda pegada abajo.
+  //
+  // h-[var(--app-height,100dvh)] en vez de h-dvh a secas: en la PWA
+  // instalada, 100dvh puede reportar un valor "sin asentar" en el primer
+  // render y recién corregirse tras el primer toque/scroll — se ve como
+  // la nav saltando a su lugar. --app-height la fija AppHeightFix
+  // (app/layout.tsx) midiendo con JS en vez de confiar en dvh desde el
+  // frame cero. 100dvh queda de fallback si el script no corrió todavía.
   return (
-    <div className="flex h-dvh flex-col bg-[#080808] text-white">
+    <div className="flex h-[var(--app-height,100dvh)] flex-col bg-[#080808] text-white">
       <header className="gradient-section shrink-0 flex items-center justify-center gap-2 border-b border-[#1e1e1e] px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <Image src="/brand/euskadi-logo.png" alt="" width={22} height={22} />
         <span className="font-display text-lg tracking-wide text-[#f5f5f5] uppercase">
