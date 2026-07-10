@@ -50,22 +50,6 @@ export default async function MyRoutinePage() {
         {routine.objective && (
           <p className="text-sm text-[#888888]">Objetivo: {routine.objective}</p>
         )}
-        {/* EXPERIMENTAL — activa el panel de SafeAreaProbe (?diag=1). <a>
-            normal a propósito, NO <Link>: con el router de Next (soft
-            navigation) el layout de cliente no se remonta al solo cambiar
-            el query string, así que el script de SafeAreaProbe (que ya
-            había corrido una vez sin ?diag=1 al cargar la página) nunca se
-            re-ejecuta y el botón no hace nada. Con <a> es una recarga
-            completa de documento, el script corre de nuevo con el query
-            string correcto. En standalone no hay barra de direcciones para
-            agregarlo a mano. Se borra junto con el resto de las
-            herramientas de diagnóstico. */}
-        <a
-          href="/client/my-routine?diag=1"
-          className="mt-1 inline-block text-xs text-[#555555] underline"
-        >
-          [medir safe area]
-        </a>
       </div>
 
       {routine.days.map((day, dayIndex) => (

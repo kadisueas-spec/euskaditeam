@@ -8,7 +8,6 @@ import { OfflineBanner } from "@/components/client/offline-banner";
 import { SyncBanner } from "@/components/client/sync-banner";
 import { PushPermissionPrompt } from "@/components/client/push-permission-prompt";
 import { PageTransition } from "@/components/motion/page-transition";
-import { SafeAreaProbe } from "@/components/dev/safe-area-probe";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getUnreadFeedbackCount } from "@/lib/supabase/feedback";
@@ -120,7 +119,6 @@ export default async function ClientLayout({
       </main>
       <PushPermissionPrompt />
       <ClientBottomNav unreadFeedbackCount={unreadFeedbackCount} />
-      <SafeAreaProbe />
     </div>
   );
 }
