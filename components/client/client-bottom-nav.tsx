@@ -40,15 +40,14 @@ export function ClientBottomNav({
   // borde, no se dispara con un tap simple), solo se pierde el respiro
   // visual completo que exige el HIG — decisión de Luis, no un default.
   //
-  // Fila de ítems: la caja (min-h-44 + py-2) era mucho más alta que su
-  // contenido real (ícono 20px + texto), así que el ícono quedaba chico y
-  // centrado con mucho aire arriba/abajo, lejos del borde superior de la
-  // barra y de la safe area de abajo. Se cambia a una altura fija más
-  // chica (h-8, 32px) sin padding vertical, ícono más chico (size-4) y
-  // label más chico (10px) — el contenido pasa a ocupar casi toda la caja
-  // en vez de la mitad. Toque mínimo recomendado por Apple es 44px; esto
-  // queda por debajo a propósito, decisión de Luis (igual que el ajuste
-  // de safe area).
+  // Fila de ítems: la caja original (min-h-44 + py-2) era mucho más alta
+  // que su contenido, dejando los íconos chicos con mucho aire. Un primer
+  // ajuste achicó la CAJA (h-8, ícono size-4) pero eso también empequeñeció
+  // el contenido. Ahora se agranda la caja de nuevo (h-11, 44px — vuelve a
+  // coincidir con el mínimo de touch target de Apple) pero con íconos y
+  // texto proporcionalmente más grandes (size-5, texto sm) para que el
+  // contenido llene la caja de punta a punta, centrado, sin el aire
+  // muerto de la versión original.
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e]">
       <div className="flex bg-[#080808]">
@@ -60,12 +59,12 @@ export function ClientBottomNav({
               key={href}
               href={href}
               onClick={() => setTappedHref(href)}
-              className={`flex h-8 flex-1 flex-col items-center justify-center gap-0 text-[10px] transition-[color,transform] active:scale-90 active:bg-white/10 ${
+              className={`flex h-11 flex-1 flex-col items-center justify-center gap-1 text-xs transition-[color,transform] active:scale-90 active:bg-white/10 ${
                 active ? "text-[#e8001c]" : "text-[#888888]"
               }`}
             >
               <span className="relative">
-                <Icon className="size-4" />
+                <Icon className="size-5" />
                 {showBadge && (
                   <span className="absolute -top-1.5 -right-2 flex min-w-[16px] items-center justify-center rounded-full bg-[#e8001c] px-1 text-[10px] leading-4 font-bold text-white">
                     {unreadFeedbackCount > 9 ? "9+" : unreadFeedbackCount}
