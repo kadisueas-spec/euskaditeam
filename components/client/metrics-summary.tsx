@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -26,8 +26,10 @@ const tooltipProps = {
   labelStyle: { color: "#fff" },
 };
 
-// Fase 9: versión resumida para el cliente — sin desglose ejercicio por
-// ejercicio (eso queda para la vista del coach en /coach/clients/[id]).
+// Mejora Fase 9 (jul-2026): el tonelaje total y por grupo muscular salieron
+// de acá (ver components/client/stats-charts.tsx) — es info que el coach
+// interpreta, no el cliente. Queda solo la distribución de RIR, ahora en
+// líneas en vez de barras apiladas.
 export function MetricsSummary({
   metricsByRange,
 }: {
@@ -54,48 +56,30 @@ export function MetricsSummary({
       </div>
 
       <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-        <p className="text-xs text-[#888888]">Tonelaje total</p>
-        <p className="mt-1 font-display text-4xl text-[#e8001c]">
-          {metrics.totalTonnage.toLocaleString("es-AR")}
-          <span className="text-lg text-[#888888]"> kg</span>
-        </p>
-      </div>
-
-      <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-        <p className="mb-3 text-sm font-medium text-white">Tonelaje por grupo muscular</p>
-        {metrics.muscleGroupTotals.length === 0 ? (
-          <p className="text-sm text-[#888888]">Sin datos en este período.</p>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {metrics.muscleGroupTotals.map((mg) => (
-              <li key={mg.muscleGroup} className="flex items-center justify-between text-sm">
-                <span className="text-[#888888]">{mg.muscleGroup}</span>
-                <span className="font-mono text-white">
-                  {mg.tonnage.toLocaleString("es-AR")} kg
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-
-      <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
         <p className="mb-3 text-sm font-medium text-white">
           Distribución de intensidad (RIR)
         </p>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={metrics.rirDistribution}>
+            <LineChart data={metrics.rirDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f51a" />
               <XAxis dataKey="bucket" stroke="#f5f5f580" fontSize={11} />
               <YAxis stroke="#f5f5f580" fontSize={11} width={32} unit="%" />
               <Tooltip {...tooltipProps} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="rir3" stackId="rir" name="RIR 3+" fill="#555555" />
-              <Bar dataKey="rir2" stackId="rir" name="RIR 2" fill="#888888" />
-              <Bar dataKey="rir1" stackId="rir" name="RIR 1" fill="#ff4d4d" />
-              <Bar dataKey="rir0" stackId="rir" name="RIR 0 / Fallo" fill="#e8001c" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Line type="monotone" dataKey="rir3" name="RIR 3+" stroke="#555555" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="rir2" name="RIR 2" stroke="#888888" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="rir1" name="RIR 1" stroke="#ff4d4d" strokeWidth={2} dot={{ r: 3 }} />
+              <Line
+                type="monotone"
+                dataKey="rir0"
+                name="RIR 0 / Fallo"
+                stroke="#e8001c"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>

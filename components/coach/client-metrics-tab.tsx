@@ -2,8 +2,6 @@
 
 import { useState } from "react";
 import {
-  Bar,
-  BarChart,
   CartesianGrid,
   Legend,
   Line,
@@ -13,7 +11,8 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { ClientMetrics, MetricsRange } from "@/lib/supabase/metrics";
+import { ExerciseProgressCharts } from "@/components/charts/exercise-progress-charts";
+import type { ClientMetrics, ExerciseSessionSeries, MetricsRange } from "@/lib/supabase/metrics";
 
 const RANGE_LABEL: Record<MetricsRange, string> = {
   week: "Semana",
@@ -46,8 +45,10 @@ const tooltipProps = {
 // lib/supabase/metrics.ts) — acá solo se elige cuál mostrar, sin refetch.
 export function ClientMetricsTab({
   metricsByRange,
+  sessionSeries,
 }: {
   metricsByRange: Record<MetricsRange, ClientMetrics>;
+  sessionSeries: ExerciseSessionSeries[];
 }) {
   const [range, setRange] = useState<MetricsRange>("week");
   const metrics = metricsByRange[range];
@@ -168,13 +169,20 @@ export function ClientMetricsTab({
             <p className="mb-1 text-xs text-[#888888]">Tonelaje</p>
             <div className="h-40">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={tonnageSeries.points}>
+                <LineChart data={tonnageSeries.points}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f51a" />
                   <XAxis dataKey="label" stroke="#f5f5f580" fontSize={11} />
                   <YAxis stroke="#f5f5f580" fontSize={11} width={36} />
                   <Tooltip {...tooltipProps} />
-                  <Bar dataKey="tonnage" fill="#e8001c" radius={[4, 4, 0, 0]} />
-                </BarChart>
+                  <Line
+                    type="monotone"
+                    dataKey="tonnage"
+                    stroke="#c9c9c9"
+                    strokeWidth={2}
+                    dot={{ fill: "#e8001c", r: 3 }}
+                    activeDot={{ r: 5, fill: "#e8001c" }}
+                  />
+                </LineChart>
               </ResponsiveContainer>
             </div>
 
@@ -189,10 +197,11 @@ export function ClientMetricsTab({
                   <Line
                     type="monotone"
                     dataKey="maxWeight"
-                    stroke="#e8001c"
+                    stroke="#c9c9c9"
                     strokeWidth={2}
                     connectNulls
                     dot={{ fill: "#e8001c", r: 3 }}
+                    activeDot={{ r: 5, fill: "#e8001c" }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -203,23 +212,33 @@ export function ClientMetricsTab({
         )}
       </div>
 
+      <ExerciseProgressCharts series={sessionSeries} />
+
       <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
         <p className="mb-3 text-sm font-medium text-white">
           Distribución de intensidad (RIR)
         </p>
         <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={metrics.rirDistribution}>
+            <LineChart data={metrics.rirDistribution}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f51a" />
               <XAxis dataKey="bucket" stroke="#f5f5f580" fontSize={11} />
               <YAxis stroke="#f5f5f580" fontSize={11} width={32} unit="%" />
               <Tooltip {...tooltipProps} />
               <Legend wrapperStyle={{ fontSize: 11 }} />
-              <Bar dataKey="rir3" stackId="rir" name="RIR 3+" fill="#555555" />
-              <Bar dataKey="rir2" stackId="rir" name="RIR 2" fill="#888888" />
-              <Bar dataKey="rir1" stackId="rir" name="RIR 1" fill="#ff4d4d" />
-              <Bar dataKey="rir0" stackId="rir" name="RIR 0 / Fallo" fill="#e8001c" radius={[4, 4, 0, 0]} />
-            </BarChart>
+              <Line type="monotone" dataKey="rir3" name="RIR 3+" stroke="#555555" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="rir2" name="RIR 2" stroke="#888888" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="rir1" name="RIR 1" stroke="#ff4d4d" strokeWidth={2} dot={{ r: 3 }} />
+              <Line
+                type="monotone"
+                dataKey="rir0"
+                name="RIR 0 / Fallo"
+                stroke="#e8001c"
+                strokeWidth={2}
+                dot={{ r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
@@ -231,13 +250,20 @@ export function ClientMetricsTab({
         ) : (
           <div className="h-52">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={metrics.sessionVolume}>
+              <LineChart data={metrics.sessionVolume}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f51a" />
                 <XAxis dataKey="label" stroke="#f5f5f580" fontSize={11} />
                 <YAxis stroke="#f5f5f580" fontSize={11} width={40} />
                 <Tooltip {...tooltipProps} />
-                <Bar dataKey="tonnage" fill="#e8001c" radius={[4, 4, 0, 0]} />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="tonnage"
+                  stroke="#c9c9c9"
+                  strokeWidth={2}
+                  dot={{ fill: "#e8001c", r: 3 }}
+                  activeDot={{ r: 5, fill: "#e8001c" }}
+                />
+              </LineChart>
             </ResponsiveContainer>
           </div>
         )}

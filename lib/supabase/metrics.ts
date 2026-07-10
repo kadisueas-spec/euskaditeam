@@ -136,6 +136,23 @@ export type RirDistributionPoint = {
   totalSetsWithRir: number;
 };
 
+// Peso máximo/promedio por EJERCICIO, un punto por sesión real entrenada
+// (no por bucket semana/mes/bloque) — el eje X son las fechas reales en las
+// que se cargó ese ejercicio, con huecos donde no se entrenó. Mejora sobre
+// Fase 9 (jul-2026): es el gráfico más motivador para el cliente ("mirá
+// cómo subió tu peso"), así que se calcula aparte de los buckets de rango.
+export type ExerciseSessionPoint = {
+  date: string;
+  label: string;
+  maxWeight: number;
+  avgWeight: number;
+};
+export type ExerciseSessionSeries = {
+  exerciseId: string;
+  exerciseName: string;
+  points: ExerciseSessionPoint[];
+};
+
 export type ClientMetrics = {
   range: MetricsRange;
   totalTonnage: number;
@@ -345,4 +362,58 @@ export async function getMyMetrics(range: MetricsRange = "week"): Promise<Client
   const client = await getCurrentClientRecord();
   if (!client) return null;
   return getClientMetrics(client.id, range);
+}
+
+function buildExerciseSessionSeries(rows: RawSetRow[]): ExerciseSessionSeries[] {
+  type SessionAgg = { date: string; max: number; sum: number; count: number };
+  const byExercise = new Map<string, Map<string, SessionAgg>>();
+  const exerciseNameById = new Map<string, string>();
+
+  for (const row of rows) {
+    const workoutDate = row.workout_logs?.workout_date;
+    const exerciseId = row.routine_exercises?.exercise_id;
+    if (!workoutDate || !exerciseId || row.weight_kg == null) continue;
+
+    exerciseNameById.set(exerciseId, row.routine_exercises?.exercises?.name ?? "Ejercicio");
+
+    const sessions = byExercise.get(exerciseId) ?? new Map<string, SessionAgg>();
+    const agg = sessions.get(row.workout_log_id) ?? {
+      date: workoutDate,
+      max: -Infinity,
+      sum: 0,
+      count: 0,
+    };
+    agg.max = Math.max(agg.max, row.weight_kg);
+    agg.sum += row.weight_kg;
+    agg.count += 1;
+    sessions.set(row.workout_log_id, agg);
+    byExercise.set(exerciseId, sessions);
+  }
+
+  return Array.from(byExercise.entries()).map(([exerciseId, sessions]) => ({
+    exerciseId,
+    exerciseName: exerciseNameById.get(exerciseId) ?? "Ejercicio",
+    points: Array.from(sessions.values())
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((s) => ({
+        date: s.date,
+        label: dateLabel(new Date(`${s.date}T00:00:00Z`).getTime()),
+        maxWeight: s.max,
+        avgWeight: Math.round((s.sum / s.count) * 10) / 10,
+      })),
+  }));
+}
+
+// Historial completo (sin límite de rango) — a diferencia de getClientMetrics,
+// que recorta a la ventana del bucket seleccionado. windowStartMs=0 reutiliza
+// fetchRawSets sin fecha piso.
+export async function getExerciseSessionSeries(clientId: string): Promise<ExerciseSessionSeries[]> {
+  const rows = await fetchRawSets(clientId, 0);
+  return buildExerciseSessionSeries(rows);
+}
+
+export async function getMyExerciseSessionSeries(): Promise<ExerciseSessionSeries[]> {
+  const client = await getCurrentClientRecord();
+  if (!client) return [];
+  return getExerciseSessionSeries(client.id);
 }

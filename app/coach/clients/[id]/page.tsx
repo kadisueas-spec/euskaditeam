@@ -12,7 +12,12 @@ import {
   getRecentSessionsForSelect,
 } from "@/lib/supabase/feedback";
 import { getMonthlyReviewFormData } from "@/lib/supabase/monthly-review";
-import { getClientMetrics, type ClientMetrics, type MetricsRange } from "@/lib/supabase/metrics";
+import {
+  getClientMetrics,
+  getExerciseSessionSeries,
+  type ClientMetrics,
+  type MetricsRange,
+} from "@/lib/supabase/metrics";
 import { getAccessDisplayStatus, PAYMENT_METHOD_LABEL } from "@/lib/constants/access";
 import type { PaymentMethod } from "@/lib/constants/access";
 import { formatDate } from "@/lib/utils/format-date";
@@ -46,16 +51,25 @@ export default async function ClientDetailPage({
 
   if (!client) notFound();
 
-  const [feedback, sessions, exercises, monthlyReviewData, metricsWeek, metricsMonth, metricsBlock] =
-    await Promise.all([
-      getFeedbackForClient(id),
-      getRecentSessionsForSelect(id),
-      getClientRoutineExercisesForSelect(id),
-      getMonthlyReviewFormData(id),
-      getClientMetrics(id, "week"),
-      getClientMetrics(id, "month"),
-      getClientMetrics(id, "block"),
-    ]);
+  const [
+    feedback,
+    sessions,
+    exercises,
+    monthlyReviewData,
+    metricsWeek,
+    metricsMonth,
+    metricsBlock,
+    sessionSeries,
+  ] = await Promise.all([
+    getFeedbackForClient(id),
+    getRecentSessionsForSelect(id),
+    getClientRoutineExercisesForSelect(id),
+    getMonthlyReviewFormData(id),
+    getClientMetrics(id, "week"),
+    getClientMetrics(id, "month"),
+    getClientMetrics(id, "block"),
+    getExerciseSessionSeries(id),
+  ]);
 
   const metricsByRange: Record<MetricsRange, ClientMetrics> = {
     week: metricsWeek,
@@ -74,7 +88,12 @@ export default async function ClientDetailPage({
       </div>
 
       <ClientDetailTabs
-        metricas={<ClientMetricsTab metricsByRange={metricsByRange} />}
+        metricas={
+          <ClientMetricsTab
+            metricsByRange={metricsByRange}
+            sessionSeries={sessionSeries}
+          />
+        }
         resumen={
           <>
       <FadeIn delay={0}>
