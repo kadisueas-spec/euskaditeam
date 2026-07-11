@@ -7,6 +7,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { FeedbackList } from "@/components/coach/feedback-list";
 import { ClientDetailTabs } from "@/components/coach/client-detail-tabs";
 import { ClientMetricsTab } from "@/components/coach/client-metrics-tab";
+import { RecentLogsList } from "@/components/coach/recent-logs-list";
 import { getClientDetail } from "@/lib/supabase/clients";
 import {
   getClientRoutineExercisesForSelect,
@@ -213,21 +214,7 @@ export default async function ClientDetailPage({
                 className="py-4"
               />
             ) : (
-              <ul className="flex flex-col gap-2">
-                {client.recentLogs.map((log) => (
-                  <li
-                    key={log.id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="text-[#888888]">
-                      {formatDate(log.workoutDate)}
-                    </span>
-                    <Badge variant={log.isCompleted ? "default" : "outline"}>
-                      {log.isCompleted ? "Completado" : "En curso"}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
+              <RecentLogsList clientId={id} logs={client.recentLogs} />
             )}
           </CardContent>
         </Card>
