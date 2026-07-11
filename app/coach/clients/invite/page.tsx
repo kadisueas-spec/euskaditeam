@@ -29,7 +29,7 @@ export default async function InviteClientPage() {
               Generar código nuevo
             </CardTitle>
             <CardDescription>
-              Compartiselo al cliente para que se registre en /register.
+              Compártelo con el cliente para que se registre en /register.
             </CardDescription>
           </CardHeader>
           <CardContent>

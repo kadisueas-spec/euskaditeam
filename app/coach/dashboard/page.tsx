@@ -52,7 +52,7 @@ export default async function CoachDashboardPage() {
               className="flex items-center gap-2 rounded-lg border border-[#e8001c]/40 bg-[#e8001c]/10 p-3 text-sm text-white hover:bg-[#e8001c]/20"
             >
               <Flag className="size-4 shrink-0 text-[#e8001c]" />
-              El mes de {alert.clientName} terminó — dejale tu resumen
+              El mes de {alert.clientName} terminó — déjale tu resumen
             </Link>
           ))}
           {noActiveRoutineAlerts.map((alert) => (
@@ -190,6 +190,7 @@ export default async function CoachDashboardPage() {
             <EmptyState
               icon={Activity}
               title="Todavía no hay entrenamientos registrados."
+              description="En cuanto tus clientes entrenen, lo vas a ver acá."
               className="py-4"
             />
           ) : (

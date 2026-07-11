@@ -175,7 +175,8 @@ export default async function ClientDetailPage({
             {client.routines.length === 0 ? (
               <EmptyState
                 icon={ClipboardList}
-                title="Sin rutinas asignadas todavía."
+                title="Este cliente todavía no tiene una rutina."
+                description="Es hora de armarle una."
                 className="py-4"
               />
             ) : (
@@ -208,7 +209,7 @@ export default async function ClientDetailPage({
             {client.recentLogs.length === 0 ? (
               <EmptyState
                 icon={History}
-                title="Todavía no registró entrenamientos."
+                title="Todavía no registró ningún entrenamiento."
                 className="py-4"
               />
             ) : (

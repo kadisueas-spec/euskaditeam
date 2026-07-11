@@ -41,7 +41,7 @@ function resolveVideoId(
 
   const videoId = extractYouTubeId(raw);
   if (!videoId) {
-    return { videoId: null, error: "Pegá una URL válida de YouTube." };
+    return { videoId: null, error: "Pega una URL válida de YouTube." };
   }
   return { videoId };
 }
@@ -77,7 +77,7 @@ export async function createExercise(
 
   if (error) {
     console.error("createExercise error:", error);
-    return { error: "No se pudo crear el ejercicio. Intentá de nuevo." };
+    return { error: "No se pudo crear el ejercicio. Intenta de nuevo." };
   }
 
   revalidatePath("/coach/exercises");
@@ -117,7 +117,7 @@ export async function updateExercise(
 
   if (error) {
     console.error("updateExercise error:", error);
-    return { error: "No se pudo guardar el ejercicio. Intentá de nuevo." };
+    return { error: "No se pudo guardar el ejercicio. Intenta de nuevo." };
   }
 
   revalidatePath("/coach/exercises");

@@ -27,7 +27,11 @@ export default async function RoutinesPage() {
       </div>
 
       {routines.length === 0 ? (
-        <EmptyState icon={ClipboardList} title="Todavía no creaste rutinas." />
+        <EmptyState
+          icon={ClipboardList}
+          title="Todavía no armaste ninguna rutina."
+          description="Tus clientes están esperando su plan."
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {routines.map((r, i) => (

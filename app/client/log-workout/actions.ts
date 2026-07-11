@@ -258,7 +258,7 @@ async function notifyCoachIfAdherenceCrossed80({
 
   await sendPushToCoach(client.coachId, {
     title: adherence80PushTitle(clientName),
-    body: "Revisá su progreso en tu panel.",
+    body: "Revisa su progreso en tu panel.",
     url: `/coach/clients/${client.id}`,
   });
 }

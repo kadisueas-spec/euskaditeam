@@ -23,7 +23,7 @@ export async function createFeedback(
   const routineExerciseIdRaw = String(formData.get("routine_exercise_id") ?? "");
 
   if (!FEEDBACK_TYPES.includes(type)) {
-    return { error: "Elegí un tipo de feedback." };
+    return { error: "Elige un tipo de feedback." };
   }
   if (!message) return { error: "El mensaje no puede estar vacío." };
 
@@ -73,7 +73,7 @@ export async function saveMonthlyReview(
     formData.get("plan_adjustments") ?? ""
   ).trim();
 
-  if (!summary) return { error: "Escribí un resumen del mes." };
+  if (!summary) return { error: "Escribe un resumen del mes." };
 
   const supabase = await createClient();
   const {
@@ -115,9 +115,9 @@ export async function activateClientAccess(
   const endDate = String(formData.get("subscription_end_date") ?? "").trim();
 
   if (!PAYMENT_METHODS.includes(paymentMethod)) {
-    return { error: "Elegí un método de pago." };
+    return { error: "Elige un método de pago." };
   }
-  if (!endDate) return { error: "Ingresá la fecha de vencimiento del acceso." };
+  if (!endDate) return { error: "Ingresa la fecha de vencimiento del acceso." };
 
   const supabase = await createClient();
   const { error } = await supabase

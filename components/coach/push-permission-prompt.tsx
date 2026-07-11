@@ -65,7 +65,7 @@ export function CoachPushPermissionPrompt() {
     <div className="fixed inset-x-0 bottom-[72px] z-40 mx-4 mb-[env(safe-area-inset-bottom)] flex items-center gap-3 rounded-xl border border-[#1e1e1e] bg-[#111111] px-4 py-3 text-white shadow-lg sm:bottom-4">
       <Bell className="size-5 shrink-0 text-[#e8001c]" />
       <p className="flex-1 text-sm leading-snug">
-        Activá las notificaciones para enterarte de la adherencia de tus
+        Activa las notificaciones para enterarte de la adherencia de tus
         clientes y cuándo termina cada mesociclo.
       </p>
       <button

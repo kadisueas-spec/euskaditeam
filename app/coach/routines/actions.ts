@@ -48,8 +48,8 @@ export async function createRoutine(
   input: CreateRoutineInput
 ): Promise<CreateRoutineResult> {
   if (!input.name.trim()) return { error: "El nombre es obligatorio." };
-  if (!input.clientId) return { error: "Seleccioná un cliente." };
-  if (input.days.length === 0) return { error: "Agregá al menos un día." };
+  if (!input.clientId) return { error: "Selecciona un cliente." };
+  if (input.days.length === 0) return { error: "Agrega al menos un día." };
 
   const supabase = await createClient();
   const {
@@ -148,7 +148,7 @@ export async function updateRoutine(
   input: UpdateRoutineInput
 ): Promise<UpdateRoutineResult> {
   if (!input.name.trim()) return { error: "El nombre es obligatorio." };
-  if (input.days.length === 0) return { error: "Agregá al menos un día." };
+  if (input.days.length === 0) return { error: "Agrega al menos un día." };
 
   const supabase = await createClient();
   const {

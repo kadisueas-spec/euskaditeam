@@ -121,7 +121,7 @@ export function PlannedMetricsPanel({
           <div className="flex flex-col gap-5 border-t border-[#1e1e1e] p-4">
             {metrics.totalSets === 0 ? (
               <p className="text-sm text-[#888888]">
-                Agregá ejercicios para ver las métricas de esta rutina.
+                Agrega ejercicios para ver las métricas de esta rutina.
               </p>
             ) : (
               <>
@@ -163,7 +163,7 @@ export function PlannedMetricsPanel({
                   </p>
                   {metrics.rir.ratedSets === 0 ? (
                     <p className="text-sm text-[#666666]">
-                      Asigná RIR a los ejercicios para ver la distribución.
+                      Asigna RIR a los ejercicios para ver la distribución.
                     </p>
                   ) : (
                     <>

@@ -11,6 +11,7 @@ export function FeedbackList({ items }: { items: FeedbackItem[] }) {
       <EmptyState
         icon={MessageSquare}
         title="Todavía no le dejaste feedback a este cliente."
+        description="Dile cómo va."
         className="py-4"
       />
     );

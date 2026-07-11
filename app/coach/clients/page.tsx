@@ -50,7 +50,11 @@ export default async function ClientsPage() {
       </div>
 
       {clients.length === 0 ? (
-        <EmptyState icon={Users} title="Todavía no tenés clientes." />
+        <EmptyState
+          icon={Users}
+          title="Todavía no tienes clientes."
+          description="Invita al primero para empezar."
+        />
       ) : (
         <FadeIn className="overflow-x-auto rounded-2xl border border-[#1e1e1e]">
           <Table>

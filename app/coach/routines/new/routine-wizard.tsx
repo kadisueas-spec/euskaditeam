@@ -70,14 +70,14 @@ export function RoutineWizard({
 
   function goToStep2() {
     if (!name.trim()) return setError("El nombre es obligatorio.");
-    if (!clientId) return setError("Seleccioná un cliente.");
+    if (!clientId) return setError("Selecciona un cliente.");
     setError(null);
     setDays((prev) => (prev.length === 0 ? [newDayRow(1)] : prev));
     setStep(2);
   }
 
   function goToStep3() {
-    if (days.length === 0) return setError("Agregá al menos un día.");
+    if (days.length === 0) return setError("Agrega al menos un día.");
     if (days.some((d) => !d.name.trim()))
       return setError("Todos los días necesitan un nombre.");
     setError(null);
@@ -141,7 +141,7 @@ export function RoutineWizard({
     for (const day of days) {
       for (const ex of day.exercises) {
         if (!ex.exerciseId) {
-          setError(`Elegí un ejercicio en "${day.name}".`);
+          setError(`Elige un ejercicio en "${day.name}".`);
           return;
         }
         if (!ex.sets) {
@@ -236,7 +236,7 @@ export function RoutineWizard({
               onChange={(e) => setClientId(e.target.value)}
             >
               <option value="" disabled>
-                Seleccioná un cliente
+                Selecciona un cliente
               </option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>

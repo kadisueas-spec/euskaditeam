@@ -68,7 +68,7 @@ export function ExerciseForm({
           defaultValue={initialData?.muscleGroup ?? ""}
         >
           <option value="" disabled>
-            Seleccioná un grupo muscular
+            Selecciona un grupo muscular
           </option>
           {MUSCLE_GROUPS.map((group) => (
             <option key={group} value={group}>
@@ -183,7 +183,7 @@ export function ExerciseForm({
                 <span className="font-medium">Propio (solo para mí)</span>
                 <br />
                 <span className="text-xs text-[#888888]">
-                  Solo vos lo ves y lo podés editar o borrar.
+                  Solo tú lo ves y lo puedes editar o borrar.
                 </span>
               </span>
             </label>

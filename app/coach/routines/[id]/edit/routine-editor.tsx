@@ -146,13 +146,13 @@ export function RoutineEditor({
 
   function handleSubmit() {
     if (!name.trim()) return setError("El nombre es obligatorio.");
-    if (days.length === 0) return setError("Agregá al menos un día.");
+    if (days.length === 0) return setError("Agrega al menos un día.");
     if (days.some((d) => !d.name.trim()))
       return setError("Todos los días necesitan un nombre.");
     for (const day of days) {
       for (const ex of day.exercises) {
         if (!ex.exerciseId) {
-          setError(`Elegí un ejercicio en "${day.name}".`);
+          setError(`Elige un ejercicio en "${day.name}".`);
           return;
         }
         if (!ex.sets) {

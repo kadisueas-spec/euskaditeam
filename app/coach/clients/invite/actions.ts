@@ -30,7 +30,7 @@ export async function generateInviteCode(
 
   if (error) {
     console.error("generateInviteCode error:", error);
-    return { error: "No se pudo generar el código. Intentá de nuevo." };
+    return { error: "No se pudo generar el código. Intenta de nuevo." };
   }
 
   revalidatePath("/coach/clients/invite");
