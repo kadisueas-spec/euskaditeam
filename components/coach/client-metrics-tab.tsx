@@ -74,7 +74,7 @@ export function ClientMetricsTab({
             key={r}
             type="button"
             onClick={() => setRange(r)}
-            className={`min-h-[36px] flex-1 rounded-full text-xs font-semibold tracking-wide uppercase transition-colors ${
+            className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-xs font-semibold tracking-wide uppercase transition-colors ${
               range === r ? "bg-[#e8001c] text-white" : "bg-white/5 text-[#888888]"
             }`}
           >

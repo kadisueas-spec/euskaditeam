@@ -40,7 +40,7 @@ export function ClientDetailTabs({
         <button
           type="button"
           onClick={() => selectTab("resumen")}
-          className={`min-h-[44px] flex-1 rounded-full text-center font-display tracking-widest uppercase transition-colors ${
+          className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
             tab === "resumen"
               ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
               : "bg-white/5 text-[#888888]"
@@ -51,7 +51,7 @@ export function ClientDetailTabs({
         <button
           type="button"
           onClick={() => selectTab("metricas")}
-          className={`min-h-[44px] flex-1 rounded-full text-center font-display tracking-widest uppercase transition-colors ${
+          className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
             tab === "metricas"
               ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
               : "bg-white/5 text-[#888888]"
