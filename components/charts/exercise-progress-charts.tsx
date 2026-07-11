@@ -162,7 +162,7 @@ export function ExerciseProgressCharts({
               key={mode}
               type="button"
               onClick={() => setRangeMode(mode)}
-              className={`min-h-[36px] rounded-full px-3 text-xs font-semibold tracking-wide uppercase transition-colors ${
+              className={`min-h-[44px] min-w-[44px] cursor-pointer touch-manipulation rounded-full px-3 text-xs font-semibold tracking-wide uppercase transition-colors ${
                 rangeMode === mode
                   ? "bg-[#e8001c] text-white"
                   : "text-[#888888]"
