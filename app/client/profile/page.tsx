@@ -1,6 +1,7 @@
 import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { formatDate } from "@/lib/utils/format-date";
@@ -61,6 +62,15 @@ export default async function ProfilePage() {
               ? formatDate(client.subscriptionEndDate)
               : "-"}
           </p>
+        </CardContent>
+      </Card>
+
+      <Card className="border-[#1e1e1e] bg-[#111111]">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Seguridad</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ChangePasswordForm />
         </CardContent>
       </Card>
 

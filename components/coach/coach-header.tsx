@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/coach/actions";
 import type { Profile } from "@/lib/supabase/profiles";
@@ -16,14 +17,18 @@ export function CoachHeader({ profile }: { profile: Profile }) {
         Euskadi Team <span className="text-[#e8001c]">Coach</span>
       </span>
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2">
+        <Link
+          href="/coach/profile"
+          className="flex items-center gap-2 rounded-lg py-1.5 pr-1 pl-1.5 hover:bg-white/5"
+          title="Mi perfil"
+        >
           <span className="flex size-8 items-center justify-center rounded-full bg-[#e8001c] text-xs font-semibold text-white">
             {initials(profile.full_name, profile.email)}
           </span>
           <span className="hidden text-sm text-[#888888] sm:inline">
             {profile.full_name ?? profile.email}
           </span>
-        </div>
+        </Link>
         <form action={logout}>
           <button
             type="submit"
