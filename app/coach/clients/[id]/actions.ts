@@ -2,12 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { FEEDBACK_TYPES, FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
+import { FEEDBACK_TYPES } from "@/lib/constants/feedback";
 import type { FeedbackType } from "@/lib/constants/feedback";
 import { getMonthKey } from "@/lib/supabase/monthly-goals";
 import { PAYMENT_METHODS } from "@/lib/constants/access";
 import type { PaymentMethod } from "@/lib/constants/access";
 import { sendPushToClient } from "@/lib/push/send-push";
+import { FEEDBACK_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
 
 export type FeedbackFormState = { error: string } | { success: true } | undefined;
 
@@ -48,7 +49,7 @@ export async function createFeedback(
   }
 
   sendPushToClient(clientId, {
-    title: `Nuevo feedback de tu coach: ${FEEDBACK_TYPE_LABEL[type]}`,
+    title: pickPushCopy(FEEDBACK_PUSH_TITLES),
     body: message,
     url: "/client/feedback",
   }).catch((pushError) => {

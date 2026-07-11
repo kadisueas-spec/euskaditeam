@@ -62,6 +62,12 @@ async function sendPushToCoach(coachId, payload) {
   }
 }
 
+// Bloque 5 (jul-2026) — "Voz Euskadi": voseo para el cliente, "tienes" para
+// el coach. Cuando hay más de una variante, se elige al azar en cada envío.
+function pick(options) {
+  return options[Math.floor(Math.random() * options.length)];
+}
+
 function isMonthEndToday(date) {
   const totalDays = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)
@@ -94,9 +100,13 @@ Deno.serve(async () => {
 
   for (const client of clients ?? []) {
     if (monthUnlocked) {
+      const [unlockTitle, unlockBody] = pick([
+        ["Terminaste el mes.", "Ahora viene la verdad, vamos a descubrirlo."],
+        ["Tu mes está completo.", "¿Llegaste a tu objetivo? Vamos a descubrirlo."],
+      ]);
       await sendPushToClient(client.id, {
-        title: "Se desbloqueó tu resumen del mes 🔓",
-        body: "Mirá tu progreso, tu adherencia y el mensaje de tu coach.",
+        title: unlockTitle,
+        body: unlockBody,
         url: "/client/my-month",
       });
     }
@@ -110,9 +120,13 @@ Deno.serve(async () => {
       .maybeSingle();
 
     if (lastLog && daysAgo(lastLog.workout_date, now) === 3) {
+      const [inactiveTitle, inactiveBody] = pick([
+        ["Hace 3 días que no aparecés.", "Tu rutina te está esperando."],
+        ["El progreso no espera.", "¿Volvemos?"],
+      ]);
       await sendPushToClient(client.id, {
-        title: "Te extrañamos 👋",
-        body: "¿Todo bien? Hace 3 días que no registrás un entrenamiento.",
+        title: inactiveTitle,
+        body: inactiveBody,
         url: "/client/my-routine",
       });
     }
@@ -140,9 +154,14 @@ Deno.serve(async () => {
       routine.clients?.profiles?.email ??
       "Tu cliente";
 
+    const [mesocicloTitle, mesocicloBody] =
+      days === 7
+        ? [`El mesociclo de ${clientName} termina en 7 días.`, "¿Ya tienes su próxima rutina?"]
+        : [`Quedan 2 días para que ${clientName} termine su bloque.`, "Prepárale lo que sigue."];
+
     await sendPushToCoach(routine.coach_id, {
-      title: `El mesociclo de ${clientName} termina en ${days} día${days === 1 ? "" : "s"}`,
-      body: "Preparale la siguiente rutina con tiempo.",
+      title: mesocicloTitle,
+      body: mesocicloBody,
       url: routine.clients?.id ? `/coach/clients/${routine.clients.id}` : "/coach/dashboard",
     });
   }

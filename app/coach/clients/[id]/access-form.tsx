@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import {
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABEL,
@@ -110,6 +111,7 @@ export function AccessForm({
         )}
 
         <Button type="submit" disabled={pending} className="w-fit">
+          {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
           {pending ? "Guardando..." : "Guardar y activar acceso"}
         </Button>
       </form>

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { MUSCLE_GROUPS } from "@/lib/constants/exercises";
 import type { ExerciseDetail } from "@/lib/supabase/exercises";
 import type { ExerciseFormState } from "./actions";
@@ -216,6 +217,7 @@ export function ExerciseForm({
       <div className="flex gap-3">
         {!readOnly && (
           <Button type="submit" disabled={pending}>
+            {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
             {pending ? "Guardando..." : "Guardar"}
           </Button>
         )}

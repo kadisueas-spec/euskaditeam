@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Eye, EyeOff, Lock, Mail, Ticket, User } from "lucide-react";
 import { AuthInput } from "@/components/auth/auth-input";
+import { Spinner } from "@/components/ui/spinner";
 import { register, type RegisterState } from "./actions";
 
 export function RegisterForm() {
@@ -111,7 +112,10 @@ export function RegisterForm() {
         }}
       >
         {pending ? (
-          "Creando cuenta..."
+          <>
+            <Spinner size="sm" className="border-white/30 border-t-white" />
+            Creando cuenta...
+          </>
         ) : (
           <>
             Crear cuenta <ArrowRight className="size-5" />

@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { TrendingUp } from "lucide-react";
+import { History, TrendingUp } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getWorkoutHistory } from "@/lib/supabase/workout-history";
-import { formatDate } from "@/lib/utils/format-date";
+import { formatFriendlyDate } from "@/lib/utils/format-date";
 
 export default async function ProgressPage() {
   const history = await getWorkoutHistory();
@@ -27,9 +28,10 @@ export default async function ProgressPage() {
       </div>
 
       {history.length === 0 ? (
-        <p className="text-sm text-[#888888]">
-          Todavía no registraste ningún entrenamiento.
-        </p>
+        <EmptyState
+          icon={History}
+          title="Completá tu primer entrenamiento para ver tu historial."
+        />
       ) : (
         <ul className="flex flex-col gap-3">
           {history.map((log, i) => (
@@ -43,7 +45,7 @@ export default async function ProgressPage() {
                     {log.dayName ?? "Entrenamiento"}
                   </p>
                   <p className="text-sm text-[#888888]">
-                    {formatDate(log.workoutDate)}
+                    {formatFriendlyDate(log.workoutDate)}
                   </p>
                 </div>
                 <Badge variant={log.isCompleted ? "default" : "outline"}>

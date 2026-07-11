@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { AlertTriangle, Clock, Flag } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Flag } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getCoachDashboardData } from "@/lib/supabase/dashboard";
 import { getMonthEndAlerts } from "@/lib/supabase/monthly-review";
@@ -186,9 +187,11 @@ export default async function CoachDashboardPage() {
         </CardHeader>
         <CardContent>
           {recentLogs.length === 0 ? (
-            <p className="text-sm text-[#888888]">
-              Todavía no hay entrenamientos registrados.
-            </p>
+            <EmptyState
+              icon={Activity}
+              title="Todavía no hay entrenamientos registrados."
+              className="py-4"
+            />
           ) : (
             <ul className="flex flex-col gap-3">
               {recentLogs.map((log) => (

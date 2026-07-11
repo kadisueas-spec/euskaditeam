@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import { ClipboardList, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { FeedbackList } from "@/components/coach/feedback-list";
 import { ClientDetailTabs } from "@/components/coach/client-detail-tabs";
@@ -171,9 +173,11 @@ export default async function ClientDetailPage({
           </CardHeader>
           <CardContent>
             {client.routines.length === 0 ? (
-              <p className="text-sm text-[#888888]">
-                Sin rutinas asignadas todavía.
-              </p>
+              <EmptyState
+                icon={ClipboardList}
+                title="Sin rutinas asignadas todavía."
+                className="py-4"
+              />
             ) : (
               <ul className="flex flex-col gap-2">
                 {client.routines.map((r) => (
@@ -202,9 +206,11 @@ export default async function ClientDetailPage({
           </CardHeader>
           <CardContent>
             {client.recentLogs.length === 0 ? (
-              <p className="text-sm text-[#888888]">
-                Todavía no registró entrenamientos.
-              </p>
+              <EmptyState
+                icon={History}
+                title="Todavía no registró entrenamientos."
+                className="py-4"
+              />
             ) : (
               <ul className="flex flex-col gap-2">
                 {client.recentLogs.map((log) => (

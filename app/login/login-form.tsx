@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from "lucide-react";
 import { AuthInput } from "@/components/auth/auth-input";
+import { Spinner } from "@/components/ui/spinner";
 import { login, type LoginState } from "./actions";
 
 export function LoginForm() {
@@ -77,7 +78,10 @@ export function LoginForm() {
         }}
       >
         {pending ? (
-          "Ingresando..."
+          <>
+            <Spinner size="sm" className="border-white/30 border-t-white" />
+            Ingresando...
+          </>
         ) : (
           <>
             Iniciar sesión <ArrowRight className="size-5" />

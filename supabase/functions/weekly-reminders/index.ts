@@ -68,12 +68,16 @@ Deno.serve(async () => {
     let body;
 
     if (day === 1) {
-      title = "Nueva semana 💪";
-      body = "¿Ya tenés tu entrenamiento agendado?";
+      title = "Arrancá tu semana con todo";
+      body = "Empezá tu rutina esta semana.";
     } else if (day === 5) {
-      title = "Terminá la semana sintiéndote bien 🔥";
-      body = "Vamos con el último empujón de la semana.";
+      title = "Cerrá la semana fuerte";
+      body = "Vamos a entrenar.";
     } else {
+      // Miércoles: combina el dato real (sesiones ya completadas esta
+      // semana) con la voz Euskadi. Sin datos (0 sesiones o sin registros
+      // todavía) cae al fallback genérico en vez de decir "Ya vas por 0
+      // sesiones", que sonaría a reproche.
       const weekStart = mondayOfWeek(now);
       const { count } = await supabase
         .from("workout_logs")
@@ -81,8 +85,14 @@ Deno.serve(async () => {
         .eq("client_id", client.id)
         .eq("is_completed", true)
         .gte("workout_date", weekStart);
-      title = "¡Seguí así! 🔥";
-      body = `Vas ${count ?? 0} sesión${count === 1 ? "" : "es"} esta semana. ¡Seguí así!`;
+
+      if (count && count > 0) {
+        title = `Ya vas por ${count} sesión${count === 1 ? "" : "es"} esta semana.`;
+        body = "No aflojes ahora.";
+      } else {
+        title = "Mitad de semana.";
+        body = "¿Cómo vas con tu rutina?";
+      }
     }
 
     await sendPushToClient(client.id, { title, body, url: "/client/my-routine" });

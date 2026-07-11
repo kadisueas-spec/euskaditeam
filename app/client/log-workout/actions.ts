@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord, type ClientRecord } from "@/lib/supabase/client-profile";
 import { sendPushToCoach } from "@/lib/push/send-push";
+import { adherence80PushTitle } from "@/lib/constants/push-copy";
 
 export type LoggedSet = {
   id: string;
@@ -93,13 +94,59 @@ export type AddSetInput = {
   rir: number | null;
 };
 
-export type AddSetResult = { success: true; id: string } | { error: string };
+export type AddSetResult =
+  | { success: true; id: string; isPersonalRecord: boolean }
+  | { error: string };
+
+type PriorMaxWeightRow = { weight_kg: number | null };
+
+// Bloque 2 (jul-2026): ¿esta serie es un récord personal? Compara contra el
+// máximo histórico de ESE EJERCICIO (no de esta rutina puntual, ni de esta
+// routine_exercise puntual) para este cliente, en cualquier sesión pasada.
+// Se calcula ANTES del insert para no comparar la serie contra sí misma.
+async function checkPersonalRecord(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+  routineExerciseId: string,
+  weightKg: number | null
+): Promise<boolean> {
+  if (weightKg == null) return false;
+
+  const { data: routineExercise } = await supabase
+    .from("routine_exercises")
+    .select("exercise_id")
+    .eq("id", routineExerciseId)
+    .single();
+  if (!routineExercise?.exercise_id) return false;
+
+  const { data: priorSets } = await supabase
+    .from("workout_set_logs")
+    .select(
+      "weight_kg, routine_exercises!inner(exercise_id), workout_logs!inner(client_id)"
+    )
+    .eq("routine_exercises.exercise_id", routineExercise.exercise_id)
+    .eq("workout_logs.client_id", clientId)
+    .order("weight_kg", { ascending: false })
+    .limit(1)
+    .returns<PriorMaxWeightRow[]>();
+
+  const priorMax = priorSets?.[0]?.weight_kg ?? null;
+  return priorMax == null || weightKg > priorMax;
+}
 
 export async function addSet(input: AddSetInput): Promise<AddSetResult> {
   const client = await getCurrentClientRecord();
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
   const supabase = await createClient();
+
+  const isPersonalRecord = await checkPersonalRecord(
+    supabase,
+    client.id,
+    input.routineExerciseId,
+    input.weightKg
+  );
+
   const { data, error } = await supabase
     .from("workout_set_logs")
     .insert({
@@ -118,7 +165,7 @@ export async function addSet(input: AddSetInput): Promise<AddSetResult> {
     return { error: "No se pudo guardar la serie." };
   }
 
-  return { success: true, id: data.id };
+  return { success: true, id: data.id, isPersonalRecord };
 }
 
 export type UpdateSetInput = {
@@ -160,7 +207,15 @@ export type FinishWorkoutInput = {
   notes: string;
 };
 
-export type FinishWorkoutResult = { success: true } | { error: string };
+export type WorkoutSummary = {
+  totalSets: number;
+  totalVolume: number;
+  durationMinutes: number;
+};
+
+export type FinishWorkoutResult =
+  | { success: true; summary: WorkoutSummary }
+  | { error: string };
 
 // Push al coach cuando el cliente CRUZA el 80% de adherencia del mes (no
 // cuando ya está arriba de 80%, para no repetir el aviso en cada sesión
@@ -202,7 +257,7 @@ async function notifyCoachIfAdherenceCrossed80({
   const clientName = profile?.full_name ?? profile?.email ?? "Tu cliente";
 
   await sendPushToCoach(client.coachId, {
-    title: `${clientName} ya completó el 80% de su rutina este mes 🔥`,
+    title: adherence80PushTitle(clientName),
     body: "Revisá su progreso en tu panel.",
     url: `/coach/clients/${client.id}`,
   });
@@ -220,11 +275,11 @@ export async function finishWorkout(
   const now = new Date();
   const monthPrefix = now.toISOString().slice(0, 7);
 
-  const [{ data: workoutLog }, { data: monthLogs }, { data: activeRoutine }] =
+  const [{ data: workoutLog }, { data: monthLogs }, { data: activeRoutine }, { data: sets }] =
     await Promise.all([
       supabase
         .from("workout_logs")
-        .select("workout_date")
+        .select("workout_date, started_at")
         .eq("id", input.workoutLogId)
         .single(),
       supabase
@@ -242,13 +297,19 @@ export async function finishWorkout(
         .limit(1)
         .maybeSingle()
         .returns<{ id: string; routine_days: { count: number }[] } | null>(),
+      supabase
+        .from("workout_set_logs")
+        .select("weight_kg, reps_completed")
+        .eq("workout_log_id", input.workoutLogId),
     ]);
+
+  const finishedAt = now.toISOString();
 
   const { error } = await supabase
     .from("workout_logs")
     .update({
       is_completed: true,
-      finished_at: new Date().toISOString(),
+      finished_at: finishedAt,
       energy_level: input.energyLevel,
       client_notes: input.notes || null,
     })
@@ -267,7 +328,21 @@ export async function finishWorkout(
     now,
   }).catch((err) => console.error("finishWorkout adherence push error:", err));
 
-  return { success: true };
+  const totalVolume = (sets ?? []).reduce(
+    (sum, s) => sum + (s.weight_kg != null && s.reps_completed != null ? s.weight_kg * s.reps_completed : 0),
+    0
+  );
+  const durationMinutes = workoutLog?.started_at
+    ? Math.max(1, Math.round((new Date(finishedAt).getTime() - new Date(workoutLog.started_at).getTime()) / 60000))
+    : 0;
+
+  const summary: WorkoutSummary = {
+    totalSets: (sets ?? []).length,
+    totalVolume: Math.round(totalVolume),
+    durationMinutes,
+  };
+
+  return { success: true, summary };
 }
 
 export type PreviousSetValue = {

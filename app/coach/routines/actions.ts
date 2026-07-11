@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToClient } from "@/lib/push/send-push";
+import { NEW_ROUTINE_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
 
 export type RoutineExerciseInput = {
   id?: string;
@@ -119,7 +120,7 @@ export async function createRoutine(
   }
 
   sendPushToClient(input.clientId, {
-    title: "Tenés nueva rutina disponible 💪",
+    title: pickPushCopy(NEW_ROUTINE_PUSH_TITLES),
     body: input.name.trim(),
     url: "/client/my-routine",
   }).catch((error) => {
@@ -296,7 +297,7 @@ export async function updateRoutine(
 
   if (updatedRoutine.client_id) {
     sendPushToClient(updatedRoutine.client_id, {
-      title: "Tenés nueva rutina disponible 💪",
+      title: pickPushCopy(NEW_ROUTINE_PUSH_TITLES),
       body: input.name.trim(),
       url: "/client/my-routine",
     }).catch((error) => {

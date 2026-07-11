@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getWorkoutLogDetail } from "@/lib/supabase/workout-history";
-import { formatDate } from "@/lib/utils/format-date";
+import { formatFriendlyDate } from "@/lib/utils/format-date";
 import { EditableSetRow } from "./editable-set-row";
 
 export default async function WorkoutLogDetailPage({
@@ -29,7 +29,7 @@ export default async function WorkoutLogDetailPage({
           {log.dayName ?? "Entrenamiento"}
         </h1>
         <div className="mt-1.5 mb-1 h-0.5 w-10 bg-[#e8001c]" />
-        <p className="text-sm text-[#888888]">{formatDate(log.workoutDate)}</p>
+        <p className="text-sm text-[#888888]">{formatFriendlyDate(log.workoutDate)}</p>
         {log.energyLevel != null && (
           <p className="mt-1 text-sm text-[#888888]">
             Energía: {log.energyLevel}/5

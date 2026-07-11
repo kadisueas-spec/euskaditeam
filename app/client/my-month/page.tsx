@@ -1,5 +1,5 @@
 import { Lock } from "lucide-react";
-import { MyMonthUnlocked } from "@/components/client/my-month-unlocked";
+import { MonthUnlockReveal } from "@/components/client/month-unlock-reveal";
 import { FadeIn } from "@/components/motion/fade-in";
 import {
   getMyMonthProgress,
@@ -40,7 +40,7 @@ export default async function MyMonthPage() {
           Mi Mes
         </h1>
         {unlockedData ? (
-          <MyMonthUnlocked data={unlockedData} />
+          <MonthUnlockReveal data={unlockedData} />
         ) : (
           <p className="text-sm text-[#888888]">
             No se encontraron datos del mes.
@@ -54,7 +54,7 @@ export default async function MyMonthPage() {
     goal,
     trainedDays,
     plannedDays,
-    streak,
+    dailyStreak,
     totalDaysInMonth,
     trainedDates,
     daysUntilUnlock,
@@ -87,12 +87,12 @@ export default async function MyMonthPage() {
         </FadeIn>
         <FadeIn delay={0.05}>
           <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-            <p className="text-sm text-[#888888]">Racha actual</p>
+            <p className="text-sm text-[#888888]">Racha de días 🔥</p>
             <p className="mt-1 font-display text-4xl text-[#e8001c]">
-              {streak}
+              {dailyStreak}
               <span className="text-lg text-[#888888]">
                 {" "}
-                semana{streak === 1 ? "" : "s"}
+                día{dailyStreak === 1 ? "" : "s"}
               </span>
             </p>
           </div>

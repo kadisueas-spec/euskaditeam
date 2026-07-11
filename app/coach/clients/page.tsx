@@ -1,6 +1,8 @@
 import Link from "next/link";
+import { Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
 import {
   Table,
   TableBody,
@@ -48,7 +50,7 @@ export default async function ClientsPage() {
       </div>
 
       {clients.length === 0 ? (
-        <p className="text-sm text-[#888888]">Todavía no tenés clientes.</p>
+        <EmptyState icon={Users} title="Todavía no tenés clientes." />
       ) : (
         <FadeIn className="overflow-x-auto rounded-2xl border border-[#1e1e1e]">
           <Table>

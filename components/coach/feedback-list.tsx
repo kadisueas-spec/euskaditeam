@@ -1,4 +1,6 @@
+import { MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/ui/empty-state";
 import { FEEDBACK_TYPE_LABEL, FEEDBACK_TYPE_ICON } from "@/lib/constants/feedback";
 import { formatDate } from "@/lib/utils/format-date";
 import type { FeedbackItem } from "@/lib/supabase/feedback";
@@ -6,9 +8,11 @@ import type { FeedbackItem } from "@/lib/supabase/feedback";
 export function FeedbackList({ items }: { items: FeedbackItem[] }) {
   if (items.length === 0) {
     return (
-      <p className="text-sm text-[#888888]">
-        Todavía no le dejaste feedback a este cliente.
-      </p>
+      <EmptyState
+        icon={MessageSquare}
+        title="Todavía no le dejaste feedback a este cliente."
+        className="py-4"
+      />
     );
   }
 

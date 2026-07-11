@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { TrendingUp } from "lucide-react";
 import {
   CartesianGrid,
   Line,
@@ -10,6 +11,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { EmptyState } from "@/components/ui/empty-state";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { ExerciseSessionSeries } from "@/lib/supabase/metrics";
 
@@ -129,9 +131,11 @@ export function ExerciseProgressCharts({
         <p className="mb-1 text-sm font-medium text-white">
           Peso máximo y promedio por ejercicio
         </p>
-        <p className="text-sm text-[#888888]">
-          Todavía no hay series con peso registradas.
-        </p>
+        <EmptyState
+          icon={TrendingUp}
+          title="Todavía no hay series con peso registradas."
+          className="py-4"
+        />
       </div>
     );
   }

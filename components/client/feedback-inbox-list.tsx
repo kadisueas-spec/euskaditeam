@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { FadeIn } from "@/components/motion/fade-in";
 import { FEEDBACK_TYPE_LABEL, FEEDBACK_TYPE_ICON } from "@/lib/constants/feedback";
 import type { FeedbackItem } from "@/lib/supabase/feedback";
-import { formatDate } from "@/lib/utils/format-date";
+import { formatFriendlyDate } from "@/lib/utils/format-date";
 
 export function FeedbackInboxList({ feedback }: { feedback: FeedbackItem[] }) {
   // Optimistic UI: al tocar un ítem lo marcamos "leído" visualmente al
@@ -50,7 +50,7 @@ export function FeedbackInboxList({ feedback }: { feedback: FeedbackItem[] }) {
                       {FEEDBACK_TYPE_LABEL[f.type]}
                     </Badge>
                     <span className="shrink-0 text-xs text-[#888888]">
-                      {formatDate(f.createdAt)}
+                      {formatFriendlyDate(f.createdAt)}
                     </span>
                   </div>
                   <p

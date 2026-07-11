@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useActionState } from "react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import {
   createMonthlyGoal,
@@ -185,6 +186,7 @@ export function MonthlyGoalModal() {
             disabled={pending}
             className="min-h-[48px] w-full border-transparent bg-white text-base font-semibold text-[#e8001c] hover:bg-white/90"
           >
+            {pending && <Spinner size="sm" className="border-[#e8001c]/25 border-t-[#e8001c]" />}
             {pending ? "Guardando..." : "Empezar el mes"}
           </Button>
         </form>

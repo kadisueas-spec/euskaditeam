@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
 import { formatDate } from "@/lib/utils/format-date";
 import type { ExerciseOption, SessionOption } from "@/lib/supabase/feedback";
@@ -98,6 +99,7 @@ export function FeedbackForm({
       )}
 
       <Button type="submit" disabled={pending} className="w-fit">
+        {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
         {pending ? "Enviando..." : "Dejar feedback"}
       </Button>
     </form>

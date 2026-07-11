@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 const ROLE_ROUTES: Record<string, "coach" | "client"> = {
@@ -19,9 +19,25 @@ const AUTH_HEADERS = [
   "x-user-full-name",
 ] as const;
 
+type CookieToSet = { name: string; value: string; options: CookieOptions };
+
 export async function updateSession(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
-  let response = NextResponse.next({ request: { headers: requestHeaders } });
+
+  // Bug encontrado jul-2026 (causa raíz de fondo del cuelgue en "Iniciar
+  // entrenamiento"): la versión anterior armaba un NextResponse nuevo en
+  // cada paso (uno al principio, uno dentro de setAll, uno más al final) y
+  // el último SIEMPRE ganaba — si getUser() refrescaba el access token
+  // (típico al volver a abrir la app después de un rato), las cookies
+  // refrescadas quedaban colgadas en un response intermedio que se
+  // descartaba, y el navegador nunca recibía la sesión nueva. La siguiente
+  // llamada (por ej. el Server Action de "Iniciar entrenamiento") volvía a
+  // intentar refrescar con un refresh token ya usado -> fallaba -> a veces
+  // eso alcanzaba para que la llamada nunca resolviera bien del lado del
+  // cliente. Ahora las cookies a setear se juntan en un array y se aplican
+  // una sola vez, al final, sobre el response que efectivamente se
+  // devuelve (sea el de éxito o el de redirect a /login).
+  let cookiesToSet: CookieToSet[] = [];
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -31,14 +47,9 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          response = NextResponse.next({ request: { headers: requestHeaders } });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+        setAll(cookies) {
+          cookies.forEach(({ name, value }) => request.cookies.set(name, value));
+          cookiesToSet = cookies;
         },
       },
     }
@@ -62,7 +73,6 @@ export async function updateSession(request: NextRequest) {
   } else {
     AUTH_HEADERS.forEach((h) => requestHeaders.delete(h));
   }
-  response = NextResponse.next({ request: { headers: requestHeaders } });
 
   const { pathname } = request.nextUrl;
   const requiredRole = Object.entries(ROLE_ROUTES).find(([prefix]) =>
@@ -73,14 +83,26 @@ export async function updateSession(request: NextRequest) {
     if (!user) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("next", pathname);
-      return NextResponse.redirect(loginUrl);
+      const redirect = NextResponse.redirect(loginUrl);
+      cookiesToSet.forEach(({ name, value, options }) =>
+        redirect.cookies.set(name, value, options)
+      );
+      return redirect;
     }
 
     const role = user.user_metadata?.role;
     if (role !== requiredRole) {
-      return NextResponse.redirect(new URL("/login", request.url));
+      const redirect = NextResponse.redirect(new URL("/login", request.url));
+      cookiesToSet.forEach(({ name, value, options }) =>
+        redirect.cookies.set(name, value, options)
+      );
+      return redirect;
     }
   }
 
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
+  cookiesToSet.forEach(({ name, value, options }) =>
+    response.cookies.set(name, value, options)
+  );
   return response;
 }

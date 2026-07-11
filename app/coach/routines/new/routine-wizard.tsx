@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
@@ -277,7 +278,7 @@ export function RoutineWizard({
           {days.map((day, index) => (
             <div
               key={day.key}
-              className="flex items-center gap-3 rounded-2xl border border-[#1e1e1e] p-3 transition-colors duration-300 hover:border-[#e8001c]"
+              className="flex items-center gap-3 rounded-2xl border border-[#1e1e1e] p-3 transition-colors duration-200 hover:border-[#e8001c]"
             >
               <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-[#e8001c] font-display text-sm text-white">
                 {index + 1}
@@ -445,6 +446,7 @@ export function RoutineWizard({
               Atrás
             </Button>
             <Button onClick={handleSubmit} disabled={pending}>
+              {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
               {pending ? "Creando..." : "Crear rutina"}
             </Button>
           </div>

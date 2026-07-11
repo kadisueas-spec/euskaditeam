@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { generateInviteCode, type InviteState } from "./actions";
 
 export function InviteForm() {
@@ -42,6 +43,7 @@ export function InviteForm() {
   return (
     <form action={action} className="flex flex-col gap-3">
       <Button type="submit" disabled={pending} className="w-fit">
+        {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
         {pending ? "Generando..." : "Generar código de invitación"}
       </Button>
 

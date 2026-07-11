@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { FadeIn } from "@/components/motion/fade-in";
 import { FEEDBACK_TYPE_LABEL, FEEDBACK_TYPE_ICON } from "@/lib/constants/feedback";
 import { getFeedbackDetail } from "@/lib/supabase/feedback";
-import { formatDate } from "@/lib/utils/format-date";
+import { formatFriendlyDate } from "@/lib/utils/format-date";
 import { MarkReadOnMount } from "./mark-read-on-mount";
 
 export default async function FeedbackDetailPage({
@@ -29,7 +29,7 @@ export default async function FeedbackDetailPage({
             {FEEDBACK_TYPE_LABEL[feedback.type]}
           </p>
           <span className="text-sm text-[#888888]">
-            {formatDate(feedback.createdAt)}
+            {formatFriendlyDate(feedback.createdAt)}
           </span>
         </div>
       </div>
@@ -40,7 +40,7 @@ export default async function FeedbackDetailPage({
 
       {(feedback.workoutDate || feedback.exerciseName) && (
         <div className="flex flex-col gap-1 rounded-2xl bg-white/5 p-4 text-sm text-[#888888]">
-          {feedback.workoutDate && <p>Sesión: {formatDate(feedback.workoutDate)}</p>}
+          {feedback.workoutDate && <p>Sesión: {formatFriendlyDate(feedback.workoutDate)}</p>}
           {feedback.exerciseName && <p>Ejercicio: {feedback.exerciseName}</p>}
         </div>
       )}

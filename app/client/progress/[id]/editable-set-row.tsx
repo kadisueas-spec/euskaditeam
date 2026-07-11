@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Spinner } from "@/components/ui/spinner";
 import { updateSet } from "@/app/client/log-workout/actions";
 import type { WorkoutLogSetDetail } from "@/lib/supabase/workout-history";
 
@@ -35,18 +36,26 @@ export function EditableSetRow({ set }: { set: WorkoutLogSetDetail }) {
   async function handleSave() {
     setSaving(true);
     setError(null);
-    const result = await updateSet(set.id, {
-      weightKg: weight ? Number(weight) : null,
-      reps: reps ? Number(reps) : null,
-      rir: rir ? Number(rir) : null,
-    });
-    setSaving(false);
-    if ("error" in result) {
-      setError(result.error);
-      return;
+    try {
+      const result = await updateSet(set.id, {
+        weightKg: weight ? Number(weight) : null,
+        reps: reps ? Number(reps) : null,
+        rir: rir ? Number(rir) : null,
+      });
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      setSaved({ weight, reps, rir });
+      setEditing(false);
+    } catch {
+      // Mismo bug de fondo que el cuelgue de "Iniciar entrenamiento": sin
+      // este catch, un rechazo de red dejaba el botón trabado en
+      // "Guardando..." para siempre.
+      setError("Sin conexión. Revisá tu red y reintentá.");
+    } finally {
+      setSaving(false);
     }
-    setSaved({ weight, reps, rir });
-    setEditing(false);
   }
 
   if (editing) {
@@ -92,6 +101,7 @@ export function EditableSetRow({ set }: { set: WorkoutLogSetDetail }) {
             Cancelar
           </Button>
           <Button className="h-10 flex-1" onClick={handleSave} disabled={saving}>
+            {saving && <Spinner size="sm" className="border-white/30 border-t-white" />}
             {saving ? "Guardando..." : "Guardar"}
           </Button>
         </div>

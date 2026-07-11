@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { NativeSelect } from "@/components/ui/native-select";
+import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import type { ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
@@ -402,6 +403,7 @@ export function RoutineEditor({
           Cancelar
         </Button>
         <Button onClick={handleSubmit} disabled={pending}>
+          {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
           {pending ? "Guardando..." : "Guardar cambios"}
         </Button>
       </div>

@@ -1,13 +1,18 @@
 import Link from "next/link";
-import { ChevronDown, Lightbulb, MessageSquare } from "lucide-react";
+import { ChevronDown, Dumbbell, Lightbulb, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ClientGreeting } from "@/components/client/client-greeting";
 import { ExerciseVideo } from "@/components/client/exercise-video";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getMyActiveRoutine } from "@/lib/supabase/client-routine";
 import { getMyFeedback } from "@/lib/supabase/feedback";
+import { getClientStats } from "@/lib/supabase/stats";
+import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
 import { formatRestTime } from "@/lib/utils/format-rest";
+import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
 
 function repsLabel(min: number | null, max: number | null) {
   if (min == null && max == null) return null;
@@ -16,10 +21,14 @@ function repsLabel(min: number | null, max: number | null) {
 }
 
 export default async function MyRoutinePage() {
-  const [routine, feedback] = await Promise.all([
+  const [routine, feedback, stats, profile] = await Promise.all([
     getMyActiveRoutine(),
     getMyFeedback(),
+    getClientStats(),
+    getCurrentProfile(),
   ]);
+  const firstName = profile?.full_name?.split(" ")[0] ?? "";
+  const motivationalPhrase = randomMotivationalPhrase();
 
   const feedbackByExercise = new Map<string, typeof feedback>();
   for (const f of feedback) {
@@ -31,17 +40,28 @@ export default async function MyRoutinePage() {
 
   if (!routine) {
     return (
-      <div>
-        <h1 className="text-xl font-semibold">Mi rutina</h1>
-        <p className="mt-2 text-sm text-[#888888]">
-          Todavía no tenés una rutina asignada. Hablá con tu coach.
-        </p>
+      <div className="flex flex-col gap-4">
+        <FadeIn>
+          <ClientGreeting name={firstName} />
+        </FadeIn>
+        <EmptyState
+          icon={Dumbbell}
+          title="Tu coach está preparando algo para vos."
+          description="Pronto vas a tener tu rutina."
+        />
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
+      <FadeIn>
+        <ClientGreeting name={firstName} />
+        <p className="mt-1 text-sm text-[#888888] italic">
+          &ldquo;{motivationalPhrase}&rdquo;
+        </p>
+      </FadeIn>
+
       <div>
         <h1 className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
           {routine.name}
@@ -51,6 +71,15 @@ export default async function MyRoutinePage() {
           <p className="text-sm text-[#888888]">Objetivo: {routine.objective}</p>
         )}
       </div>
+
+      {stats.dailyStreak > 0 && (
+        <FadeIn>
+          <p className="rounded-full bg-white/5 px-4 py-2 text-center text-sm font-medium text-[#f5f5f5]">
+            Estás en racha hace {stats.dailyStreak} día
+            {stats.dailyStreak === 1 ? "" : "s"} 🔥
+          </p>
+        </FadeIn>
+      )}
 
       {routine.days.map((day, dayIndex) => (
         <FadeIn key={day.id} delay={dayIndex * 0.06}>

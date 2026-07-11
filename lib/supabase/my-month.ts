@@ -13,7 +13,8 @@ export type MyMonthProgress = {
   goal: MonthlyGoal | null;
   trainedDays: number;
   plannedDays: number;
-  streak: number;
+  dailyStreak: number;
+  weeklyStreak: number;
   isUnlocked: boolean;
   totalDaysInMonth: number;
   trainedDates: string[];
@@ -78,7 +79,8 @@ export async function getMyMonthProgress(): Promise<MyMonthProgress | null> {
     goal,
     trainedDays,
     plannedDays,
-    streak: stats.streak,
+    dailyStreak: stats.dailyStreak,
+    weeklyStreak: stats.weeklyStreak,
     isUnlocked,
     totalDaysInMonth: totalDays,
     trainedDates,

@@ -67,7 +67,7 @@ export async function register(
       error:
         signUpError?.message === "User already registered"
           ? "Ya existe una cuenta con ese email."
-          : `No se pudo crear la cuenta: ${signUpError?.message ?? "error desconocido"}`,
+          : "No se pudo crear la cuenta. Intentá de nuevo.",
       debug,
     };
   }

@@ -1,4 +1,6 @@
+import { MessageCircle } from "lucide-react";
 import { FeedbackInboxList } from "@/components/client/feedback-inbox-list";
+import { EmptyState } from "@/components/ui/empty-state";
 import { getMyFeedback } from "@/lib/supabase/feedback";
 
 export default async function FeedbackInboxPage() {
@@ -14,9 +16,10 @@ export default async function FeedbackInboxPage() {
       </div>
 
       {feedback.length === 0 ? (
-        <p className="text-sm text-[#888888]">
-          Todavía no recibiste feedback de tu coach.
-        </p>
+        <EmptyState
+          icon={MessageCircle}
+          title="Cuando tu coach te deje un comentario, aparece acá."
+        />
       ) : (
         <FeedbackInboxList feedback={feedback} />
       )}
