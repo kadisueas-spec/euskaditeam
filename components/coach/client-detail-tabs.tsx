@@ -30,6 +30,11 @@ export function ClientDetailTabs({
   const [metricasVisited, setMetricasVisited] = useState(false);
 
   function selectTab(next: "resumen" | "metricas") {
+    // DIAGNÓSTICO TEMPORAL (jul-2026) — sacar apenas confirmemos si esto
+    // dispara en el iPhone del coach. Ver conversación: el tab no reacciona
+    // en absoluto en su dispositivo y no hay forma de reproducirlo con las
+    // herramientas de testing disponibles (corren sobre Chromium).
+    alert(`selectTab: ${next}`);
     if (next === "metricas") setMetricasVisited(true);
     setTab(next);
   }

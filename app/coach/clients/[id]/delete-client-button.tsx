@@ -66,7 +66,11 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
     <Button
       variant="outline"
       className="min-h-[44px] w-full cursor-pointer touch-manipulation border-[#e8001c]/40 text-[#e8001c] hover:bg-[#e8001c]/10"
-      onClick={() => setConfirming(true)}
+      onClick={() => {
+        // DIAGNÓSTICO TEMPORAL (jul-2026) — ver client-detail-tabs.tsx.
+        alert("Eliminar cliente: click");
+        setConfirming(true);
+      }}
     >
       <TriangleAlert className="size-4" />
       Eliminar cliente
