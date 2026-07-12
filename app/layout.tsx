@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import { Bebas_Neue, DM_Sans, Anton } from "next/font/google";
 import { AppHeightFix } from "@/components/app-height-fix";
 import { InstallBanner } from "@/components/install-banner";
-import { JsErrorCatcher } from "@/components/js-error-catcher";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import { TouchActiveFix } from "@/components/touch-active-fix";
 import "./globals.css";
@@ -83,7 +82,6 @@ export default function RootLayout({
           safe-area-inset-bottom. dvh es el viewport real, dinámico, mismo
           criterio que ya usa cada layout (h-dvh) para su contenedor raíz. */}
       <body className="min-h-dvh flex flex-col">
-        <JsErrorCatcher />
         <AppHeightFix />
         {children}
         <InstallBanner />
