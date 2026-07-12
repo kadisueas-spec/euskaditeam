@@ -43,14 +43,14 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
         <div className="flex gap-3">
           <Button
             variant="outline"
-            className="flex-1"
+            className="min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation"
             onClick={() => setConfirming(false)}
             disabled={pending}
           >
             Cancelar
           </Button>
           <Button
-            className="flex-1 bg-[#e8001c] hover:bg-[#b8001a]"
+            className="min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation bg-[#e8001c] hover:bg-[#b8001a]"
             onClick={handleConfirm}
             disabled={pending}
           >
@@ -65,7 +65,7 @@ export function DeleteClientButton({ clientId }: { clientId: string }) {
   return (
     <Button
       variant="outline"
-      className="w-full border-[#e8001c]/40 text-[#e8001c] hover:bg-[#e8001c]/10"
+      className="min-h-[44px] w-full cursor-pointer touch-manipulation border-[#e8001c]/40 text-[#e8001c] hover:bg-[#e8001c]/10"
       onClick={() => setConfirming(true)}
     >
       <TriangleAlert className="size-4" />
