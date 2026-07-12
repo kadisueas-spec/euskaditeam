@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { FEEDBACK_TYPES } from "@/lib/constants/feedback";
 import type { FeedbackType } from "@/lib/constants/feedback";
 import { getMonthKey } from "@/lib/supabase/monthly-goals";
@@ -149,4 +150,104 @@ export async function deactivateClientAccess(
     .eq("id", clientId);
 
   revalidatePath(`/coach/clients/${clientId}`);
+}
+
+export type DeleteClientState = { error: string } | { success: true } | undefined;
+
+// Borra a un cliente y todos sus datos. Solo permitido con acceso
+// desactivado (guardia server-side, no solo el botón oculto en la UI).
+//
+// Orden de borrado: la mayoría de las tablas hijas de `clients` tienen ON
+// DELETE CASCADE (feedback, rutinas, push_subscriptions, subscriptions), así
+// que borrar el usuario de auth al final cascadea todo eso solo. Pero dos
+// casos NO cascadean y hay que limpiarlos a mano primero:
+//   - monthly_goals / monthly_reviews: su FK a clients no tiene ON DELETE,
+//     bloquearían el borrado si quedan filas.
+//   - workout_set_logs.routine_exercise_id tampoco tiene ON DELETE, así que
+//     si se borraran las rutinas ANTES que los workout_logs, el borrado en
+//     cascada de routine_exercises fallaría con series todavía colgando.
+//     Por eso acá los workout_logs se borran primero explícitamente (eso ya
+//     cascadea sus propias series) y las rutinas se dejan para el cascade
+//     final del borrado de auth.
+//   - invite_codes.used_by tampoco tiene ON DELETE: si este cliente se
+//     registró con un código de invitación, ese código bloquearía el
+//     borrado del usuario de auth. Se desvincula (used_by = null) sin
+//     borrar el código, para no perder el historial de invitaciones.
+export async function deleteClient(
+  clientId: string,
+  _formData: FormData
+): Promise<DeleteClientState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id, user_id, subscription_status")
+    .eq("id", clientId)
+    .eq("coach_id", user.id)
+    .maybeSingle();
+
+  if (!client) return { error: "No se encontró el cliente." };
+  if (client.subscription_status !== "inactive") {
+    return { error: "Solo se pueden eliminar clientes con acceso desactivado." };
+  }
+
+  const admin = createAdminClient();
+
+  const { error: logsError } = await admin
+    .from("workout_logs")
+    .delete()
+    .eq("client_id", clientId);
+  if (logsError) {
+    console.error("deleteClient workout_logs error:", logsError);
+    return { error: "No se pudo eliminar el historial de entrenamientos." };
+  }
+
+  const { error: goalsError } = await admin
+    .from("monthly_goals")
+    .delete()
+    .eq("client_id", clientId);
+  if (goalsError) {
+    console.error("deleteClient monthly_goals error:", goalsError);
+    return { error: "No se pudieron eliminar los objetivos mensuales." };
+  }
+
+  const { error: reviewsError } = await admin
+    .from("monthly_reviews")
+    .delete()
+    .eq("client_id", clientId);
+  if (reviewsError) {
+    console.error("deleteClient monthly_reviews error:", reviewsError);
+    return { error: "No se pudieron eliminar los cierres de mes." };
+  }
+
+  if (client.user_id) {
+    await admin.from("invite_codes").update({ used_by: null }).eq("used_by", client.user_id);
+
+    const { error: authError } = await admin.auth.admin.deleteUser(client.user_id);
+    if (authError) {
+      // El usuario de auth no se pudo borrar (p. ej. problema de permisos
+      // puntual) — se borra igual el registro de clients para que
+      // desaparezca de la app; cascadea feedback/rutinas/etc igual.
+      console.error("deleteClient auth.admin.deleteUser error:", authError);
+      const { error: clientError } = await admin.from("clients").delete().eq("id", clientId);
+      if (clientError) {
+        console.error("deleteClient clients fallback error:", clientError);
+        return { error: "No se pudo eliminar el cliente." };
+      }
+    }
+  } else {
+    const { error: clientError } = await admin.from("clients").delete().eq("id", clientId);
+    if (clientError) {
+      console.error("deleteClient clients error:", clientError);
+      return { error: "No se pudo eliminar el cliente." };
+    }
+  }
+
+  revalidatePath("/coach/clients");
+  revalidatePath("/coach/dashboard");
+  return { success: true };
 }

@@ -70,12 +70,20 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData> {
     lastWorkoutDate: c.workout_logs[0]?.workout_date ?? null,
   }));
 
-  const activeCount = summaries.filter((c) => c.isActive).length;
+  // `is_active` es un campo legacy que nunca se toca desde la app (el flujo
+  // real de activar/desactivar acceso, ver AccessForm, solo escribe
+  // subscription_status). Todo el dashboard debe filtrar por
+  // subscription_status === "active" — antes usaba is_active y por eso
+  // seguía contando/alertando sobre clientes que el coach ya desactivó.
+  const isActiveClient = (c: ClientSummary) => c.subscriptionStatus === "active";
+
+  const activeCount = summaries.filter(isActiveClient).length;
   const inactiveCount = summaries.length - activeCount;
 
   const now = Date.now();
   const in7Days = now + 7 * 24 * 60 * 60 * 1000;
   const expiringSoon = summaries.filter((c) => {
+    if (!isActiveClient(c)) return false;
     if (!c.subscriptionEndDate) return false;
     const end = new Date(c.subscriptionEndDate).getTime();
     return end >= now && end <= in7Days;
@@ -83,15 +91,15 @@ export async function getCoachDashboardData(): Promise<CoachDashboardData> {
 
   const fiveDaysAgo = now - 5 * 24 * 60 * 60 * 1000;
   const staleClients = summaries.filter((c) => {
-    if (!c.isActive) return false;
+    if (!isActiveClient(c)) return false;
     if (!c.lastWorkoutDate) return true;
     return new Date(c.lastWorkoutDate).getTime() < fiveDaysAgo;
   });
 
   const clientById = new Map(summaries.map((c) => [c.id, c]));
-  const allLogs = clientRows.flatMap((c) =>
-    c.workout_logs.map((log) => ({ ...log, client_id: c.id }))
-  );
+  const allLogs = clientRows
+    .filter((c) => c.subscription_status === "active")
+    .flatMap((c) => c.workout_logs.map((log) => ({ ...log, client_id: c.id })));
   // Igual que antes: el primer log de cada cliente ya viene ordenado por
   // fecha desc, pero entre clientes distintos hay que volver a ordenar
   // para tomar los 10 más recientes globales.

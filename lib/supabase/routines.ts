@@ -237,13 +237,17 @@ export async function getNoActiveRoutineAlerts(): Promise<NoActiveRoutineAlert[]
   const supabase = await createClient();
   const today = new Date().toISOString().slice(0, 10);
 
+  // is_active es un campo legacy que la app nunca escribe (el flujo real de
+  // activar/desactivar acceso solo toca subscription_status, ver
+  // AccessForm) — filtrar por él dejaba pasar clientes que el coach ya
+  // desactivó.
   const { data } = await supabase
     .from("clients")
     .select(
       `id, profiles!clients_user_id_fkey ( full_name, email ),
        routines ( is_active, ends_at )`
     )
-    .eq("is_active", true)
+    .eq("subscription_status", "active")
     .returns<ClientRoutineCheckRow[]>();
 
   return (data ?? [])

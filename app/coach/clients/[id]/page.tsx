@@ -25,6 +25,7 @@ import { getAccessDisplayStatus, PAYMENT_METHOD_LABEL } from "@/lib/constants/ac
 import type { PaymentMethod } from "@/lib/constants/access";
 import { formatDate } from "@/lib/utils/format-date";
 import { AccessForm } from "./access-form";
+import { DeleteClientButton } from "./delete-client-button";
 import { FeedbackForm } from "./feedback-form";
 import { MonthlyReviewForm } from "./monthly-review-form";
 
@@ -263,6 +264,12 @@ export default async function ClientDetailPage({
           </CardContent>
         </Card>
       </FadeIn>
+
+      {client.subscriptionStatus === "inactive" && (
+        <FadeIn delay={0.4}>
+          <DeleteClientButton clientId={id} />
+        </FadeIn>
+      )}
           </>
         }
       />
