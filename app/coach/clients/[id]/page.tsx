@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { FeedbackList } from "@/components/coach/feedback-list";
-import { HydrationProbe } from "@/components/coach/hydration-probe";
 import { ClientDetailTabs } from "@/components/coach/client-detail-tabs";
 import { ClientMetricsTab } from "@/components/coach/client-metrics-tab";
 import { RecentLogsList } from "@/components/coach/recent-logs-list";
@@ -84,7 +83,6 @@ export default async function ClientDetailPage({
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
-      <HydrationProbe />
       <div>
         <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
           {client.fullName ?? client.email}

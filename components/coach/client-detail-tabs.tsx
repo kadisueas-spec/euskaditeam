@@ -19,6 +19,18 @@ import { useState } from "react";
 // (ya visible en ese momento, así Recharts mide bien desde el arranque);
 // de ahí en más se mantiene montado y se oculta con `hidden` como antes,
 // preservando el estado del selector de ejercicio en switches posteriores.
+//
+// BUG SEPARADO (jul-2026) — nada en esta página respondía al toque en un
+// iPhone con iOS 16.0-16.3 específicamente (ni este botón ni "Eliminar
+// cliente", tampoco un botón de prueba sin nada alrededor). Causa raíz real:
+// el bundle de JS compartido (`main-*.js`, se carga en TODA la app) traía
+// class static blocks (`static { ... }`), sintaxis ES2022 que Safari recién
+// soportó en la versión 16.4 — en versiones anteriores el archivo entero
+// falla al parsear y ningún script corre, sin ningún error visible para el
+// usuario. Next.js/SWC solo baja el nivel de sintaxis moderna a algo
+// compatible si hay un target de "browserslist" configurado; el proyecto no
+// tenía ninguno. Fix real en package.json (campo "browserslist", agrega
+// "iOS >= 14" / "Safari >= 14"), no acá — este componente nunca tuvo el bug.
 export function ClientDetailTabs({
   resumen,
   metricas,
@@ -30,11 +42,6 @@ export function ClientDetailTabs({
   const [metricasVisited, setMetricasVisited] = useState(false);
 
   function selectTab(next: "resumen" | "metricas") {
-    // DIAGNÓSTICO TEMPORAL (jul-2026) — sacar apenas confirmemos si esto
-    // dispara en el iPhone del coach. Ver conversación: el tab no reacciona
-    // en absoluto en su dispositivo y no hay forma de reproducirlo con las
-    // herramientas de testing disponibles (corren sobre Chromium).
-    alert(`selectTab: ${next}`);
     if (next === "metricas") setMetricasVisited(true);
     setTab(next);
   }
