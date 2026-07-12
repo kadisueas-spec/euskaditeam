@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
+import { HydrationProbe } from "@/components/coach/hydration-probe";
 import { getCoachDashboardData } from "@/lib/supabase/dashboard";
 import { getMonthEndAlerts } from "@/lib/supabase/monthly-review";
 import { getNoActiveRoutineAlerts } from "@/lib/supabase/routines";
@@ -36,6 +37,7 @@ export default async function CoachDashboardPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <HydrationProbe />
       <div>
         <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
           Bienvenido, {firstName}
