@@ -28,7 +28,10 @@ async function sendPushToClient(clientId, payload) {
     try {
       await webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
-        JSON.stringify(payload)
+        JSON.stringify(payload),
+        // urgency "high": el default "normal" deja que iOS demore la
+        // entrega en background hasta que se abra la app.
+        { urgency: "high" }
       );
     } catch (error) {
       if (error?.statusCode === 404 || error?.statusCode === 410) {

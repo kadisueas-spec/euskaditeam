@@ -28,7 +28,11 @@ async function deliver(
             endpoint: sub.endpoint,
             keys: { p256dh: sub.p256dh, auth: sub.auth },
           },
-          JSON.stringify(payload)
+          JSON.stringify(payload),
+          // urgency "high": sin esto el default es "normal", y en iOS eso
+          // hace que el sistema pueda demorar la entrega hasta que la app
+          // se abra en vez de mostrarla enseguida en background.
+          { urgency: "high" }
         );
       } catch (error) {
         const statusCode = (error as { statusCode?: number }).statusCode;
