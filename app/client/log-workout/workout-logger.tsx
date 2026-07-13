@@ -192,7 +192,13 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
   // vista, siguiendo el patrón recomendado de React para "resetear estado
   // cuando cambia un input" sin el render extra de un efecto.
   const resumeKey = exercise ? keyFor(exercise.id, nextSetNumber) : "";
-  const [seenResumeKey, setSeenResumeKey] = useState(resumeKey);
+  // null (no ""): el primer resumeKey real nunca puede coincidir con esto,
+  // así que la precarga siempre corre en el primer render — antes quedaba
+  // inicializado con el mismo resumeKey del propio render (useState(resumeKey))
+  // y la comparación empataba desde el arranque, salteando la precarga del
+  // primer ejercicio/serie que ve el cliente al entrar (bug: la sugerencia
+  // de la semana anterior no aparecía en el primer ejercicio de la sesión).
+  const [seenResumeKey, setSeenResumeKey] = useState<string | null>(null);
   if (resumeKey !== seenResumeKey && exercise) {
     setSeenResumeKey(resumeKey);
     const prev = previousByKey.get(resumeKey);
