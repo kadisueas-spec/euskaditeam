@@ -8,6 +8,7 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { getRoutineDetail } from "@/lib/supabase/routines";
 import { formatRestTime } from "@/lib/utils/format-rest";
 import { formatDate } from "@/lib/utils/format-date";
+import { DeleteRoutineButton } from "./delete-routine-button";
 
 function repsLabel(min: number | null, max: number | null) {
   if (min == null && max == null) return null;
@@ -124,6 +125,10 @@ export default async function RoutineDetailPage({
           </Card>
         </FadeIn>
       ))}
+
+      <FadeIn delay={Math.min(routine.days.length * 0.06, 0.4) + 0.1}>
+        <DeleteRoutineButton routineId={routine.id} isActive={routine.isActive} />
+      </FadeIn>
     </div>
   );
 }

@@ -1,10 +1,10 @@
 import Link from "next/link";
 import { ClipboardList } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getRoutinesList } from "@/lib/supabase/routines";
+import { RoutineListItem } from "./routine-list-item";
 
 export default async function RoutinesPage() {
   const routines = await getRoutinesList();
@@ -36,20 +36,7 @@ export default async function RoutinesPage() {
         <ul className="flex flex-col gap-3">
           {routines.map((r, i) => (
             <FadeIn key={r.id} delay={Math.min(i * 0.05, 0.4)}>
-              <Link
-                href={`/coach/routines/${r.id}`}
-                className="flex items-center justify-between rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 transition-colors duration-200 hover:border-[#e8001c]"
-              >
-                <div>
-                  <p className="font-medium text-white">{r.name}</p>
-                  <p className="text-sm text-[#888888]">
-                    {r.clientName ?? "Sin cliente"}
-                  </p>
-                </div>
-                <Badge variant={r.isActive ? "default" : "secondary"}>
-                  {r.isActive ? "Activa" : "Archivada"}
-                </Badge>
-              </Link>
+              <RoutineListItem routine={r} />
             </FadeIn>
           ))}
         </ul>

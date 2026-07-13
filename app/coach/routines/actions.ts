@@ -315,3 +315,74 @@ export async function updateRoutine(
 
   return { success: true };
 }
+
+export type DeleteRoutineResult = { success: true } | { error: string };
+
+// Borra la rutina y en cascada sus routine_days/routine_exercises (FK ON
+// DELETE CASCADE en el schema). El historial del cliente se preserva: antes
+// de borrar, se desvincula workout_set_logs.routine_exercise_id (esa FK no
+// tiene ON DELETE, así que si quedara apuntando a un routine_exercise ya
+// borrado, el DELETE de la rutina fallaría) — el peso/reps/RIR ya
+// registrados viven en columnas propias de workout_set_logs, no dependen de
+// routine_exercises, así que desvincular la referencia no pierde datos.
+export async function deleteRoutine(routineId: string): Promise<DeleteRoutineResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const { data: dayRows, error: daysError } = await supabase
+    .from("routine_days")
+    .select("id")
+    .eq("routine_id", routineId);
+
+  if (daysError) {
+    console.error("deleteRoutine days lookup error:", daysError);
+    return { error: "No se pudo eliminar la rutina." };
+  }
+
+  const dayIds = (dayRows ?? []).map((d) => d.id as string);
+
+  if (dayIds.length > 0) {
+    const { data: exerciseRows, error: exercisesError } = await supabase
+      .from("routine_exercises")
+      .select("id")
+      .in("day_id", dayIds);
+
+    if (exercisesError) {
+      console.error("deleteRoutine exercises lookup error:", exercisesError);
+      return { error: "No se pudo eliminar la rutina." };
+    }
+
+    const exerciseIds = (exerciseRows ?? []).map((e) => e.id as string);
+
+    if (exerciseIds.length > 0) {
+      const { error: unlinkError } = await supabase
+        .from("workout_set_logs")
+        .update({ routine_exercise_id: null })
+        .in("routine_exercise_id", exerciseIds);
+
+      if (unlinkError) {
+        console.error("deleteRoutine unlink workout_set_logs error:", unlinkError);
+        return { error: "No se pudo eliminar la rutina." };
+      }
+    }
+  }
+
+  const { error: deleteError } = await supabase
+    .from("routines")
+    .delete()
+    .eq("id", routineId)
+    .eq("coach_id", user.id);
+
+  if (deleteError) {
+    console.error("deleteRoutine delete error:", deleteError);
+    return { error: "No se pudo eliminar la rutina." };
+  }
+
+  revalidatePath("/coach/routines");
+  revalidatePath("/client/my-routine");
+
+  return { success: true };
+}
