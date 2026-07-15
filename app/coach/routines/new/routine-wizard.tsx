@@ -12,11 +12,18 @@ import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
+import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
+import { minutesInputToSeconds } from "@/lib/utils/rest-time";
 import { createRoutine } from "../actions";
 
 type ExerciseRow = {
   key: string;
   exerciseId: string;
+  // Solo UI: qué grupo muscular está eligiendo en el paso 1 del selector
+  // encadenado. No se guarda en la base — el grupo real del ejercicio ya
+  // vive en exercises.muscle_group, esto es nada más para filtrar el
+  // segundo dropdown.
+  muscleGroup: string;
   sets: string;
   repsMin: string;
   repsMax: string;
@@ -35,6 +42,7 @@ function newExerciseRow(): ExerciseRow {
   return {
     key: crypto.randomUUID(),
     exerciseId: "",
+    muscleGroup: "",
     sets: "",
     repsMin: "",
     repsMax: "",
@@ -59,6 +67,13 @@ export function RoutineWizard({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+
+  // Selector encadenado (paso 6): grupo muscular primero, después el
+  // ejercicio filtrado por ese grupo — antes era un solo dropdown con los
+  // ~100 ejercicios juntos, difícil de recorrer.
+  const muscleGroups = Array.from(
+    new Set(exercises.map((e) => e.muscleGroup).filter((g): g is string => !!g))
+  ).sort((a, b) => a.localeCompare(b));
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -168,7 +183,7 @@ export function RoutineWizard({
             repsMin: e.repsMin ? Number(e.repsMin) : null,
             repsMax: e.repsMax ? Number(e.repsMax) : null,
             rir: e.rir ? Number(e.rir) : null,
-            restSeconds: e.restSeconds ? Number(e.restSeconds) : null,
+            restSeconds: minutesInputToSeconds(e.restSeconds),
             notes: e.notes || null,
           })),
         })),
@@ -328,10 +343,32 @@ export function RoutineWizard({
                     key={ex.key}
                     className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-3 sm:grid-cols-6"
                   >
-                    <div className="col-span-2 sm:col-span-2">
+                    <div className="col-span-2 sm:col-span-3">
+                      <Label className="text-xs">Grupo muscular</Label>
+                      <NativeSelect
+                        value={ex.muscleGroup}
+                        onChange={(e) =>
+                          updateExercise(day.key, ex.key, {
+                            muscleGroup: e.target.value,
+                            exerciseId: "",
+                          })
+                        }
+                      >
+                        <option value="" disabled>
+                          Elegir
+                        </option>
+                        {muscleGroups.map((group) => (
+                          <option key={group} value={group}>
+                            {group}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </div>
+                    <div className="col-span-2 sm:col-span-3">
                       <Label className="text-xs">Ejercicio</Label>
                       <NativeSelect
                         value={ex.exerciseId}
+                        disabled={!ex.muscleGroup}
                         onChange={(e) =>
                           updateExercise(day.key, ex.key, {
                             exerciseId: e.target.value,
@@ -341,11 +378,13 @@ export function RoutineWizard({
                         <option value="" disabled>
                           Elegir
                         </option>
-                        {exercises.map((opt) => (
-                          <option key={opt.id} value={opt.id}>
-                            {opt.name}
-                          </option>
-                        ))}
+                        {exercises
+                          .filter((opt) => opt.muscleGroup === ex.muscleGroup)
+                          .map((opt) => (
+                            <option key={opt.id} value={opt.id}>
+                              {opt.name}
+                            </option>
+                          ))}
                       </NativeSelect>
                     </div>
                     <div>
@@ -397,14 +436,15 @@ export function RoutineWizard({
                       />
                     </div>
                     <div>
-                      <Label className="text-xs">Descanso (seg)</Label>
+                      <Label className="text-xs">Descanso (min)</Label>
                       <Input
-                        type="number"
-                        min={0}
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="1.5"
                         value={ex.restSeconds}
                         onChange={(e) =>
                           updateExercise(day.key, ex.key, {
-                            restSeconds: e.target.value,
+                            restSeconds: sanitizeDecimalInput(e.target.value),
                           })
                         }
                       />

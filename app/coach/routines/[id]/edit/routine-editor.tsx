@@ -12,12 +12,17 @@ import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import type { ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
+import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
+import { minutesInputToSeconds, secondsToMinutesInput } from "@/lib/utils/rest-time";
 import { updateRoutine } from "../../actions";
 
 type ExerciseRow = {
   key: string;
   id?: string;
   exerciseId: string;
+  // Solo UI: qué grupo muscular está eligiendo en el paso 1 del selector
+  // encadenado. No se guarda en la base.
+  muscleGroup: string;
   sets: string;
   repsMin: string;
   repsMax: string;
@@ -37,6 +42,7 @@ function newExerciseRow(): ExerciseRow {
   return {
     key: crypto.randomUUID(),
     exerciseId: "",
+    muscleGroup: "",
     sets: "",
     repsMin: "",
     repsMax: "",
@@ -50,7 +56,10 @@ function newDayRow(index: number): DayRow {
   return { key: crypto.randomUUID(), name: `Día ${index}`, exercises: [] };
 }
 
-function daysFromRoutine(routine: RoutineDetail): DayRow[] {
+function daysFromRoutine(
+  routine: RoutineDetail,
+  exercises: ExerciseOption[]
+): DayRow[] {
   return routine.days.map((d) => ({
     key: d.id,
     id: d.id,
@@ -59,11 +68,13 @@ function daysFromRoutine(routine: RoutineDetail): DayRow[] {
       key: ex.id,
       id: ex.id,
       exerciseId: ex.exerciseId,
+      muscleGroup:
+        exercises.find((opt) => opt.id === ex.exerciseId)?.muscleGroup ?? "",
       sets: String(ex.sets),
       repsMin: ex.repsMin != null ? String(ex.repsMin) : "",
       repsMax: ex.repsMax != null ? String(ex.repsMax) : "",
       rir: ex.rirTarget != null ? String(ex.rirTarget) : "",
-      restSeconds: ex.restSeconds != null ? String(ex.restSeconds) : "",
+      restSeconds: secondsToMinutesInput(ex.restSeconds),
       notes: ex.notes ?? "",
     })),
   }));
@@ -89,7 +100,15 @@ export function RoutineEditor({
   const [startsAt, setStartsAt] = useState(
     routine.startsAt ?? new Date().toISOString().slice(0, 10)
   );
-  const [days, setDays] = useState<DayRow[]>(() => daysFromRoutine(routine));
+  const [days, setDays] = useState<DayRow[]>(() =>
+    daysFromRoutine(routine, exercises)
+  );
+
+  // Selector encadenado (paso 6): grupo muscular primero, después el
+  // ejercicio filtrado por ese grupo.
+  const muscleGroups = Array.from(
+    new Set(exercises.map((e) => e.muscleGroup).filter((g): g is string => !!g))
+  ).sort((a, b) => a.localeCompare(b));
 
   function addDay() {
     setDays((prev) => [...prev, newDayRow(prev.length + 1)]);
@@ -180,7 +199,7 @@ export function RoutineEditor({
             repsMin: e.repsMin ? Number(e.repsMin) : null,
             repsMax: e.repsMax ? Number(e.repsMax) : null,
             rir: e.rir ? Number(e.rir) : null,
-            restSeconds: e.restSeconds ? Number(e.restSeconds) : null,
+            restSeconds: minutesInputToSeconds(e.restSeconds),
             notes: e.notes || null,
           })),
         })),
@@ -279,10 +298,32 @@ export function RoutineEditor({
                   key={ex.key}
                   className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-3 sm:grid-cols-6"
                 >
-                  <div className="col-span-2 sm:col-span-2">
+                  <div className="col-span-2 sm:col-span-3">
+                    <Label className="text-xs">Grupo muscular</Label>
+                    <NativeSelect
+                      value={ex.muscleGroup}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, {
+                          muscleGroup: e.target.value,
+                          exerciseId: "",
+                        })
+                      }
+                    >
+                      <option value="" disabled>
+                        Elegir
+                      </option>
+                      {muscleGroups.map((group) => (
+                        <option key={group} value={group}>
+                          {group}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  <div className="col-span-2 sm:col-span-3">
                     <Label className="text-xs">Ejercicio</Label>
                     <NativeSelect
                       value={ex.exerciseId}
+                      disabled={!ex.muscleGroup}
                       onChange={(e) =>
                         updateExercise(day.key, ex.key, {
                           exerciseId: e.target.value,
@@ -292,11 +333,13 @@ export function RoutineEditor({
                       <option value="" disabled>
                         Elegir
                       </option>
-                      {exercises.map((opt) => (
-                        <option key={opt.id} value={opt.id}>
-                          {opt.name}
-                        </option>
-                      ))}
+                      {exercises
+                        .filter((opt) => opt.muscleGroup === ex.muscleGroup)
+                        .map((opt) => (
+                          <option key={opt.id} value={opt.id}>
+                            {opt.name}
+                          </option>
+                        ))}
                     </NativeSelect>
                   </div>
                   <div>
@@ -344,14 +387,15 @@ export function RoutineEditor({
                     />
                   </div>
                   <div>
-                    <Label className="text-xs">Descanso (seg)</Label>
+                    <Label className="text-xs">Descanso (min)</Label>
                     <Input
-                      type="number"
-                      min={0}
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="1.5"
                       value={ex.restSeconds}
                       onChange={(e) =>
                         updateExercise(day.key, ex.key, {
-                          restSeconds: e.target.value,
+                          restSeconds: sanitizeDecimalInput(e.target.value),
                         })
                       }
                     />
