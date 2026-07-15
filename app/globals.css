@@ -148,6 +148,12 @@
        (pull-to-refresh, overscroll fantasma). Los contenedores internos que
        necesiten su propio scroll siguen funcionando normal. */
     overscroll-behavior: none;
+    /* El shell de cada sección (coach/cliente) es position:fixed con su
+       propio scroll interno (ver app/client/layout.tsx) — html/body nunca
+       deberían necesitar scrollear. Sin esto, en iOS el teclado numérico
+       podía "arrastrar" la página entera hacia arriba al enfocar un input,
+       aunque el contenedor fixed no se moviera. */
+    overflow: hidden;
   }
   html,
   body {

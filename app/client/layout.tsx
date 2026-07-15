@@ -92,7 +92,7 @@ export default async function ClientLayout({
   // (app/layout.tsx) midiendo con JS en vez de confiar en dvh desde el
   // frame cero. 100dvh queda de fallback si el script no corrió todavía.
   return (
-    <div className="flex h-[var(--app-height,100dvh)] flex-col bg-[#080808] text-white">
+    <div className="fixed inset-x-0 top-0 flex h-[var(--app-height,100dvh)] flex-col overflow-hidden bg-[#080808] text-white">
       <header className="gradient-section shrink-0 flex items-center justify-center gap-2 border-b border-[#1e1e1e] px-4 pb-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <Image src="/brand/euskadi-logo.png" alt="" width={22} height={22} />
         <span className="font-display text-lg tracking-wide text-[#f5f5f5] uppercase">
