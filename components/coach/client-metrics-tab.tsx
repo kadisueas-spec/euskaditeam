@@ -244,7 +244,9 @@ export function ClientMetricsTab({
       </div>
 
       <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-        <p className="mb-3 text-sm font-medium text-white">Volumen por sesión</p>
+        <p className="mb-3 text-sm font-medium text-white">
+          Volumen por sesión (series totales)
+        </p>
         {metrics.sessionVolume.length === 0 ? (
           <p className="text-sm text-[#888888]">Sin sesiones en este período.</p>
         ) : (
@@ -257,7 +259,7 @@ export function ClientMetricsTab({
                 <Tooltip {...tooltipProps} />
                 <Line
                   type="monotone"
-                  dataKey="tonnage"
+                  dataKey="totalSets"
                   stroke="#c9c9c9"
                   strokeWidth={2}
                   dot={{ fill: "#e8001c", r: 3 }}

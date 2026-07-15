@@ -108,7 +108,10 @@ export type ExerciseTotal = {
   tonnage: number;
   sets: number;
 };
-export type SessionVolumePoint = { date: string; label: string; tonnage: number };
+// "Volumen por sesión" = cantidad de SERIES TOTALES por sesión (no
+// tonelaje — eso ya está cubierto por el tonelaje por grupo muscular y por
+// ejercicio más abajo).
+export type SessionVolumePoint = { date: string; label: string; totalSets: number };
 export type MuscleGroupTonnageSeries = {
   muscleGroups: string[];
   // cada punto: { label: string, [grupoMuscular]: number } — recharts consume
@@ -177,7 +180,7 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
     string,
     { name: string; muscleGroup: string; tonnage: number; sets: number }
   >();
-  const sessionTonnage = new Map<string, number>();
+  const sessionSets = new Map<string, number>();
   const sessionDate = new Map<string, string>();
 
   const muscleGroupByBucket = new Map<string, Map<string, number>>();
@@ -206,10 +209,7 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
         : 0;
 
     totalTonnage += tonnage;
-    sessionTonnage.set(
-      row.workout_log_id,
-      (sessionTonnage.get(row.workout_log_id) ?? 0) + tonnage
-    );
+    sessionSets.set(row.workout_log_id, (sessionSets.get(row.workout_log_id) ?? 0) + 1);
 
     const mgTotal = muscleGroupTotals.get(muscleGroup) ?? { tonnage: 0, sets: 0 };
     mgTotal.tonnage += tonnage;
@@ -277,13 +277,13 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
     }))
     .sort((a, b) => b.tonnage - a.tonnage);
 
-  const sessionVolume: SessionVolumePoint[] = Array.from(sessionTonnage.entries())
-    .map(([logId, tonnage]) => {
+  const sessionVolume: SessionVolumePoint[] = Array.from(sessionSets.entries())
+    .map(([logId, totalSets]) => {
       const date = sessionDate.get(logId)!;
       return {
         date,
         label: dateLabel(new Date(`${date}T00:00:00Z`).getTime()),
-        tonnage: Math.round(tonnage),
+        totalSets,
       };
     })
     .sort((a, b) => a.date.localeCompare(b.date));
