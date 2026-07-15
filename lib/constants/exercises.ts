@@ -1,19 +1,22 @@
-// Piernas queda además de Cuádriceps/Isquiosurales/Gemelos por
-// compatibilidad con ejercicios ya cargados con ese grupo genérico — no
-// se migran datos viejos, solo se suman las categorías más específicas
-// para la base global de ejercicios (ver TAREA 2, jul-2026).
+// jul-2026: se saca "Piernas" (grupo genérico que no sirve para las
+// métricas por grupo muscular del planificador — no distingue cuádriceps
+// de isquiosurales de glúteos) y se renombran Pecho/Hombros/Core a los
+// nombres anatómicos exactos que usa el planificador. Se migraron los
+// ejercicios ya cargados con estos grupos viejos (ver conversación jul-2026).
+// Cardio/Full Body quedan porque no son grupos musculares — sirven para
+// categorizar ejercicios que no tienen uno solo.
 export const MUSCLE_GROUPS = [
-  "Pecho",
-  "Espalda",
-  "Hombros",
-  "Bíceps",
-  "Tríceps",
-  "Piernas",
   "Cuádriceps",
   "Isquiosurales",
   "Glúteos",
+  "Aductores",
   "Gemelos",
-  "Core",
+  "Pectoral",
+  "Espalda",
+  "Deltoides",
+  "Bíceps",
+  "Tríceps",
+  "Abdomen/Core",
   "Cardio",
   "Full Body",
 ] as const;
