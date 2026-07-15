@@ -347,7 +347,6 @@ export async function finishWorkout(
 
 export type PreviousSetValue = {
   routineExerciseId: string;
-  setNumber: number;
   weightKg: number | null;
   reps: number | null;
   rir: number | null;
@@ -355,17 +354,17 @@ export type PreviousSetValue = {
 
 type PreviousSetRow = {
   routine_exercise_id: string | null;
-  set_number: number;
   weight_kg: number | null;
   reps_completed: number | null;
   rir_actual: number | null;
   workout_logs: { workout_date: string; is_completed: boolean } | null;
 };
 
-// A5: trae, en una sola consulta, el último valor cargado (en un
-// entrenamiento ya completado, no el actual) para cada ejercicio+serie de
-// este día, para autocompletar los campos con lo que se usó la vez
-// anterior.
+// A5 (rediseñado jul-2026): solo se sugiere en la PRIMERA serie de cada
+// ejercicio — antes autocompletaba la "serie equivalente" (serie 2 con la
+// serie 2 de la vez pasada, etc.), pero lo que sirve como referencia real
+// es el RÉCORD de la sesión anterior: la serie de mayor peso (empate ->
+// más reps), sin importar en qué número de serie haya salido esa vez.
 export async function getPreviousSetsForExercises(
   routineExerciseIds: string[]
 ): Promise<PreviousSetValue[]> {
@@ -375,30 +374,44 @@ export async function getPreviousSetsForExercises(
   const { data } = await supabase
     .from("workout_set_logs")
     .select(
-      `routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual,
+      `routine_exercise_id, weight_kg, reps_completed, rir_actual,
        workout_logs!inner ( workout_date, is_completed )`
     )
     .in("routine_exercise_id", routineExerciseIds)
     .eq("workout_logs.is_completed", true)
-    .order("created_at", { ascending: false })
     .returns<PreviousSetRow[]>();
 
-  // Para cada combinación ejercicio+serie, nos quedamos con la de fecha
-  // más reciente (RLS ya garantiza que son solo los registros de este
-  // cliente).
-  const latestByKey = new Map<string, PreviousSetRow>();
+  // Paso 1: la fecha de la sesión más reciente en la que se cargó cada
+  // ejercicio (RLS ya garantiza que son solo registros de este cliente).
+  const latestDateByExercise = new Map<string, string>();
   for (const row of data ?? []) {
     if (!row.routine_exercise_id || !row.workout_logs) continue;
-    const key = `${row.routine_exercise_id}-${row.set_number}`;
-    const current = latestByKey.get(key);
-    if (!current || row.workout_logs.workout_date > current.workout_logs!.workout_date) {
-      latestByKey.set(key, row);
+    const current = latestDateByExercise.get(row.routine_exercise_id);
+    if (!current || row.workout_logs.workout_date > current) {
+      latestDateByExercise.set(row.routine_exercise_id, row.workout_logs.workout_date);
     }
   }
 
-  return Array.from(latestByKey.values()).map((row) => ({
-    routineExerciseId: row.routine_exercise_id!,
-    setNumber: row.set_number,
+  // Paso 2: dentro de esa sesión más reciente, la serie con más peso
+  // (empate -> más reps) = el récord a sugerir.
+  const recordByExercise = new Map<string, PreviousSetRow>();
+  for (const row of data ?? []) {
+    if (!row.routine_exercise_id || !row.workout_logs) continue;
+    if (row.workout_logs.workout_date !== latestDateByExercise.get(row.routine_exercise_id)) {
+      continue;
+    }
+    const current = recordByExercise.get(row.routine_exercise_id);
+    const weight = row.weight_kg ?? -Infinity;
+    const currentWeight = current?.weight_kg ?? -Infinity;
+    const reps = row.reps_completed ?? -Infinity;
+    const currentReps = current?.reps_completed ?? -Infinity;
+    if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
+      recordByExercise.set(row.routine_exercise_id, row);
+    }
+  }
+
+  return Array.from(recordByExercise.entries()).map(([routineExerciseId, row]) => ({
+    routineExerciseId,
     weightKg: row.weight_kg,
     reps: row.reps_completed,
     rir: row.rir_actual,
