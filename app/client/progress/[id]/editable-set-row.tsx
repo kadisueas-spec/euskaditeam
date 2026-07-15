@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { updateSet } from "@/app/client/log-workout/actions";
+import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import type { WorkoutLogSetDetail } from "@/lib/supabase/workout-history";
 
 // B2: las sesiones ya registradas también son editables, no solo mientras
@@ -38,7 +39,7 @@ export function EditableSetRow({ set }: { set: WorkoutLogSetDetail }) {
     setError(null);
     try {
       const result = await updateSet(set.id, {
-        weightKg: weight ? Number(weight) : null,
+        weightKg: parseDecimalInput(weight),
         reps: reps ? Number(reps) : null,
         rir: rir ? Number(rir) : null,
       });
@@ -66,10 +67,10 @@ export function EditableSetRow({ set }: { set: WorkoutLogSetDetail }) {
         </p>
         <div className="grid grid-cols-3 gap-2">
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
             value={weight}
-            onChange={(e) => setWeight(e.target.value)}
+            onChange={(e) => setWeight(sanitizeDecimalInput(e.target.value))}
             placeholder="Kg"
             className="h-11 text-center"
           />

@@ -12,6 +12,7 @@ import { ExerciseVideo } from "@/components/client/exercise-video";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
 import { isNetworkError } from "@/lib/utils/is-network-error";
+import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import {
   addSet,
   finishWorkout,
@@ -124,9 +125,7 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
         if (cancelled) return;
 
         setPreviousByKey(
-          new Map(
-            previous.map((p) => [keyFor(p.routineExerciseId, p.setNumber), p])
-          )
+          new Map(previous.map((p) => [p.routineExerciseId, p]))
         );
 
         if ("error" in workoutResult) {
@@ -201,7 +200,10 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
   const [seenResumeKey, setSeenResumeKey] = useState<string | null>(null);
   if (resumeKey !== seenResumeKey && exercise) {
     setSeenResumeKey(resumeKey);
-    const prev = previousByKey.get(resumeKey);
+    // Solo se sugiere en la primera serie — de la 2 en adelante el cliente
+    // ya tiene su propia referencia (lo que acaba de cargar en la serie 1
+    // de hoy), no tiene sentido repetirle el récord viejo.
+    const prev = nextSetNumber === 1 ? previousByKey.get(exercise.id) : undefined;
     setWeight(prev?.weightKg != null ? String(prev.weightKg) : "");
     setReps(prev?.reps != null ? String(prev.reps) : "");
     setRir(prev?.rir != null ? String(prev.rir) : "");
@@ -243,7 +245,7 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
       workoutLogId,
       routineExerciseId: exercise.id,
       setNumber,
-      weightKg: weight ? Number(weight) : null,
+      weightKg: parseDecimalInput(weight),
       reps: reps ? Number(reps) : null,
       rir: rir ? Number(rir) : null,
     };
@@ -302,7 +304,7 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
     if (!editingSetId) return;
     setSavingEdit(true);
     const result = await updateSet(editingSetId, {
-      weightKg: editValues.weight ? Number(editValues.weight) : null,
+      weightKg: parseDecimalInput(editValues.weight),
       reps: editValues.reps ? Number(editValues.reps) : null,
       rir: editValues.rir ? Number(editValues.rir) : null,
     });
@@ -535,11 +537,14 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
                 </p>
                 <div className="grid grid-cols-3 gap-2">
                   <Input
-                    type="number"
+                    type="text"
                     inputMode="decimal"
                     value={editValues.weight}
                     onChange={(e) =>
-                      setEditValues((v) => ({ ...v, weight: e.target.value }))
+                      setEditValues((v) => ({
+                        ...v,
+                        weight: sanitizeDecimalInput(e.target.value),
+                      }))
                     }
                     placeholder="Kg"
                     className="h-11 text-center"
@@ -632,12 +637,11 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
         <div className="flex flex-col gap-1">
           <Label className="text-xs">Peso (kg)</Label>
           <Input
-            type="number"
+            type="text"
             inputMode="decimal"
-            step="0.5"
             value={weight}
             onChange={(e) => {
-              setWeight(e.target.value);
+              setWeight(sanitizeDecimalInput(e.target.value));
               setSuggested((s) => ({ ...s, weight: false }));
             }}
             className={`h-[72px] text-center text-2xl font-bold ${suggested.weight ? SUGGESTED_CLASS : ""}`}
