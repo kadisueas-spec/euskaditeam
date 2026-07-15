@@ -1,5 +1,9 @@
 import Link from "next/link";
-import { getRoutineDayForLogging } from "@/lib/supabase/client-routine";
+import { redirect } from "next/navigation";
+import {
+  getInProgressWorkoutDayId,
+  getRoutineDayForLogging,
+} from "@/lib/supabase/client-routine";
 import { WorkoutLogger } from "./workout-logger";
 
 export default async function LogWorkoutPage({
@@ -10,6 +14,15 @@ export default async function LogWorkoutPage({
   const { day: dayId } = await searchParams;
 
   if (!dayId) {
+    // El bottom nav linkea a esta página sin ?day= — si hay un
+    // entrenamiento de hoy sin terminar, resolvemos directo a ese día en
+    // vez de mostrar la pantalla vacía de "elegí un día" (ver comentario
+    // en getInProgressWorkoutDayId).
+    const inProgressDayId = await getInProgressWorkoutDayId();
+    if (inProgressDayId) {
+      redirect(`/client/log-workout?day=${inProgressDayId}`);
+    }
+
     return (
       <div>
         <h1 className="text-xl font-semibold">Entrenar</h1>

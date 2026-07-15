@@ -118,3 +118,30 @@ export async function getRoutineDayForLogging(dayId: string) {
   const routine = await getMyActiveRoutine();
   return routine?.days.find((d) => d.id === dayId) ?? null;
 }
+
+// Bug jul-2026: "Entrenar" desde el bottom nav apunta a /client/log-workout
+// SIN ?day= (a diferencia del link desde "Mi Rutina", que sí lo manda) — si
+// el cliente estaba a mitad de un entrenamiento, navegaba a otra sección y
+// volvía tocando "Entrenar" en la nav, caía en la pantalla vacía de "elegí
+// un día" con cero indicio de que su sesión seguía abierta en el servidor.
+// Antes de mostrar esa pantalla, nos fijamos si hay un workout_log de HOY
+// sin terminar y, si existe, resolvemos directo a su día.
+export async function getInProgressWorkoutDayId(): Promise<string | null> {
+  const client = await getCurrentClientRecord();
+  if (!client) return null;
+
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+
+  const { data } = await supabase
+    .from("workout_logs")
+    .select("routine_day_id")
+    .eq("client_id", client.id)
+    .eq("workout_date", today)
+    .eq("is_completed", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return data?.routine_day_id ?? null;
+}
