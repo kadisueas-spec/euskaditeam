@@ -21,6 +21,10 @@ import {
   type ClientMetrics,
   type MetricsRange,
 } from "@/lib/supabase/metrics";
+import { getEvaluationsForClient } from "@/lib/supabase/anthropometrics";
+import { getNutritionPlansForClient } from "@/lib/supabase/nutrition";
+import { EvaluationsTab } from "./evaluations-tab";
+import { NutritionTab } from "./nutrition-tab";
 import { getAccessDisplayStatus, PAYMENT_METHOD_LABEL } from "@/lib/constants/access";
 import type { PaymentMethod } from "@/lib/constants/access";
 import { formatDate } from "@/lib/utils/format-date";
@@ -64,6 +68,8 @@ export default async function ClientDetailPage({
     metricsMonth,
     metricsBlock,
     sessionSeries,
+    evaluations,
+    nutritionPlans,
   ] = await Promise.all([
     getFeedbackForClient(id),
     getRecentSessionsForSelect(id),
@@ -73,6 +79,8 @@ export default async function ClientDetailPage({
     getClientMetrics(id, "month"),
     getClientMetrics(id, "block"),
     getExerciseSessionSeries(id),
+    getEvaluationsForClient(id),
+    getNutritionPlansForClient(id),
   ]);
 
   const metricsByRange: Record<MetricsRange, ClientMetrics> = {
@@ -98,6 +106,8 @@ export default async function ClientDetailPage({
             sessionSeries={sessionSeries}
           />
         }
+        evaluaciones={<EvaluationsTab clientId={id} evaluations={evaluations} />}
+        nutricion={<NutritionTab clientId={id} plans={nutritionPlans} />}
         resumen={
           <>
       <FadeIn delay={0}>

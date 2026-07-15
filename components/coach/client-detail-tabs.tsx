@@ -31,51 +31,70 @@ import { useState } from "react";
 // compatible si hay un target de "browserslist" configurado; el proyecto no
 // tenía ninguno. Fix real en package.json (campo "browserslist", agrega
 // "iOS >= 14" / "Safari >= 14"), no acá — este componente nunca tuvo el bug.
+type Tab = "resumen" | "metricas" | "evaluaciones" | "nutricion";
+
+const TAB_LABELS: Record<Tab, string> = {
+  resumen: "Resumen",
+  metricas: "Métricas",
+  evaluaciones: "Evaluaciones",
+  nutricion: "Nutrición",
+};
+
 export function ClientDetailTabs({
   resumen,
   metricas,
+  evaluaciones,
+  nutricion,
 }: {
   resumen: React.ReactNode;
   metricas: React.ReactNode;
+  evaluaciones: React.ReactNode;
+  nutricion: React.ReactNode;
 }) {
-  const [tab, setTab] = useState<"resumen" | "metricas">("resumen");
-  const [metricasVisited, setMetricasVisited] = useState(false);
+  const [tab, setTab] = useState<Tab>("resumen");
+  // Métricas y Evaluaciones recién se montan la primera vez que se visitan
+  // (mismo motivo que el bug de Recharts documentado arriba: un chart
+  // montado oculto mide 0×0 y no se recupera).
+  const [visited, setVisited] = useState<Record<Tab, boolean>>({
+    resumen: true,
+    metricas: false,
+    evaluaciones: false,
+    nutricion: false,
+  });
 
-  function selectTab(next: "resumen" | "metricas") {
-    if (next === "metricas") setMetricasVisited(true);
+  function selectTab(next: Tab) {
+    setVisited((v) => ({ ...v, [next]: true }));
     setTab(next);
   }
+
+  const panels: Record<Tab, React.ReactNode> = { resumen, metricas, evaluaciones, nutricion };
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex gap-2 text-sm">
-        <button
-          type="button"
-          onClick={() => selectTab("resumen")}
-          className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
-            tab === "resumen"
-              ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
-              : "bg-white/5 text-[#888888]"
-          }`}
-        >
-          Resumen
-        </button>
-        <button
-          type="button"
-          onClick={() => selectTab("metricas")}
-          className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
-            tab === "metricas"
-              ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
-              : "bg-white/5 text-[#888888]"
-          }`}
-        >
-          Métricas
-        </button>
+        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => selectTab(t)}
+            className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
+              tab === t
+                ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
+                : "bg-white/5 text-[#888888]"
+            }`}
+          >
+            {TAB_LABELS[t]}
+          </button>
+        ))}
       </div>
 
-      <div className={tab === "resumen" ? "flex flex-col gap-6" : "hidden"}>{resumen}</div>
-      {metricasVisited && (
-        <div className={tab === "metricas" ? "flex flex-col gap-6" : "hidden"}>{metricas}</div>
+      {(Object.keys(TAB_LABELS) as Tab[]).map(
+        (t) =>
+          visited[t] && (
+            <div key={t} className={tab === t ? "flex flex-col gap-6" : "hidden"}>
+              {panels[t]}
+            </div>
+          )
       )}
     </div>
   );
