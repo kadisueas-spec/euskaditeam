@@ -1,11 +1,22 @@
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { Dumbbell, LogOut } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { buttonVariants } from "@/components/ui/button";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
+import { ExerciseProgressCharts } from "@/components/charts/exercise-progress-charts";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
+import {
+  getCoachExerciseSessionSeries,
+  getCoachTrainingStats,
+} from "@/lib/supabase/coach-stats";
 import { logout } from "../actions";
 
 export default async function CoachProfilePage() {
-  const profile = await getCurrentProfile();
+  const [profile, stats, sessionSeries] = await Promise.all([
+    getCurrentProfile(),
+    getCoachTrainingStats(),
+    getCoachExerciseSessionSeries(),
+  ]);
 
   return (
     <div className="flex max-w-md flex-col gap-4">
@@ -16,6 +27,49 @@ export default async function CoachProfilePage() {
         <div className="mt-1.5 mb-1 h-0.5 w-10 bg-[#e8001c]" />
         <p className="text-sm text-[#888888]">{profile?.email}</p>
       </div>
+
+      <Card className="border-[#1e1e1e] bg-[#111111]">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Mis métricas</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-[#1e1e1e] bg-white/5 p-3">
+              <p className="font-display text-3xl text-[#e8001c]">
+                {stats.dailyStreak}
+              </p>
+              <p className="text-xs text-[#888888]">
+                Racha días
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#1e1e1e] bg-white/5 p-3">
+              <p className="font-display text-3xl text-[#e8001c]">
+                {stats.weeklyStreak}
+              </p>
+              <p className="text-xs text-[#888888]">
+                Racha semanal
+              </p>
+            </div>
+            <div className="rounded-2xl border border-[#1e1e1e] bg-white/5 p-3">
+              <p className="font-display text-3xl text-[#e8001c]">
+                {stats.adherencePercent}
+                <span className="text-lg">%</span>
+              </p>
+              <p className="text-xs text-[#888888]">Adherencia</p>
+            </div>
+          </div>
+
+          <ExerciseProgressCharts series={sessionSeries} />
+
+          <Link
+            href="/coach/my-training"
+            className={buttonVariants({ variant: "outline", className: "min-h-[44px] w-full" })}
+          >
+            <Dumbbell className="size-4" />
+            Iniciar entrenamiento
+          </Link>
+        </CardContent>
+      </Card>
 
       <Card className="border-[#1e1e1e] bg-[#111111]">
         <CardHeader>

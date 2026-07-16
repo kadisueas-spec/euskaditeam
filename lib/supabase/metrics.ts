@@ -70,7 +70,7 @@ function bucketFor(buckets: Bucket[], dateStr: string): Bucket | undefined {
   return buckets.find((b) => ms >= b.startMs && ms < b.endMs);
 }
 
-type RawSetRow = {
+export type RawSetRow = {
   workout_log_id: string;
   weight_kg: number | null;
   reps_completed: number | null;
@@ -364,7 +364,7 @@ export async function getMyMetrics(range: MetricsRange = "week"): Promise<Client
   return getClientMetrics(client.id, range);
 }
 
-function buildExerciseSessionSeries(rows: RawSetRow[]): ExerciseSessionSeries[] {
+export function buildExerciseSessionSeries(rows: RawSetRow[]): ExerciseSessionSeries[] {
   type SessionAgg = { date: string; max: number; sum: number; count: number };
   const byExercise = new Map<string, Map<string, SessionAgg>>();
   const exerciseNameById = new Map<string, string>();
