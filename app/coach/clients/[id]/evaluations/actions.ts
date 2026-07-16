@@ -46,13 +46,21 @@ export async function createEvaluation(
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
 
-  const { data: client } = await supabase
+  const { data: client, error: clientError } = await supabase
     .from("clients")
     .select("id, sex, birth_date, coach_id")
     .eq("id", input.clientId)
     .eq("coach_id", user.id)
     .maybeSingle();
 
+  // Antes esto no chequeaba `clientError` — un error real de Postgres (ej.
+  // columna inexistente por una migración no corrida) hacía que `client`
+  // quedara null y se mostrara "Cliente no encontrado", un mensaje
+  // engañoso que no daba ninguna pista del problema real.
+  if (clientError) {
+    console.error("createEvaluation client lookup error:", clientError);
+    return { error: "No se pudo verificar el cliente. Revisá la consola del servidor." };
+  }
   if (!client) return { error: "Cliente no encontrado." };
 
   // Sexo y fecha de nacimiento se piden una sola vez y se arrastran — si
