@@ -14,14 +14,48 @@ import { savePendingSet } from "@/lib/offline/workout-store";
 import { isNetworkError } from "@/lib/utils/is-network-error";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import {
-  addSet,
-  finishWorkout,
-  getOrCreateInProgressWorkout,
-  getPreviousSetsForExercises,
-  updateSet,
+  addSet as defaultAddSet,
+  finishWorkout as defaultFinishWorkout,
+  getOrCreateInProgressWorkout as defaultGetOrCreateInProgressWorkout,
+  getPreviousSetsForExercises as defaultGetPreviousSetsForExercises,
+  updateSet as defaultUpdateSet,
+  type AddSetInput,
+  type AddSetResult,
+  type FinishWorkoutInput,
+  type FinishWorkoutResult,
+  type InProgressWorkout,
   type PreviousSetValue,
+  type UpdateSetInput,
   type WorkoutSummary,
 } from "./actions";
+
+// Inyectable por props (jul-2026): el coach reusa este mismo componente
+// para su propio entrenamiento (ver app/coach/my-training), con acciones
+// que filtran por coach_id en vez de client_id. Los defaults reproducen
+// exactamente el comportamiento de siempre — el call site del cliente no
+// pasa `actions`, así que no cambia en nada.
+export type WorkoutLoggerActions = {
+  getOrCreateInProgressWorkout: (
+    dayId: string
+  ) => Promise<InProgressWorkout | { error: string }>;
+  getPreviousSetsForExercises: (
+    routineExerciseIds: string[]
+  ) => Promise<PreviousSetValue[]>;
+  addSet: (input: AddSetInput) => Promise<AddSetResult>;
+  updateSet: (
+    setId: string,
+    patch: UpdateSetInput
+  ) => Promise<{ success: true } | { error: string }>;
+  finishWorkout: (input: FinishWorkoutInput) => Promise<FinishWorkoutResult>;
+};
+
+const DEFAULT_ACTIONS: WorkoutLoggerActions = {
+  getOrCreateInProgressWorkout: defaultGetOrCreateInProgressWorkout,
+  getPreviousSetsForExercises: defaultGetPreviousSetsForExercises,
+  addSet: defaultAddSet,
+  updateSet: defaultUpdateSet,
+  finishWorkout: defaultFinishWorkout,
+};
 
 type CommittedSet = {
   id: string;
@@ -57,7 +91,15 @@ function keyFor(exerciseId: string, setNumber: number) {
 // editable (lo que se cargó la vez anterior), no un dato ya confirmado.
 const SUGGESTED_CLASS = "border-amber-400/50 bg-amber-400/10 text-amber-200";
 
-export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
+export function WorkoutLogger({
+  day,
+  actions = DEFAULT_ACTIONS,
+  enableOfflineSync = true,
+}: {
+  day: MyRoutineDay;
+  actions?: WorkoutLoggerActions;
+  enableOfflineSync?: boolean;
+}) {
   const router = useRouter();
   const [initializing, setInitializing] = useState(true);
   const [initError, setInitError] = useState<string | null>(null);
@@ -119,8 +161,8 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
     (async () => {
       try {
         const [workoutResult, previous] = await Promise.all([
-          getOrCreateInProgressWorkout(day.id),
-          getPreviousSetsForExercises(day.exercises.map((ex) => ex.id)),
+          actions.getOrCreateInProgressWorkout(day.id),
+          actions.getPreviousSetsForExercises(day.exercises.map((ex) => ex.id)),
         ]);
         if (cancelled) return;
 
@@ -270,7 +312,7 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
     }
 
     try {
-      const result = await addSet(input);
+      const result = await actions.addSet(input);
       if (!("success" in result)) throw new Error(result.error);
       if (result.isPersonalRecord) navigator.vibrate?.([40, 60, 40]);
       setSetsByExercise((prevState) => ({
@@ -287,10 +329,21 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
         ),
       }));
     } catch {
-      // Sin conexión: se guarda localmente y se sincroniza solo al
-      // reconectar (ver components/client/sync-banner.tsx), sin perder el
-      // progreso cargado.
-      await savePendingSet(input);
+      if (enableOfflineSync) {
+        // Sin conexión: se guarda localmente y se sincroniza solo al
+        // reconectar (ver components/client/sync-banner.tsx), sin perder
+        // el progreso cargado.
+        await savePendingSet(input);
+      } else {
+        // El coach (entrenamiento propio) no tiene sync offline — se saca
+        // la serie optimista en vez de dejarla como "guardando..." para
+        // siempre, y se avisa para que reintente.
+        setSetsByExercise((prevState) => ({
+          ...prevState,
+          [exercise.id]: (prevState[exercise.id] ?? []).filter((s) => s.id !== tempId),
+        }));
+        setError("No se pudo guardar la serie. Revisá tu conexión y reintentá.");
+      }
     }
   }
 
@@ -303,7 +356,7 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
   async function saveEditedSet() {
     if (!editingSetId) return;
     setSavingEdit(true);
-    const result = await updateSet(editingSetId, {
+    const result = await actions.updateSet(editingSetId, {
       weightKg: parseDecimalInput(editValues.weight),
       reps: editValues.reps ? Number(editValues.reps) : null,
       rir: editValues.rir ? Number(editValues.rir) : null,
@@ -338,7 +391,7 @@ export function WorkoutLogger({ day }: { day: MyRoutineDay }) {
       // "Guardando..." para siempre (useTransition no resetea "pending"
       // solo si la transición nunca actualiza estado).
       try {
-        const result = await finishWorkout({ workoutLogId, energyLevel, notes });
+        const result = await actions.finishWorkout({ workoutLogId, energyLevel, notes });
         if ("error" in result) {
           setError(result.error);
           return;
