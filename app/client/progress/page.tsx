@@ -11,8 +11,13 @@ import { getMyBodyEvaluations } from "@/lib/supabase/anthropometrics";
 import { getMyNutritionPlans } from "@/lib/supabase/nutrition";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
 
-export default async function ProgressPage() {
-  const [history, evaluations, nutritionPlans] = await Promise.all([
+export default async function ProgressPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tab?: string }>;
+}) {
+  const [{ tab }, history, evaluations, nutritionPlans] = await Promise.all([
+    searchParams,
     getWorkoutHistory(),
     getMyBodyEvaluations(),
     getMyNutritionPlans(),
@@ -28,6 +33,7 @@ export default async function ProgressPage() {
       </div>
 
       <ProgressTabs
+        initialTab={tab}
         entrenamiento={
           <>
             <div className="flex items-center justify-between">

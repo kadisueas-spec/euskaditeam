@@ -13,20 +13,31 @@ const TAB_LABELS: Record<Tab, string> = {
   nutricion: "Nutrición",
 };
 
+const VALID_TABS: Tab[] = ["entrenamiento", "cuerpo", "nutricion"];
+
 export function ProgressTabs({
   entrenamiento,
   cuerpo,
   nutricion,
+  initialTab,
 }: {
   entrenamiento: React.ReactNode;
   cuerpo: React.ReactNode;
   nutricion: React.ReactNode;
+  // Deep link desde una push notification (ej. "Nueva evaluación
+  // disponible" -> ?tab=cuerpo) — sin esto, el link siempre abría en
+  // Entrenamiento y el cliente tenía que tocar de nuevo para ver lo que
+  // la notificación anunciaba.
+  initialTab?: string;
 }) {
-  const [tab, setTab] = useState<Tab>("entrenamiento");
+  const startTab: Tab = VALID_TABS.includes(initialTab as Tab)
+    ? (initialTab as Tab)
+    : "entrenamiento";
+  const [tab, setTab] = useState<Tab>(startTab);
   const [visited, setVisited] = useState<Record<Tab, boolean>>({
-    entrenamiento: true,
-    cuerpo: false,
-    nutricion: false,
+    entrenamiento: startTab === "entrenamiento",
+    cuerpo: startTab === "cuerpo",
+    nutricion: startTab === "nutricion",
   });
 
   function selectTab(next: Tab) {
