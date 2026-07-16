@@ -27,3 +27,15 @@ export function adherence80PushTitle(clientName: string): string {
     `${clientName} la está rompiendo este mes. Ya va por el 80%.`,
   ]);
 }
+
+// Evaluación antropométrica nueva -> cliente. Sin variantes, texto fijo
+// pedido tal cual.
+export const NEW_EVALUATION_PUSH_TITLE = "Nueva evaluación disponible";
+export const NEW_EVALUATION_PUSH_BODY =
+  "Tu coach cargó tus nuevas mediciones. Entrá a ver tus resultados y cómo evolucionás.";
+
+// Plan de alimentación nuevo -> cliente. Sin variantes, texto fijo pedido
+// tal cual.
+export const NEW_NUTRITION_PLAN_PUSH_TITLE = "Nuevo plan de alimentación";
+export const NEW_NUTRITION_PLAN_PUSH_BODY =
+  "Tu coach subió tu plan de alimentación. Entrá a descargarlo.";

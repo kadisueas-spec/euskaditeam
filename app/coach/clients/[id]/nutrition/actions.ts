@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendPushToClient } from "@/lib/push/send-push";
+import {
+  NEW_NUTRITION_PLAN_PUSH_BODY,
+  NEW_NUTRITION_PLAN_PUSH_TITLE,
+} from "@/lib/constants/push-copy";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
 
@@ -81,6 +86,15 @@ export async function uploadNutritionPlan(
 
   revalidatePath(`/coach/clients/${clientId}`);
   revalidatePath("/client/progress");
+
+  sendPushToClient(clientId, {
+    title: NEW_NUTRITION_PLAN_PUSH_TITLE,
+    body: NEW_NUTRITION_PLAN_PUSH_BODY,
+    url: "/client/progress?tab=nutricion",
+  }).catch((error) => {
+    console.error("uploadNutritionPlan push error:", error);
+  });
+
   return undefined;
 }
 

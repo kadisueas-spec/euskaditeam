@@ -2,6 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { sendPushToClient } from "@/lib/push/send-push";
+import {
+  NEW_EVALUATION_PUSH_BODY,
+  NEW_EVALUATION_PUSH_TITLE,
+} from "@/lib/constants/push-copy";
 import {
   calculateEvaluation,
   type Protocol,
@@ -141,6 +146,14 @@ export async function createEvaluation(
   }
 
   revalidatePath(`/coach/clients/${input.clientId}`);
+
+  sendPushToClient(input.clientId, {
+    title: NEW_EVALUATION_PUSH_TITLE,
+    body: NEW_EVALUATION_PUSH_BODY,
+    url: "/client/progress?tab=cuerpo",
+  }).catch((error) => {
+    console.error("createEvaluation push error:", error);
+  });
 
   return { success: true, id: evaluation.id };
 }
