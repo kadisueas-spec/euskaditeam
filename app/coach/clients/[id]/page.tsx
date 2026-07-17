@@ -21,7 +21,10 @@ import {
   type ClientMetrics,
   type MetricsRange,
 } from "@/lib/supabase/metrics";
-import { getEvaluationsForClient } from "@/lib/supabase/anthropometrics";
+import {
+  getClientBodyEvaluations,
+  getEvaluationsForClient,
+} from "@/lib/supabase/anthropometrics";
 import { getNutritionPlansForClient } from "@/lib/supabase/nutrition";
 import { EvaluationsTab } from "./evaluations-tab";
 import { NutritionTab } from "./nutrition-tab";
@@ -69,6 +72,7 @@ export default async function ClientDetailPage({
     metricsBlock,
     sessionSeries,
     evaluations,
+    bodyEvaluations,
     nutritionPlans,
   ] = await Promise.all([
     getFeedbackForClient(id),
@@ -80,6 +84,7 @@ export default async function ClientDetailPage({
     getClientMetrics(id, "block"),
     getExerciseSessionSeries(id),
     getEvaluationsForClient(id),
+    getClientBodyEvaluations(id),
     getNutritionPlansForClient(id),
   ]);
 
@@ -106,7 +111,9 @@ export default async function ClientDetailPage({
             sessionSeries={sessionSeries}
           />
         }
-        evaluaciones={<EvaluationsTab clientId={id} evaluations={evaluations} />}
+        evaluaciones={
+          <EvaluationsTab clientId={id} evaluations={evaluations} bodyEvaluations={bodyEvaluations} />
+        }
         nutricion={<NutritionTab clientId={id} plans={nutritionPlans} />}
         resumen={
           <>

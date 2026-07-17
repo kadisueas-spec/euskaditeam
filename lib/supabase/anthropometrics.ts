@@ -212,3 +212,23 @@ export async function getMyBodyEvaluations(): Promise<EvaluationDetail[]> {
 
   return (data ?? []).map(mapEvaluationDetail);
 }
+
+// Mismo shape que getMyBodyEvaluations (ascendente por fecha) pero para el
+// panel del coach en /coach/clients/[id] — mismo patrón que
+// getEvaluationsForClient: sin chequeo de ownership acá, la página que
+// llama a esto ya resolvió al cliente vía getClientDetail(id) (404 si no es
+// de este coach) y la RLS ("Coach manages evaluations of own clients")
+// scoping el resto.
+export async function getClientBodyEvaluations(
+  clientId: string
+): Promise<EvaluationDetail[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("anthropometric_evaluations")
+    .select(EVALUATION_DETAIL_SELECT)
+    .eq("client_id", clientId)
+    .order("evaluation_date", { ascending: true })
+    .returns<EvaluationDetailRow[]>();
+
+  return (data ?? []).map(mapEvaluationDetail);
+}

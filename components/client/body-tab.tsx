@@ -2,17 +2,13 @@
 
 import { useState } from "react";
 import { ArrowDown, ArrowUp, Ruler } from "lucide-react";
-import {
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from "recharts";
 import { EmptyState } from "@/components/ui/empty-state";
 import { NativeSelect } from "@/components/ui/native-select";
+import {
+  EvolutionChart,
+  shortDateLabel,
+  type ChartPoint,
+} from "@/components/charts/evaluation-evolution-chart";
 import type { EvaluationDetail } from "@/lib/supabase/anthropometrics";
 import {
   PERIMETER_LABELS,
@@ -21,105 +17,6 @@ import {
   type PerimeterType,
 } from "@/lib/anthropometrics/constants";
 import { formatDate } from "@/lib/utils/format-date";
-
-type ChartPoint = { date: string; label: string; value: number };
-
-function shortDateLabel(dateStr: string): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "UTC",
-  }).format(new Date(`${dateStr}T00:00:00Z`));
-}
-
-function trendOf(points: ChartPoint[]) {
-  if (points.length === 0) return null;
-  const current = points[points.length - 1].value;
-  const delta = points.length >= 2 ? current - points[points.length - 2].value : null;
-  return { current, delta };
-}
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  unit,
-}: {
-  active?: boolean;
-  payload?: { value: number }[];
-  label?: string;
-  unit: string;
-}) {
-  if (!active || !payload?.length) return null;
-  return (
-    <div className="rounded-lg border border-[#f5f5f51a] bg-[#111111] px-3 py-2">
-      <p className="text-xs text-[#888888]">{label}</p>
-      <p className="font-display text-lg text-[#e8001c]">
-        {payload[0].value} {unit}
-      </p>
-    </div>
-  );
-}
-
-function EvolutionChart({
-  title,
-  unit,
-  points,
-}: {
-  title: string;
-  unit: string;
-  points: ChartPoint[];
-}) {
-  const trend = trendOf(points);
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline justify-between">
-        <p className="text-sm font-medium text-white">{title}</p>
-        {trend && (
-          <p className="flex items-center gap-1 font-display text-2xl leading-none text-[#e8001c]">
-            {trend.current}
-            <span className="text-xs text-[#888888]"> {unit}</span>
-            {trend.delta != null && trend.delta !== 0 && (
-              <span className="ml-1 flex items-center text-xs text-[#888888]">
-                {trend.delta > 0 ? (
-                  <ArrowUp className="size-3" />
-                ) : (
-                  <ArrowDown className="size-3" />
-                )}
-                {Math.abs(trend.delta).toFixed(1)}
-              </span>
-            )}
-          </p>
-        )}
-      </div>
-      {points.length < 2 ? (
-        <p className="rounded-lg bg-white/5 px-3 py-6 text-center text-sm text-[#888888]">
-          Hace falta más de una evaluación para ver la evolución.
-        </p>
-      ) : (
-        <div className="h-44">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={points} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f51a" />
-              <XAxis dataKey="label" stroke="#f5f5f580" fontSize={11} />
-              <YAxis stroke="#f5f5f580" fontSize={11} width={36} />
-              <Tooltip content={<ChartTooltip unit={unit} />} cursor={{ stroke: "#f5f5f51a" }} />
-              <Line
-                type="monotone"
-                dataKey="value"
-                stroke="#c9c9c9"
-                strokeWidth={2}
-                dot={{ fill: "#e8001c", r: 4, strokeWidth: 0 }}
-                activeDot={{ r: 6, fill: "#e8001c" }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ComparisonRow({
   label,
