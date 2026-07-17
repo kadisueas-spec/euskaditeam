@@ -9,6 +9,16 @@ import {
 } from "@/lib/constants/push-copy";
 
 const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+const PDF_SIGNATURE = "%PDF-";
+
+// Auditoría de seguridad jul-2026, sección 3: file.type es el MIME que
+// REPORTA el navegador, no el contenido real — un archivo renombrado con
+// Content-Type falseado lo pasaba igual. Todo PDF real arranca con estos 5
+// bytes ("%PDF-" en ASCII), así que lo chequeamos directo del contenido.
+async function hasValidPdfSignature(file: File): Promise<boolean> {
+  const header = await file.slice(0, PDF_SIGNATURE.length).text();
+  return header === PDF_SIGNATURE;
+}
 
 export type UploadPlanFormState = { error: string } | undefined;
 
@@ -45,6 +55,9 @@ export async function uploadNutritionPlan(
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return { error: "El PDF no puede pesar más de 20MB." };
+  }
+  if (!(await hasValidPdfSignature(file))) {
+    return { error: "El archivo no es un PDF válido." };
   }
 
   // Como máximo un plan activo por cliente (índice único en la base) — se

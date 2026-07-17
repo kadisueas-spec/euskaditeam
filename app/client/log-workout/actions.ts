@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord, type ClientRecord } from "@/lib/supabase/client-profile";
 import { sendPushToCoach } from "@/lib/push/send-push";
 import { adherence80PushTitle } from "@/lib/constants/push-copy";
+import { validateSetInput } from "@/lib/utils/validate-set-input";
 
 export type LoggedSet = {
   id: string;
@@ -138,6 +139,9 @@ export async function addSet(input: AddSetInput): Promise<AddSetResult> {
   const client = await getCurrentClientRecord();
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
+  const validationError = validateSetInput(input);
+  if (validationError) return { error: validationError };
+
   const supabase = await createClient();
 
   const isPersonalRecord = await checkPersonalRecord(
@@ -182,6 +186,9 @@ export async function updateSet(
 ): Promise<{ success: true } | { error: string }> {
   const client = await getCurrentClientRecord();
   if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const validationError = validateSetInput(patch);
+  if (validationError) return { error: validationError };
 
   const supabase = await createClient();
   const { error } = await supabase

@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
 import { logout } from "@/app/coach/actions";
+import { LogoutButton } from "@/components/auth/logout-button";
 import type { Profile } from "@/lib/supabase/profiles";
 
 function initials(name: string | null, email: string) {
@@ -29,16 +30,14 @@ export function CoachHeader({ profile }: { profile: Profile }) {
             {profile.full_name ?? profile.email}
           </span>
         </Link>
-        <form action={logout}>
-          <button
-            type="submit"
-            aria-label="Cerrar sesión"
-            title="Cerrar sesión"
-            className="flex size-[44px] items-center justify-center rounded-lg text-[#888888] hover:bg-white/5 hover:text-white"
-          >
-            <LogOut className="size-5" />
-          </button>
-        </form>
+        <LogoutButton
+          action={logout}
+          aria-label="Cerrar sesión"
+          title="Cerrar sesión"
+          className="flex size-[44px] items-center justify-center rounded-lg text-[#888888] hover:bg-white/5 hover:text-white disabled:opacity-60"
+        >
+          <LogOut className="size-5" />
+        </LogoutButton>
       </div>
     </header>
   );

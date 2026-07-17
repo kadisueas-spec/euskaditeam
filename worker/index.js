@@ -37,3 +37,19 @@ self.addEventListener("notificationclick", (event) => {
       })
   );
 });
+
+// Auditoría de seguridad jul-2026: al cerrar sesión, la página (ver
+// lib/offline/purge.ts) manda este mensaje para que el SW borre sus propios
+// caches con datos de rutina/entrenamiento — así no queda nada servible de
+// un usuario para el siguiente que inicie sesión en el mismo dispositivo.
+self.addEventListener("message", (event) => {
+  if (event.data?.type !== "fitcoach:logout-clear-caches") return;
+
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter((key) => key.startsWith("fitcoach-")).map((key) => caches.delete(key))
+      )
+    )
+  );
+});

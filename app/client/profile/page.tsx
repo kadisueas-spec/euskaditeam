@@ -2,6 +2,7 @@ import { LogOut } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { formatDate } from "@/lib/utils/format-date";
@@ -74,15 +75,14 @@ export default async function ProfilePage() {
         </CardContent>
       </Card>
 
-      <form action={logout}>
-        <button
-          type="submit"
-          className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#1e1e1e] text-[#888888] active:bg-white/5"
-        >
-          <LogOut className="size-4" />
-          Cerrar sesión
-        </button>
-      </form>
+      <LogoutButton
+        action={logout}
+        checkPendingSets
+        className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-[#1e1e1e] text-[#888888] active:bg-white/5 disabled:opacity-60"
+      >
+        <LogOut className="size-4" />
+        Cerrar sesión
+      </LogoutButton>
     </div>
   );
 }

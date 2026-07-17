@@ -15,6 +15,20 @@ import {
 } from "@/lib/anthropometrics/formulas";
 import type { PerimeterType } from "@/lib/anthropometrics/constants";
 
+// Rangos generosos: solo descartan basura evidente (negativos, strings,
+// Infinity, un peso de 5000kg tipeado mal) — no son límites clínicos.
+const MIN_WEIGHT_KG = 20;
+const MAX_WEIGHT_KG = 400;
+const MIN_HEIGHT_CM = 100;
+const MAX_HEIGHT_CM = 250;
+// Cota única para perímetros (cm) y pliegues (mm) — conviven en el mismo
+// Partial<Record<..., number>> y no vale la pena una cota por tipo acá.
+const MAX_MEASUREMENT = 300;
+
+function isValidMeasurement(value: number): boolean {
+  return Number.isFinite(value) && value >= 0 && value <= MAX_MEASUREMENT;
+}
+
 function calculateAge(birthDate: string, atDate: string): number {
   const birth = new Date(`${birthDate}T00:00:00Z`);
   const at = new Date(`${atDate}T00:00:00Z`);
@@ -67,6 +81,28 @@ export async function createEvaluation(
     return { error: "No se pudo verificar el cliente. Revisá la consola del servidor." };
   }
   if (!client) return { error: "Cliente no encontrado." };
+
+  if (
+    !Number.isFinite(input.weightKg) ||
+    input.weightKg < MIN_WEIGHT_KG ||
+    input.weightKg > MAX_WEIGHT_KG
+  ) {
+    return { error: "El peso ingresado no es válido." };
+  }
+  if (
+    !Number.isFinite(input.heightCm) ||
+    input.heightCm < MIN_HEIGHT_CM ||
+    input.heightCm > MAX_HEIGHT_CM
+  ) {
+    return { error: "La altura ingresada no es válida." };
+  }
+  const allMeasurements = [
+    ...Object.values(input.perimeters),
+    ...Object.values(input.skinfolds),
+  ];
+  if (allMeasurements.some((value) => value != null && !isValidMeasurement(value))) {
+    return { error: "Alguna medida ingresada no es válida." };
+  }
 
   // Sexo y fecha de nacimiento se piden una sola vez y se arrastran — si
   // cambiaron (o no estaban cargados), se actualizan acá.

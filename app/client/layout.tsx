@@ -8,6 +8,7 @@ import { OfflineBanner } from "@/components/client/offline-banner";
 import { SyncBanner } from "@/components/client/sync-banner";
 import { PushPermissionPrompt } from "@/components/client/push-permission-prompt";
 import { PageTransition } from "@/components/motion/page-transition";
+import { LogoutButton } from "@/components/auth/logout-button";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getUnreadFeedbackCount } from "@/lib/supabase/feedback";
@@ -49,14 +50,13 @@ export default async function ClientLayout({
         <p className="text-sm text-[#888888]">
           Contactá a tu coach para renovar tu acceso y seguir usando la app.
         </p>
-        <form action={logout}>
-          <button
-            type="submit"
-            className="mt-2 flex h-11 min-w-[160px] items-center justify-center rounded-lg border border-[#1e1e1e] px-4 text-sm font-medium text-[#888888] active:bg-white/5"
-          >
-            Cerrar sesión
-          </button>
-        </form>
+        <LogoutButton
+          action={logout}
+          checkPendingSets
+          className="mt-2 flex h-11 min-w-[160px] items-center justify-center rounded-lg border border-[#1e1e1e] px-4 text-sm font-medium text-[#888888] active:bg-white/5 disabled:opacity-60"
+        >
+          Cerrar sesión
+        </LogoutButton>
       </div>
     );
   }

@@ -242,6 +242,15 @@ cargarse como secrets de las Supabase Edge Functions, no solo en `.env.local`.)
 - Evitar hover states — en mobile no existen; usar active/focus states
 - El coach puede usar la app desde desktop; el cliente principalmente desde mobile
 
+## Deuda técnica y pendientes
+- Evaluar migración de next-pwa a `@ducanh2912/next-pwa` o Serwist (auditoría
+  de seguridad jul-2026, sección 6: `next-pwa` está sin mantenimiento activo
+  y arrastra la mayoría de las vulnerabilidades que reporta `npm audit`,
+  todas build-time-only — no urgente, pero pendiente para un sprint
+  dedicado, no un simple `npm update`).
+- Configurar SMTP propio (Resend) para superar el límite de 2 emails/hora
+  del plan gratuito de Supabase Auth (magic links, confirmaciones, etc.).
+
 ## Identidad de marca (referencia rápida)
 
 **Euskadi Team** — app de entrenamiento personalizado de Luis Mineur. Tono:

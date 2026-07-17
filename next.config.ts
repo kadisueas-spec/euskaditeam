@@ -59,6 +59,41 @@ const withPWA = require("next-pwa")({
   ],
 });
 
+// Auditoría de seguridad jul-2026, sección 10: no había ningún header de
+// seguridad configurado. Arrancó como Content-Security-Policy-Report-Only
+// (solo loguea violaciones, no bloquea) para confirmar que no rompía el
+// embed de YouTube ni el Service Worker — verificado en producción sin
+// warnings, así que ahora es Content-Security-Policy en modo enforcing.
+const SUPABASE_ORIGIN = "https://yrqmussybkmuwxpbqlyw.supabase.co";
+const SUPABASE_WS_ORIGIN = "wss://yrqmussybkmuwxpbqlyw.supabase.co";
+
+const CSP_DIRECTIVES = [
+  `default-src 'self'`,
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval'`,
+  `style-src 'self' 'unsafe-inline'`,
+  `img-src 'self' data: blob: https://img.youtube.com ${SUPABASE_ORIGIN}`,
+  `font-src 'self' data:`,
+  `connect-src 'self' ${SUPABASE_ORIGIN} ${SUPABASE_WS_ORIGIN}`,
+  `frame-src https://www.youtube.com https://www.youtube-nocookie.com`,
+  `worker-src 'self'`,
+  `manifest-src 'self'`,
+  `object-src 'none'`,
+  `base-uri 'self'`,
+  `form-action 'self'`,
+  `frame-ancestors 'none'`,
+].join("; ");
+
+const securityHeaders = [
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  {
+    key: "Permissions-Policy",
+    value: "camera=(), microphone=(), geolocation=()",
+  },
+  { key: "Content-Security-Policy", value: CSP_DIRECTIVES },
+];
+
 const nextConfig: NextConfig = {
   // next-pwa always attaches a `webpack` config, which Turbopack (default in
   // Next.js 16) refuses to run under silently. In dev, next-pwa is disabled
@@ -71,6 +106,14 @@ const nextConfig: NextConfig = {
   // misma WiFi); sin esto Next.js bloquea el recurso HMR cross-origin y la
   // página queda en blanco/negro.
   allowedDevOrigins: ["192.168.100.9", "172.20.10.6"],
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: securityHeaders,
+      },
+    ];
+  },
 };
 
 export default withPWA(nextConfig);

@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
+import { validateSetInput } from "@/lib/utils/validate-set-input";
 import type {
   AddSetInput,
   AddSetResult,
@@ -120,6 +121,9 @@ export async function addTrainingSet(input: AddSetInput): Promise<AddSetResult> 
   const profile = await getCurrentProfile();
   if (!profile) return { error: "No se pudo identificar tu perfil." };
 
+  const validationError = validateSetInput(input);
+  if (validationError) return { error: validationError };
+
   const supabase = await createClient();
 
   const isPersonalRecord = await checkPersonalRecord(
@@ -156,6 +160,9 @@ export async function updateTrainingSet(
 ): Promise<{ success: true } | { error: string }> {
   const profile = await getCurrentProfile();
   if (!profile) return { error: "No se pudo identificar tu perfil." };
+
+  const validationError = validateSetInput(patch);
+  if (validationError) return { error: validationError };
 
   const supabase = await createClient();
   const { error } = await supabase
