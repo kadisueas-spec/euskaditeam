@@ -110,11 +110,55 @@ todo el mes.
     dashboard del coach cuando el mes de un cliente termina y falta
     completar su cierre.
 
-### Fase 5 — Pagos y Suscripciones
-22. Integración Stripe (crear suscripción al registrarse)
-23. Webhook de Stripe para activar/desactivar acceso
-24. Portal del cliente para gestionar su suscripción
-25. Panel del coach para ver estado de pagos
+### Fase 5 — Pagos y Suscripciones (PayPal, no Stripe)
+Stripe (`lib/stripe/client.ts`/`server.ts`) quedó vestigial — nunca se
+conectó (sin rutas `/api`, sin checkout, sin webhook, env vars vacías).
+El procesador real de pagos es **PayPal Subscriptions** (jul-2026):
+22. `lib/paypal/` — cliente OAuth2 (`client.ts`), producto único de la
+    app creado una sola vez (`products.ts`, `PAYPAL_PRODUCT_ID` en env —
+    "Opción A": un Product, un Plan dinámico por cliente/precio, una
+    Subscription por cliente), creación de plan+suscripción
+    (`plans.ts`/`subscriptions.ts`), manejo de eventos del webhook
+    (`webhooks.ts`).
+23. `/coach/clients/[id]` → sección Acceso: campo "Precio mensual (USD)"
+    + botón "Generar link de pago PayPal" (`app/coach/clients/[id]/
+    paypal-actions.ts`, `generatePaymentLink`) — si `PAYPAL_PRODUCT_ID`
+    todavía no existe, lo crea y corta el flujo pidiendo agregarlo a las
+    env vars (para no arriesgarse a crear un Product duplicado en cada
+    invocación mientras el env var no se propagó). Estado de la
+    suscripción (Activa/Cancelada/Pago fallido/Pendiente) y botón
+    "Cancelar suscripción".
+24. `deactivateClientAccess` (acceso manual del coach) ahora es
+    PayPal-aware: si `payment_method = "paypal"`, además de cortar el
+    acceso cancela la suscripción real en PayPal — pero el acceso se
+    corta en la app SIEMPRE, incluso si la llamada a PayPal falla (nunca
+    al revés). El cliente tiene su propio botón "Cancelar suscripción" en
+    `/client/profile` con la asimetría inversa a propósito: si PayPal
+    falla, NO se corta el acceso local (para no dejarlo pagando sin
+    poder entrar) — se le pide que contacte al coach.
+25. `POST /api/paypal/webhook`: `BILLING.SUBSCRIPTION.ACTIVATED` →
+    `active`, `CANCELLED` → `canceled`, `SUSPENDED`/`PAYMENT.FAILED` →
+    `past_due`, `PAYMENT.SALE.COMPLETED` → confirma `active`. Gateado por
+    `PAYPAL_VERIFY_WEBHOOK` (`false` en sandbox mientras no existe
+    `PAYPAL_WEBHOOK_ID` — hay que deployar primero, registrar la URL en
+    el Dashboard de PayPal, recién ahí se puede prender la verificación
+    de firma; `true` siempre en producción). `custom_id` en la
+    suscripción de PayPal lleva el `client_id` para que el webhook pueda
+    mapear el evento sin depender de haber guardado nada más de
+    antemano; para eventos sin `custom_id` (ej. `PAYMENT.SALE.COMPLETED`)
+    hace fallback buscando por `subscriptions.paypal_subscription_id`.
+26. `subscriptions.stripe_subscription_id` pasó a nullable (la tabla
+    estaba vacía, Stripe nunca la usó) + columnas `paypal_subscription_id`
+    (constraint único **normal**, no parcial — un índice parcial rompe el
+    `ON CONFLICT` que usa el upsert del webhook, error 42P10 confirmado
+    corriendo el webhook real) / `paypal_plan_id` / `paypal_payer_email`
+    + policies RLS (la tabla tenía RLS activado pero cero policies, quedaba
+    bloqueada para todo lo que no fuera el service role).
+27. `return_url`/`cancel_url` de PayPal apuntan a
+    `/client/subscription-confirmed` — esa pantalla NUNCA activa el acceso
+    por sí misma (solo lee el estado que ya dejó el webhook, con polling
+    corto mientras llega); si activara algo a partir de los parámetros de
+    la URL, cualquiera podría fabricarla a mano y activarse sin pagar.
 
 ### Fase 6 — Videos ✅ Completa
 26. Video demostrativo por ejercicio via YouTube (no listado) — solución
@@ -222,9 +266,17 @@ STRIPE_WEBHOOK_SECRET=
 NEXT_PUBLIC_VAPID_PUBLIC_KEY=
 VAPID_PRIVATE_KEY=
 VAPID_SUBJECT=
+PAYPAL_CLIENT_ID=
+PAYPAL_CLIENT_SECRET=
+PAYPAL_MODE=
+PAYPAL_PRODUCT_ID=
+PAYPAL_WEBHOOK_ID=
+PAYPAL_VERIFY_WEBHOOK=
 ```
 (Las mismas VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT también deben
 cargarse como secrets de las Supabase Edge Functions, no solo en `.env.local`.)
+(Stripe queda documentado por si algún día se retoma, pero no está en uso —
+ver Fase 5.)
 
 ## Reglas importantes
 - NUNCA exponer SUPABASE_SERVICE_ROLE_KEY ni STRIPE_SECRET_KEY en el cliente

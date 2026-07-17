@@ -10,6 +10,7 @@ import { PAYMENT_METHODS } from "@/lib/constants/access";
 import type { PaymentMethod } from "@/lib/constants/access";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { FEEDBACK_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
+import { cancelSubscription } from "@/lib/paypal/subscriptions";
 
 export type FeedbackFormState = { error: string } | { success: true } | undefined;
 
@@ -139,17 +140,87 @@ export async function activateClientAccess(
   return undefined;
 }
 
+export type DeactivateAccessState =
+  | { success: true; message: string }
+  | { warning: string }
+  | { error: string }
+  | undefined;
+
+// Cash/transferencia: solo corta el acceso en la app, como siempre. PayPal:
+// además cancela la suscripción real (si no, PayPal le sigue cobrando al
+// cliente aunque ya no tenga acceso) — pero el acceso se corta en la app
+// SIEMPRE, incluso si la llamada a PayPal falla, nunca al revés.
 export async function deactivateClientAccess(
   clientId: string,
+  _prevState: DeactivateAccessState,
   _formData: FormData
-): Promise<void> {
+): Promise<DeactivateAccessState> {
   const supabase = await createClient();
-  await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const { data: client, error: clientError } = await supabase
+    .from("clients")
+    .select("id, payment_method")
+    .eq("id", clientId)
+    .eq("coach_id", user.id)
+    .maybeSingle();
+  if (clientError) {
+    console.error("deactivateClientAccess client lookup error:", clientError);
+    return { error: "No se pudo verificar el cliente." };
+  }
+  if (!client) return { error: "Cliente no encontrado." };
+
+  let paypalWarning: string | null = null;
+
+  if (client.payment_method === "paypal") {
+    const admin = createAdminClient();
+    const { data: sub } = await admin
+      .from("subscriptions")
+      .select("paypal_subscription_id")
+      .eq("client_id", clientId)
+      .neq("status", "canceled")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (sub?.paypal_subscription_id) {
+      try {
+        await cancelSubscription(sub.paypal_subscription_id, "Acceso desactivado por el coach");
+        await admin
+          .from("subscriptions")
+          .update({ status: "canceled", canceled_at: new Date().toISOString() })
+          .eq("paypal_subscription_id", sub.paypal_subscription_id);
+      } catch (error) {
+        console.error("deactivateClientAccess: error cancelando en PayPal:", error);
+        paypalWarning =
+          "Acceso desactivado, pero hubo un problema al cancelar en PayPal. Verificá manualmente en tu panel de PayPal.";
+      }
+    }
+  }
+
+  const { error } = await supabase
     .from("clients")
     .update({ subscription_status: "inactive" })
     .eq("id", clientId);
 
   revalidatePath(`/coach/clients/${clientId}`);
+
+  if (error) {
+    console.error("deactivateClientAccess error:", error);
+    return { error: "No se pudo desactivar el acceso." };
+  }
+  if (paypalWarning) return { warning: paypalWarning };
+
+  return {
+    success: true,
+    message:
+      client.payment_method === "paypal"
+        ? "Acceso desactivado y suscripción de PayPal cancelada correctamente."
+        : "Acceso desactivado.",
+  };
 }
 
 export type DeleteClientState = { error: string } | { success: true } | undefined;

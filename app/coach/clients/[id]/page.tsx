@@ -26,6 +26,7 @@ import {
   getEvaluationsForClient,
 } from "@/lib/supabase/anthropometrics";
 import { getClientWeightLogs } from "@/lib/supabase/weight-logs";
+import { getClientSubscription } from "@/lib/supabase/subscriptions";
 import { getNutritionPlansForClient } from "@/lib/supabase/nutrition";
 import { EvaluationsTab } from "./evaluations-tab";
 import { NutritionTab } from "./nutrition-tab";
@@ -76,6 +77,7 @@ export default async function ClientDetailPage({
     bodyEvaluations,
     weightLogs,
     nutritionPlans,
+    subscription,
   ] = await Promise.all([
     getFeedbackForClient(id),
     getRecentSessionsForSelect(id),
@@ -89,6 +91,7 @@ export default async function ClientDetailPage({
     getClientBodyEvaluations(id),
     getClientWeightLogs(id),
     getNutritionPlansForClient(id),
+    getClientSubscription(id),
   ]);
 
   const metricsByRange: Record<MetricsRange, ClientMetrics> = {
@@ -175,6 +178,7 @@ export default async function ClientDetailPage({
               currentPaymentMethod={client.paymentMethod}
               currentEndDate={client.subscriptionEndDate}
               isCurrentlyActive={client.subscriptionStatus === "active"}
+              subscription={subscription}
             />
           </CardContent>
         </Card>

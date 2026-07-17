@@ -5,8 +5,10 @@ import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
+import { getMySubscription } from "@/lib/supabase/subscriptions";
 import { formatDate } from "@/lib/utils/format-date";
 import { logout } from "../actions";
+import { CancelSubscriptionButton } from "./cancel-subscription-button";
 
 const STATUS_LABEL: Record<string, string> = {
   active: "Activa",
@@ -17,9 +19,10 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function ProfilePage() {
-  const [profile, client] = await Promise.all([
+  const [profile, client, subscription] = await Promise.all([
     getCurrentProfile(),
     getCurrentClientRecord(),
+    getMySubscription(),
   ]);
 
   return (
@@ -63,6 +66,9 @@ export default async function ProfilePage() {
               ? formatDate(client.subscriptionEndDate)
               : "-"}
           </p>
+          {subscription && subscription.status !== "canceled" && (
+            <CancelSubscriptionButton />
+          )}
         </CardContent>
       </Card>
 
