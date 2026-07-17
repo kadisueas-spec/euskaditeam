@@ -5,9 +5,11 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { ProgressTabs } from "@/components/client/progress-tabs";
 import { BodyTab } from "@/components/client/body-tab";
+import { WeightTab } from "@/components/client/weight-tab";
 import { NutritionClientTab } from "@/components/client/nutrition-tab";
 import { getWorkoutHistory } from "@/lib/supabase/workout-history";
 import { getMyBodyEvaluations } from "@/lib/supabase/anthropometrics";
+import { getMyWeightLogs } from "@/lib/supabase/weight-logs";
 import { getMyNutritionPlans } from "@/lib/supabase/nutrition";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
 
@@ -16,10 +18,11 @@ export default async function ProgressPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const [{ tab }, history, evaluations, nutritionPlans] = await Promise.all([
+  const [{ tab }, history, evaluations, weightLogs, nutritionPlans] = await Promise.all([
     searchParams,
     getWorkoutHistory(),
     getMyBodyEvaluations(),
+    getMyWeightLogs(),
     getMyNutritionPlans(),
   ]);
 
@@ -79,6 +82,7 @@ export default async function ProgressPage({
           </>
         }
         cuerpo={<BodyTab evaluations={evaluations} />}
+        peso={<WeightTab logs={weightLogs} />}
         nutricion={<NutritionClientTab plans={nutritionPlans} />}
       />
     </div>

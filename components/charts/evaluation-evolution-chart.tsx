@@ -57,10 +57,12 @@ export function EvolutionChart({
   title,
   unit,
   points,
+  emptyMessage = "Hace falta más de una evaluación para ver la evolución.",
 }: {
   title: string;
   unit: string;
   points: ChartPoint[];
+  emptyMessage?: string;
 }) {
   const trend = trendOf(points);
 
@@ -87,7 +89,7 @@ export function EvolutionChart({
       </div>
       {points.length < 2 ? (
         <p className="rounded-lg bg-white/5 px-3 py-6 text-center text-sm text-[#888888]">
-          Hace falta más de una evaluación para ver la evolución.
+          {emptyMessage}
         </p>
       ) : (
         <div className="h-44">

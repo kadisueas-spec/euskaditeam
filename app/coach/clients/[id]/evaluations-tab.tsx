@@ -4,7 +4,9 @@ import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { ClientBodyAnalysis } from "@/components/coach/client-body-analysis";
+import { ClientWeightChart } from "@/components/coach/client-weight-chart";
 import type { EvaluationDetail, EvaluationListItem } from "@/lib/supabase/anthropometrics";
+import type { WeightLogEntry } from "@/lib/supabase/weight-logs";
 import { PROTOCOL_LABELS } from "@/lib/anthropometrics/constants";
 import { formatDate } from "@/lib/utils/format-date";
 
@@ -12,10 +14,12 @@ export function EvaluationsTab({
   clientId,
   evaluations,
   bodyEvaluations,
+  weightLogs,
 }: {
   clientId: string;
   evaluations: EvaluationListItem[];
   bodyEvaluations: EvaluationDetail[];
+  weightLogs: WeightLogEntry[];
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -26,6 +30,8 @@ export function EvaluationsTab({
         <Plus className="size-4" />
         Nueva evaluación
       </Link>
+
+      <ClientWeightChart logs={weightLogs} />
 
       {evaluations.length === 0 ? (
         <EmptyState

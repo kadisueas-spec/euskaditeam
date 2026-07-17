@@ -25,6 +25,7 @@ import {
   getClientBodyEvaluations,
   getEvaluationsForClient,
 } from "@/lib/supabase/anthropometrics";
+import { getClientWeightLogs } from "@/lib/supabase/weight-logs";
 import { getNutritionPlansForClient } from "@/lib/supabase/nutrition";
 import { EvaluationsTab } from "./evaluations-tab";
 import { NutritionTab } from "./nutrition-tab";
@@ -73,6 +74,7 @@ export default async function ClientDetailPage({
     sessionSeries,
     evaluations,
     bodyEvaluations,
+    weightLogs,
     nutritionPlans,
   ] = await Promise.all([
     getFeedbackForClient(id),
@@ -85,6 +87,7 @@ export default async function ClientDetailPage({
     getExerciseSessionSeries(id),
     getEvaluationsForClient(id),
     getClientBodyEvaluations(id),
+    getClientWeightLogs(id),
     getNutritionPlansForClient(id),
   ]);
 
@@ -112,7 +115,12 @@ export default async function ClientDetailPage({
           />
         }
         evaluaciones={
-          <EvaluationsTab clientId={id} evaluations={evaluations} bodyEvaluations={bodyEvaluations} />
+          <EvaluationsTab
+            clientId={id}
+            evaluations={evaluations}
+            bodyEvaluations={bodyEvaluations}
+            weightLogs={weightLogs}
+          />
         }
         nutricion={<NutritionTab clientId={id} plans={nutritionPlans} />}
         resumen={
