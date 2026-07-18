@@ -10,26 +10,15 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { shortDateLabel, trendOf, type ChartPoint } from "@/lib/utils/chart-points";
 
 // Extraído de BodyTab (vista del cliente) para reusarlo tal cual en el
 // análisis antropométrico del coach (`/coach/clients/[id]` → Evaluaciones)
 // — mismo componente, misma estética, en vez de duplicar el chart.
-export type ChartPoint = { date: string; label: string; value: number };
-
-export function shortDateLabel(dateStr: string): string {
-  return new Intl.DateTimeFormat("es-AR", {
-    day: "2-digit",
-    month: "2-digit",
-    timeZone: "UTC",
-  }).format(new Date(`${dateStr}T00:00:00Z`));
-}
-
-export function trendOf(points: ChartPoint[]) {
-  if (points.length === 0) return null;
-  const current = points[points.length - 1].value;
-  const delta = points.length >= 2 ? current - points[points.length - 2].value : null;
-  return { current, delta };
-}
+// shortDateLabel/trendOf/ChartPoint viven en lib/utils/chart-points.ts (sin
+// "use client") y se re-exportan acá para no romper los imports existentes
+// — ver el comentario en ese archivo para el porqué.
+export { shortDateLabel, trendOf, type ChartPoint };
 
 function ChartTooltip({
   active,
