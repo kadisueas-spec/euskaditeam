@@ -10,7 +10,8 @@ Aplicación web para coaching de entrenamiento personalizado online. El coach cr
 - **Pagos:** Stripe (suscripciones recurrentes)
 - **Videos:** YouTube (no listados) — se migra a Cloudflare Stream cuando escale el negocio
 - **Hosting:** Vercel
-- **PWA:** next-pwa (instalable en iPhone/Android sin App Store)
+- **PWA:** Serwist (instalable en iPhone/Android sin App Store) — migrado desde
+  next-pwa en jul-2026, ver "Deuda técnica y pendientes"
 
 ## Roles de usuario
 - **coach** → acceso total: crea rutinas, gestiona clientes, sube videos, deja feedback
@@ -295,11 +296,28 @@ ver Fase 5.)
 - El coach puede usar la app desde desktop; el cliente principalmente desde mobile
 
 ## Deuda técnica y pendientes
-- Evaluar migración de next-pwa a `@ducanh2912/next-pwa` o Serwist (auditoría
-  de seguridad jul-2026, sección 6: `next-pwa` está sin mantenimiento activo
-  y arrastra la mayoría de las vulnerabilidades que reporta `npm audit`,
-  todas build-time-only — no urgente, pero pendiente para un sprint
-  dedicado, no un simple `npm update`).
+- ✅ Resuelto (jul-2026): migración de next-pwa a Serwist (`@serwist/next` +
+  `serwist`). `next.config.ts` usa `withSerwistInit` en vez de `withPWA`;
+  `worker/index.js` pasó de ser un "extra" inyectado a ser el service worker
+  fuente completo (swSrc) — precache vía `self.__SW_MANIFEST`, `defaultCache`
+  de `@serwist/next/worker` en vez de `next-pwa/cache`, mismas 2 reglas
+  runtime custom (`fitcoach-active-routine` NetworkFirst + catch-all
+  NetworkOnly del fix F6) traducidas a la sintaxis de clases de Serwist
+  (`NetworkFirst`/`NetworkOnly`/`ExpirationPlugin`/`CacheableResponsePlugin`
+  en vez de strings + `options`), mismos 3 listeners (`push`,
+  `notificationclick`, `message` de logout). `register: false` porque el
+  registro sigue siendo manual en `components/service-worker-register.tsx`
+  (sin cambios, sigue apuntando a `/sw.js`). `npm audit` pasó de 7
+  vulnerabilidades (cadena de next-pwa: serialize-javascript,
+  rollup-plugin-terser, workbox-build, workbox-webpack-plugin) a 2
+  moderadas, ambas de un `postcss` interno de `next` mismo, sin relación con
+  esta migración. Nota menor no accionable: los usuarios que ya tenían el
+  service worker viejo de next-pwa van a quedar con algunos caches
+  huérfanos con nombres estilo Workbox (`workbox-precache-v2-...`,
+  `google-fonts-webfonts`, etc.) que el nuevo SW de Serwist no borra
+  automáticamente por tener otro prefijo de nombre — no rompe nada (el
+  routing lo maneja 100% el SW nuevo), solo ocupa algo de storage hasta que
+  el navegador lo libera solo.
 - Configurar SMTP propio (Resend) para superar el límite de 2 emails/hora
   del plan gratuito de Supabase Auth (magic links, confirmaciones, etc.).
 

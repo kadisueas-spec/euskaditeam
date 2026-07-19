@@ -41,9 +41,7 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# next-pwa generated service worker
+# Serwist generated service worker (un solo archivo bundleado, sin chunks
+# workbox-*.js/worker-*.js separados como generaba next-pwa)
 /public/sw.js
-/public/workbox-*.js
 /public/sw.js.map
-/public/worker-*.js
-/public/fallback-*.js

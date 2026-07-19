@@ -1,62 +1,21 @@
 import type { NextConfig } from "next";
-// next-pwa ships no type definitions.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const defaultRuntimeCaching = require("next-pwa/cache");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const withPWA = require("next-pwa")({
-  dest: "public",
-  register: true,
-  skipWaiting: true,
+import withSerwistInit from "@serwist/next";
+
+// Migración next-pwa → Serwist (jul-2026, deuda técnica de la auditoría de
+// seguridad: next-pwa está sin mantenimiento y arrastraba 7 vulnerabilidades
+// de npm audit vía su cadena de dependencias). El comportamiento de runtime
+// caching (cache dedicado de la rutina activa + NetworkOnly para el resto de
+// las páginas) se movió como código a worker/index.js, que ahora es el
+// service worker fuente completo de Serwist (swSrc) en vez de un simple
+// "extra" inyectado — ver ese archivo para el detalle de cada regla.
+// register: false porque el registro ya se hace a mano en
+// components/service-worker-register.tsx (necesario con next-pwa en App
+// Router; se mantiene igual acá para no duplicar el registro del SW).
+const withSerwist = withSerwistInit({
+  swSrc: "worker/index.js",
+  swDest: "public/sw.js",
   disable: process.env.NODE_ENV === "development",
-  runtimeCaching: [
-    // La rutina activa y la pantalla de registro tienen su propio cache
-    // (separado del bucket genérico "others" de next-pwa, que comparte 32
-    // entradas con toda la app y podría desalojarlas) para que SIEMPRE
-    // queden disponibles offline.
-    //
-    // Hardening (no confirmado como causa raíz de un bug puntual, ver
-    // conversación): este urlPattern matcheaba por pathname solamente. next-pwa
-    // ya registra la ruta con method "GET" internamente, así que en la
-    // práctica un POST (Server Action) nunca la matchea — pero eso depende
-    // de un detalle interno de next-pwa/Workbox, no de este archivo. Dejar
-    // request.mode === "navigate" explícito acá (igual que ya hace el
-    // catch-all de abajo) hace la intención inequívoca en el código fuente:
-    // esta regla es solo para el documento de la página, nunca para
-    // mutaciones — sin depender de ese detalle interno para estar seguros.
-    {
-      urlPattern: ({ request, url }: { request: Request; url: URL }) =>
-        self.origin === url.origin &&
-        request.mode === "navigate" &&
-        (url.pathname.startsWith("/client/my-routine") ||
-          url.pathname.startsWith("/client/log-workout")),
-      handler: "NetworkFirst",
-      options: {
-        cacheName: "fitcoach-active-routine",
-        networkTimeoutSeconds: 4,
-        expiration: { maxEntries: 16, maxAgeSeconds: 7 * 24 * 60 * 60 },
-        cacheableResponse: { statuses: [0, 200] },
-      },
-    },
-    // F6: el catch-all "others" que trae next-pwa por defecto (más abajo,
-    // via defaultRuntimeCaching) matchea CUALQUIER página del mismo origen,
-    // login incluido, y la guarda con NetworkFirst (10s de timeout, 24hs de
-    // cache). Eso es lo que causaba el "me pide login de nuevo" al reabrir
-    // la PWA: si la red tardaba en responder al reabrir la app, el service
-    // worker servía una versión vieja cacheada de la página en vez de
-    // esperar/redirigir según la sesión real. Las páginas son dinámicas y
-    // dependen de la cookie de sesión vigente, así que no deben cachearse
-    // nunca — excepto las dos rutas de rutina activa, que ya tienen su
-    // propio cache arriba a propósito para funcionar offline.
-    {
-      urlPattern: ({ request, url }: { request: Request; url: URL }) =>
-        self.origin === url.origin &&
-        request.mode === "navigate" &&
-        !url.pathname.startsWith("/client/my-routine") &&
-        !url.pathname.startsWith("/client/log-workout"),
-      handler: "NetworkOnly",
-    },
-    ...defaultRuntimeCaching,
-  ],
+  register: false,
 });
 
 // Auditoría de seguridad jul-2026, sección 10: no había ningún header de
@@ -95,12 +54,11 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // next-pwa always attaches a `webpack` config, which Turbopack (default in
-  // Next.js 16) refuses to run under silently. In dev, next-pwa is disabled
-  // above so the webpack function is a no-op — this just silences the
-  // Turbopack/webpack mismatch warning. Production builds still need
-  // `next build --webpack` (see package.json) for the service worker to
-  // actually be generated, since Turbopack does not execute webpack plugins.
+  // Serwist, igual que next-pwa antes, adjunta un plugin de webpack para
+  // compilar swSrc e inyectar el manifest de precache — Turbopack (default
+  // en Next.js 16) no ejecuta plugins de webpack. En dev Serwist está
+  // deshabilitado arriba, así que esto solo evita el warning de mismatch;
+  // producción sigue necesitando `next build --webpack` (ver package.json).
   turbopack: {},
   // Permite acceder al dev server desde la IP de red local (celular en la
   // misma WiFi); sin esto Next.js bloquea el recurso HMR cross-origin y la
@@ -116,4 +74,4 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA(nextConfig);
+export default withSerwist(nextConfig);
