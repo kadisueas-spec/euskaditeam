@@ -82,10 +82,6 @@ const CONFETTI_PIECES = [
   { left: "58%", delay: "0.05s", color: "#f5f5f5" },
 ];
 
-function keyFor(exerciseId: string, setNumber: number) {
-  return `${exerciseId}-${setNumber}`;
-}
-
 // Estilo tipo "autocompletado de Chrome": fondo cálido suave, claramente
 // distinto del valor confirmado, para dejar en claro que es una sugerencia
 // editable (lo que se cargó la vez anterior), no un dato ya confirmado.
@@ -115,7 +111,7 @@ export function WorkoutLogger({
   const [setsByExercise, setSetsByExercise] = useState<
     Record<string, CommittedSet[]>
   >(() => Object.fromEntries(day.exercises.map((ex) => [ex.id, []])));
-  const [previousByKey, setPreviousByKey] = useState<
+  const [suggestions, setSuggestions] = useState<
     Map<string, PreviousSetValue>
   >(new Map());
   const [weight, setWeight] = useState("");
@@ -166,7 +162,7 @@ export function WorkoutLogger({
         ]);
         if (cancelled) return;
 
-        setPreviousByKey(
+        setSuggestions(
           new Map(previous.map((p) => [p.routineExerciseId, p]))
         );
 
@@ -227,41 +223,30 @@ export function WorkoutLogger({
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
 
-  // A5: cada vez que cambia el ejercicio o la serie a cargar, precargar la
-  // sugerencia de la vez anterior (si existe) en los campos. Se ajusta
-  // durante el render (no en un efecto) comparando contra la última clave
-  // vista, siguiendo el patrón recomendado de React para "resetear estado
-  // cuando cambia un input" sin el render extra de un efecto.
-  const resumeKey = exercise ? keyFor(exercise.id, nextSetNumber) : "";
-  // null (no ""): el primer resumeKey real nunca puede coincidir con esto,
-  // así que la precarga siempre corre en el primer render — antes quedaba
-  // inicializado con el mismo resumeKey del propio render (useState(resumeKey))
-  // y la comparación empataba desde el arranque, salteando la precarga del
-  // primer ejercicio/serie que ve el cliente al entrar (bug: la sugerencia
-  // de la semana anterior no aparecía en el primer ejercicio de la sesión).
-  const [seenResumeKey, setSeenResumeKey] = useState<string | null>(null);
-  // CAUSA RAÍZ real del bug (encontrada jul-2026, el fix de arriba era
-  // incompleto): este bloque también corre en el primerísimo render, con
-  // "initializing" todavía en true y "previousByKey" todavía un Map()
-  // vacío (llega async recién después del useEffect de arriba). Ese render
-  // prematuro ya "consume" resumeKey del ejercicio 1 / serie 1 comparando
-  // contra un Map vacío, así que no aplica ninguna sugerencia. Cuando los
-  // datos reales de previousByKey llegan (mismo batch que pone
-  // initializing en false), el ejercicio y el número de serie siguen
-  // siendo los mismos — resumeKey no cambió — así que la condición de
-  // abajo da false y el bloque nunca se reejecuta con los datos ya
-  // disponibles. Recién al cambiar de ejercicio la key cambia de verdad y
-  // el bloque corre con datos reales; por eso "funciona" desde el segundo
-  // ejercicio en adelante. Con "!initializing" acá, los renders previos al
-  // montaje completo no tocan seenResumeKey, así que el primer render real
-  // (initializing ya false, previousByKey ya con datos) es el que dispara
-  // la precarga por primera vez — con los datos correctos.
-  if (!initializing && resumeKey !== seenResumeKey && exercise) {
-    setSeenResumeKey(resumeKey);
+  // A5 — reescrito jul-2026 (2do intento): el approach anterior ajustaba
+  // el estado "durante el render" comparando una key manual
+  // (resumeKey/seenResumeKey) contra la última vista. Ese patrón solo
+  // reacciona a cambios de ejercicio/número de serie — nunca a que
+  // "suggestions" (el Map con los datos de la semana anterior) termine de
+  // cargar de forma asíncrona. Como el primer ejercicio/serie 1 no cambia
+  // de key entre el render inicial (con suggestions todavía vacío) y el
+  // momento en que los datos reales llegan, la sugerencia quedaba
+  // "consumida" antes de tener datos y nunca se reaplicaba — persistía
+  // incluso agregando guards de "!initializing" porque el problema de
+  // fondo no era CUÁNDO corría, sino DE QUÉ dependía.
+  //
+  // Ahora es un useEffect normal con [exercise?.id, nextSetNumber,
+  // suggestions] como dependencias explícitas: corre después de cada
+  // render (incluido el primero) Y cada vez que "suggestions" cambia de
+  // referencia (cuando el fetch inicial resuelve), sin importar si el
+  // ejercicio/serie ya se habían "visto" antes. Esto cubre el primer
+  // ejercicio de entrada sin necesitar navegar y volver.
+  useEffect(() => {
+    if (!exercise) return;
     // Solo se sugiere en la primera serie — de la 2 en adelante el cliente
     // ya tiene su propia referencia (lo que acaba de cargar en la serie 1
     // de hoy), no tiene sentido repetirle el récord viejo.
-    const prev = nextSetNumber === 1 ? previousByKey.get(exercise.id) : undefined;
+    const prev = nextSetNumber === 1 ? suggestions.get(exercise.id) : undefined;
     setWeight(prev?.weightKg != null ? String(prev.weightKg) : "");
     setReps(prev?.reps != null ? String(prev.reps) : "");
     setRir(prev?.rir != null ? String(prev.rir) : "");
@@ -271,7 +256,7 @@ export function WorkoutLogger({
       rir: prev?.rir != null,
     });
     setError(null);
-  }
+  }, [exercise?.id, nextSetNumber, suggestions]);
 
   function goNext() {
     if (isLastExercise) {
