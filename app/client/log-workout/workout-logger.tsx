@@ -17,15 +17,15 @@ import {
   addSet as defaultAddSet,
   finishWorkout as defaultFinishWorkout,
   getOrCreateInProgressWorkout as defaultGetOrCreateInProgressWorkout,
-  getPreviousSetsForExercises as defaultGetPreviousSetsForExercises,
+  getWorkoutSuggestions as defaultGetWorkoutSuggestions,
   updateSet as defaultUpdateSet,
   type AddSetInput,
   type AddSetResult,
   type FinishWorkoutInput,
   type FinishWorkoutResult,
   type InProgressWorkout,
-  type PreviousSetValue,
   type UpdateSetInput,
+  type WorkoutSuggestion,
   type WorkoutSummary,
 } from "./actions";
 
@@ -38,9 +38,9 @@ export type WorkoutLoggerActions = {
   getOrCreateInProgressWorkout: (
     dayId: string
   ) => Promise<InProgressWorkout | { error: string }>;
-  getPreviousSetsForExercises: (
+  getWorkoutSuggestions: (
     routineExerciseIds: string[]
-  ) => Promise<PreviousSetValue[]>;
+  ) => Promise<Record<string, WorkoutSuggestion>>;
   addSet: (input: AddSetInput) => Promise<AddSetResult>;
   updateSet: (
     setId: string,
@@ -51,7 +51,7 @@ export type WorkoutLoggerActions = {
 
 const DEFAULT_ACTIONS: WorkoutLoggerActions = {
   getOrCreateInProgressWorkout: defaultGetOrCreateInProgressWorkout,
-  getPreviousSetsForExercises: defaultGetPreviousSetsForExercises,
+  getWorkoutSuggestions: defaultGetWorkoutSuggestions,
   addSet: defaultAddSet,
   updateSet: defaultUpdateSet,
   finishWorkout: defaultFinishWorkout,
@@ -111,9 +111,7 @@ export function WorkoutLogger({
   const [setsByExercise, setSetsByExercise] = useState<
     Record<string, CommittedSet[]>
   >(() => Object.fromEntries(day.exercises.map((ex) => [ex.id, []])));
-  const [suggestions, setSuggestions] = useState<
-    Map<string, PreviousSetValue>
-  >(new Map());
+  const [suggestions, setSuggestions] = useState<Record<string, WorkoutSuggestion>>({});
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState("");
@@ -156,15 +154,8 @@ export function WorkoutLogger({
     setInitError(null);
     (async () => {
       try {
-        const [workoutResult, previous] = await Promise.all([
-          actions.getOrCreateInProgressWorkout(day.id),
-          actions.getPreviousSetsForExercises(day.exercises.map((ex) => ex.id)),
-        ]);
+        const workoutResult = await actions.getOrCreateInProgressWorkout(day.id);
         if (cancelled) return;
-
-        setSuggestions(
-          new Map(previous.map((p) => [p.routineExerciseId, p]))
-        );
 
         if ("error" in workoutResult) {
           setInitError(workoutResult.error);
@@ -218,44 +209,79 @@ export function WorkoutLogger({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [day.id, retryToken]);
 
+  // A5 — reescrito desde cero (jul-2026, 3er intento, arquitectura nueva a
+  // pedido): las sugerencias ahora se fetchean en SU PROPIO efecto,
+  // desacoplado por completo del efecto de arriba (que resuelve el
+  // workout en curso) — antes viajaban juntas en el mismo Promise.all, así
+  // que una tardaba lo que tardara la más lenta de las dos. Server action
+  // dedicada (getWorkoutSuggestions en actions.ts): para cada ejercicio de
+  // la rutina, busca el récord (mayor peso, empate -> más reps) de la
+  // semana calendario anterior (lunes a domingo), no de "la última sesión"
+  // como antes. Se descarta por completo la lógica vieja de
+  // resumeKey/seenResumeKey.
+  useEffect(() => {
+    // DEBUG TEMPORAL (jul-2026) — sacar junto con los otros console.log de
+    // este bloque una vez diagnosticado el bug de la sugerencia en el
+    // primer ejercicio.
+    console.log("[SUGGESTIONS] useEffect disparado");
+    let cancelled = false;
+    actions.getWorkoutSuggestions(day.exercises.map((ex) => ex.id)).then((result) => {
+      console.log("[SUGGESTIONS] data recibida:", result);
+      if (!cancelled) setSuggestions(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const exercise = day.exercises[exerciseIndex];
   const isLastExercise = exerciseIndex === day.exercises.length - 1;
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
 
-  // A5 — reescrito jul-2026 (2do intento): el approach anterior ajustaba
-  // el estado "durante el render" comparando una key manual
-  // (resumeKey/seenResumeKey) contra la última vista. Ese patrón solo
-  // reacciona a cambios de ejercicio/número de serie — nunca a que
-  // "suggestions" (el Map con los datos de la semana anterior) termine de
-  // cargar de forma asíncrona. Como el primer ejercicio/serie 1 no cambia
-  // de key entre el render inicial (con suggestions todavía vacío) y el
-  // momento en que los datos reales llegan, la sugerencia quedaba
-  // "consumida" antes de tener datos y nunca se reaplicaba — persistía
-  // incluso agregando guards de "!initializing" porque el problema de
-  // fondo no era CUÁNDO corría, sino DE QUÉ dependía.
-  //
-  // Ahora es un useEffect normal con [exercise?.id, nextSetNumber,
-  // suggestions] como dependencias explícitas: corre después de cada
-  // render (incluido el primero) Y cada vez que "suggestions" cambia de
-  // referencia (cuando el fetch inicial resuelve), sin importar si el
-  // ejercicio/serie ya se habían "visto" antes. Esto cubre el primer
-  // ejercicio de entrada sin necesitar navegar y volver.
+  // Aplica la sugerencia a los campos editables cuando cambia el ejercicio,
+  // el número de serie, O cuando "suggestions" termina de cargar — las tres
+  // cosas están en el array de dependencias, así que este efecto se
+  // reejecuta apenas llegan los datos reales aunque el ejercicio/serie no
+  // hayan cambiado (a diferencia de comparar una key manual, que solo
+  // reacciona a cambios de ejercicio/serie y nunca a que lleguen los
+  // datos). "index === 0" del pedido original equivale a nextSetNumber===1
+  // acá (todavía no hay ninguna serie cargada para este ejercicio).
   useEffect(() => {
     if (!exercise) return;
-    // Solo se sugiere en la primera serie — de la 2 en adelante el cliente
-    // ya tiene su propia referencia (lo que acaba de cargar en la serie 1
-    // de hoy), no tiene sentido repetirle el récord viejo.
-    const prev = nextSetNumber === 1 ? suggestions.get(exercise.id) : undefined;
-    setWeight(prev?.weightKg != null ? String(prev.weightKg) : "");
-    setReps(prev?.reps != null ? String(prev.reps) : "");
-    setRir(prev?.rir != null ? String(prev.rir) : "");
+    // DEBUG TEMPORAL (jul-2026) — sacar junto con los otros console.log de
+    // este bloque una vez diagnosticado el bug de la sugerencia en el
+    // primer ejercicio.
+    console.log(
+      "[SUGGESTIONS] aplicando para ejercicio:",
+      exercise.id,
+      "serie:",
+      nextSetNumber,
+      "sugerencia:",
+      suggestions[exercise.id]
+    );
+    const prev = nextSetNumber === 1 ? suggestions[exercise.id] : undefined;
+    const nextWeight = prev?.weight != null ? String(prev.weight) : "";
+    const nextReps = prev?.reps != null ? String(prev.reps) : "";
+    const nextRir = prev?.rir != null ? String(prev.rir) : "";
+    setWeight(nextWeight);
+    setReps(nextReps);
+    setRir(nextRir);
     setSuggested({
-      weight: prev?.weightKg != null,
+      weight: prev?.weight != null,
       reps: prev?.reps != null,
       rir: prev?.rir != null,
     });
     setError(null);
+    // Log de lo que se acaba de aplicar, no de weight/reps/rir (el estado
+    // de React todavía no refleja el cambio en este mismo tick por el
+    // batching de setState — leerlos acá mostraría el valor VIEJO).
+    console.log("[SUGGESTIONS] autocompletado aplicado:", {
+      weight: nextWeight,
+      reps: nextReps,
+      rir: nextRir,
+    });
   }, [exercise?.id, nextSetNumber, suggestions]);
 
   function goNext() {

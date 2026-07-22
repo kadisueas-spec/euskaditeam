@@ -352,14 +352,13 @@ export async function finishWorkout(
   return { success: true, summary };
 }
 
-export type PreviousSetValue = {
-  routineExerciseId: string;
-  weightKg: number | null;
+export type WorkoutSuggestion = {
+  weight: number | null;
   reps: number | null;
   rir: number | null;
 };
 
-type PreviousSetRow = {
+type SetLogRow = {
   routine_exercise_id: string | null;
   weight_kg: number | null;
   reps_completed: number | null;
@@ -367,17 +366,45 @@ type PreviousSetRow = {
   workout_logs: { workout_date: string; is_completed: boolean } | null;
 };
 
-// A5 (rediseñado jul-2026): solo se sugiere en la PRIMERA serie de cada
-// ejercicio — antes autocompletaba la "serie equivalente" (serie 2 con la
-// serie 2 de la vez pasada, etc.), pero lo que sirve como referencia real
-// es el RÉCORD de la sesión anterior: la serie de mayor peso (empate ->
-// más reps), sin importar en qué número de serie haya salido esa vez.
-export async function getPreviousSetsForExercises(
+// Lunes a domingo de la semana pasada (UTC), tomando "hoy" como referencia.
+// getUTCDay(): 0=domingo..6=sábado. diffToMonday = días desde el lunes de
+// ESTA semana; restando 7 más se llega al lunes de la semana anterior.
+function lastWeekRange(now: Date): { from: string; to: string } {
+  const day = now.getUTCDay();
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const thisMonday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
+  );
+  const lastMonday = new Date(thisMonday);
+  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
+  const lastSunday = new Date(thisMonday);
+  lastSunday.setUTCDate(thisMonday.getUTCDate() - 1);
+  return { from: lastMonday.toISOString().slice(0, 10), to: lastSunday.toISOString().slice(0, 10) };
+}
+
+// Reescrito desde cero (jul-2026, 3er intento): el problema de los dos
+// intentos anteriores era 100% de timing en el cliente (ver historial en
+// workout-logger.tsx) — esta función en sí no cambia de estrategia general
+// (récord = serie de mayor peso, empate -> más reps), solo la ventana:
+// antes era "la sesión completada más reciente" (cualquier fecha), ahora es
+// puntualmente la semana calendario anterior (lunes a domingo). Devuelve un
+// objeto plano { [routineExerciseId]: sugerencia } en vez de un array —
+// más simple de consumir del lado del cliente, sin re-armar un Map ahí.
+//
+// Sin filtro explícito de client_id a propósito: se apoya 100% en RLS,
+// igual que la función que reemplaza — así el entrenamiento propio del
+// coach (app/coach/my-training/log-workout) puede seguir reusando esta
+// misma función tal cual, sin necesitar una variante coach-scoped (sus
+// workout_logs usan coach_id, no client_id, así que filtrar por client_id
+// acá rompería ese reuso).
+export async function getWorkoutSuggestions(
   routineExerciseIds: string[]
-): Promise<PreviousSetValue[]> {
-  if (routineExerciseIds.length === 0) return [];
+): Promise<Record<string, WorkoutSuggestion>> {
+  if (routineExerciseIds.length === 0) return {};
 
   const supabase = await createClient();
+  const { from, to } = lastWeekRange(new Date());
+
   const { data } = await supabase
     .from("workout_set_logs")
     .select(
@@ -386,41 +413,31 @@ export async function getPreviousSetsForExercises(
     )
     .in("routine_exercise_id", routineExerciseIds)
     .eq("workout_logs.is_completed", true)
-    .returns<PreviousSetRow[]>();
+    .gte("workout_logs.workout_date", from)
+    .lte("workout_logs.workout_date", to)
+    .returns<SetLogRow[]>();
 
-  // Paso 1: la fecha de la sesión más reciente en la que se cargó cada
-  // ejercicio (RLS ya garantiza que son solo registros de este cliente).
-  const latestDateByExercise = new Map<string, string>();
+  // La serie de mayor peso dentro de esa semana (empate -> más reps).
+  const bestByExercise = new Map<string, SetLogRow>();
   for (const row of data ?? []) {
     if (!row.routine_exercise_id || !row.workout_logs) continue;
-    const current = latestDateByExercise.get(row.routine_exercise_id);
-    if (!current || row.workout_logs.workout_date > current) {
-      latestDateByExercise.set(row.routine_exercise_id, row.workout_logs.workout_date);
-    }
-  }
-
-  // Paso 2: dentro de esa sesión más reciente, la serie con más peso
-  // (empate -> más reps) = el récord a sugerir.
-  const recordByExercise = new Map<string, PreviousSetRow>();
-  for (const row of data ?? []) {
-    if (!row.routine_exercise_id || !row.workout_logs) continue;
-    if (row.workout_logs.workout_date !== latestDateByExercise.get(row.routine_exercise_id)) {
-      continue;
-    }
-    const current = recordByExercise.get(row.routine_exercise_id);
+    const current = bestByExercise.get(row.routine_exercise_id);
     const weight = row.weight_kg ?? -Infinity;
     const currentWeight = current?.weight_kg ?? -Infinity;
     const reps = row.reps_completed ?? -Infinity;
     const currentReps = current?.reps_completed ?? -Infinity;
     if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
-      recordByExercise.set(row.routine_exercise_id, row);
+      bestByExercise.set(row.routine_exercise_id, row);
     }
   }
 
-  return Array.from(recordByExercise.entries()).map(([routineExerciseId, row]) => ({
-    routineExerciseId,
-    weightKg: row.weight_kg,
-    reps: row.reps_completed,
-    rir: row.rir_actual,
-  }));
+  const result: Record<string, WorkoutSuggestion> = {};
+  for (const [routineExerciseId, row] of bestByExercise) {
+    result[routineExerciseId] = {
+      weight: row.weight_kg,
+      reps: row.reps_completed,
+      rir: row.rir_actual,
+    };
+  }
+  return result;
 }

@@ -14,8 +14,8 @@ import type {
 } from "@/app/client/log-workout/actions";
 
 // Espejo de app/client/log-workout/actions.ts para el entrenamiento propio
-// del coach — coach_id en vez de client_id. getPreviousSetsForExercises NO
-// se duplica: esa función no filtra por client_id explícito, se apoya
+// del coach — coach_id en vez de client_id. getWorkoutSuggestions NO se
+// duplica: esa función no filtra por client_id explícito, se apoya
 // 100% en RLS (ver comentario ahí), así que ya sirve tal cual para el
 // coach una vez que las policies de la migración están puestas.
 //

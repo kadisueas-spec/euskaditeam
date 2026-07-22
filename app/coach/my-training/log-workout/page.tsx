@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { WorkoutLogger } from "@/app/client/log-workout/workout-logger";
-import { getPreviousSetsForExercises } from "@/app/client/log-workout/actions";
+import { getWorkoutSuggestions } from "@/app/client/log-workout/actions";
 import {
   getInProgressTrainingDayId,
   getTrainingDayForLogging,
@@ -18,7 +18,7 @@ const TRAINING_ACTIONS = {
   // No hace falta una variante coach-scoped: esta función no filtra por
   // client_id explícito, se apoya 100% en RLS (ver comentario en
   // app/client/log-workout/actions.ts).
-  getPreviousSetsForExercises,
+  getWorkoutSuggestions,
   addSet: addTrainingSet,
   updateSet: updateTrainingSet,
   finishWorkout: finishTrainingWorkout,
