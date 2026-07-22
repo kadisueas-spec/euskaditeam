@@ -240,7 +240,23 @@ export function WorkoutLogger({
   // primer ejercicio/serie que ve el cliente al entrar (bug: la sugerencia
   // de la semana anterior no aparecía en el primer ejercicio de la sesión).
   const [seenResumeKey, setSeenResumeKey] = useState<string | null>(null);
-  if (resumeKey !== seenResumeKey && exercise) {
+  // CAUSA RAÍZ real del bug (encontrada jul-2026, el fix de arriba era
+  // incompleto): este bloque también corre en el primerísimo render, con
+  // "initializing" todavía en true y "previousByKey" todavía un Map()
+  // vacío (llega async recién después del useEffect de arriba). Ese render
+  // prematuro ya "consume" resumeKey del ejercicio 1 / serie 1 comparando
+  // contra un Map vacío, así que no aplica ninguna sugerencia. Cuando los
+  // datos reales de previousByKey llegan (mismo batch que pone
+  // initializing en false), el ejercicio y el número de serie siguen
+  // siendo los mismos — resumeKey no cambió — así que la condición de
+  // abajo da false y el bloque nunca se reejecuta con los datos ya
+  // disponibles. Recién al cambiar de ejercicio la key cambia de verdad y
+  // el bloque corre con datos reales; por eso "funciona" desde el segundo
+  // ejercicio en adelante. Con "!initializing" acá, los renders previos al
+  // montaje completo no tocan seenResumeKey, así que el primer render real
+  // (initializing ya false, previousByKey ya con datos) es el que dispara
+  // la precarga por primera vez — con los datos correctos.
+  if (!initializing && resumeKey !== seenResumeKey && exercise) {
     setSeenResumeKey(resumeKey);
     // Solo se sugiere en la primera serie — de la 2 en adelante el cliente
     // ya tiene su propia referencia (lo que acaba de cargar en la serie 1
