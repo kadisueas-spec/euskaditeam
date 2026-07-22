@@ -249,6 +249,37 @@ falta ninguna tabla nueva — todo se calcula agregando estos datos.
     simplificada (sin desglose ejercicio por ejercicio, eso queda solo
     para la vista del coach).
 
+### Fase 10 — Renovaciones y Retención de Clientes
+Objetivo: que ningún cliente pierda acceso por sorpresa ni quede "colgado"
+sin que el coach se entere, y que la inactividad prolongada no deje basura
+de clientes viejos en la base — todo corre solo, sobre `daily-checks`.
+36. 5 chequeos nuevos en `supabase/functions/daily-checks`, todos sobre
+    `clients.subscription_end_date` (comparado con `daysAgo`, ya existente
+    en el archivo): día -1 antes del vencimiento → push al cliente y al
+    coach; día 0 → `subscription_status` pasa a `inactive` automáticamente,
+    sin aviso; día +2 → push solo al coach; día +4 → aviso de eliminación
+    en 24hs; día +5 → si sigue `inactive` (se re-chequea justo antes, por
+    si el coach ya reactivó el acceso mientras tanto), elimina TODO el
+    rastro del cliente. Cron actualizado de 8am a 9am PYT
+    (`"0 13 * * *"` UTC) — hay que actualizarlo a mano en el Dashboard de
+    Supabase, igual que el resto de esta Edge Function.
+37. La eliminación del día +5 (`deleteInactiveClient`) borra en este orden
+    exacto: (1) snapshot en `deleted_clients_log` — única tabla que
+    sobrevive, `id`/`nombre`/`email`/`subscription_end_date`/fecha, RLS
+    scoped por `coach_id`; (2) archivos del bucket `nutrition-plans` en
+    Storage (el DELETE de la fila de `nutrition_plans` no borra el archivo
+    físico); (3) `monthly_goals`/`monthly_reviews` a mano — son las únicas
+    dos tablas con FK a `clients` sin `ON DELETE CASCADE`; (4)
+    `supabase.auth.admin.deleteUser()` — borra el login para siempre (no
+    puede volver a entrar con ese email sin invitación nueva) y cascadea
+    automático todo lo demás (`profiles` → `clients` → feedback, rutinas,
+    workout_logs/set_logs, evaluaciones antropométricas, nutrition_plans,
+    weight_logs, subscriptions, push_subscriptions). La card "Suscripciones
+    por vencer en 7 días" del dashboard del coach (`expiringSoon` en
+    `lib/supabase/dashboard.ts`) ya cubría el aviso preventivo — no hizo
+    falta tocar el dashboard para este módulo.
+    Migración: `supabase/migrations/20260722_deleted_clients_log.sql`.
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)

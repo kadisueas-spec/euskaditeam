@@ -45,3 +45,6 @@ next-env.d.ts
 # workbox-*.js/worker-*.js separados como generaba next-pwa)
 /public/sw.js
 /public/sw.js.map
+
+# cache local de la CLI de Supabase (login/link/deploy)
+/supabase/.temp/

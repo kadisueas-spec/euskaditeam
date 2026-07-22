@@ -1,6 +1,6 @@
 // @ts-nocheck -- Deno edge runtime, no corre por el tsconfig/eslint de Next.
-// Cron sugerido (hora Paraguay, UTC-4 todo el año): todos los días 8am PYT
-// = 12:00 UTC → "0 12 * * *"
+// Cron sugerido (hora Paraguay, UTC-4 todo el año): todos los días 9am PYT
+// = 13:00 UTC → "0 13 * * *"
 //
 // Archivo autocontenido a propósito (sin imports compartidos) para poder
 // pegarlo directo en el editor de Edge Functions del Dashboard de Supabase.
@@ -66,6 +66,64 @@ async function sendPushToCoach(coachId, payload) {
       }
     }
   }
+}
+
+// Sistema de renovaciones y retención (jul-2026): al quinto día sin acceso
+// (subscription_status inactive) se elimina toda la data de coaching del
+// cliente. El login (auth.users) SÍ se borra a propósito — no puede volver
+// a entrar con ese email sin que el coach lo invite de nuevo. Orden fijo:
+// 1) snapshot en deleted_clients_log, 2) archivos de Storage (no cascadea
+// solo con borrar la fila), 3) las dos únicas tablas sin ON DELETE CASCADE
+// hacia clients (monthly_goals/monthly_reviews), 4) admin.deleteUser()
+// -> cascada automática de profiles -> clients -> todo el resto
+// (feedback, rutinas, workout_logs/set_logs, evaluaciones antropométricas,
+// nutrition_plans, weight_logs, subscriptions, push_subscriptions).
+async function deleteInactiveClient(client, clientName) {
+  // Re-chequeo justo antes de borrar: si el coach ya reactivó el acceso
+  // entre el chequeo de arriba y este punto, no se borra nada.
+  const { data: fresh } = await supabase
+    .from("clients")
+    .select("subscription_status")
+    .eq("id", client.id)
+    .maybeSingle();
+  if (!fresh || fresh.subscription_status !== "inactive") return;
+
+  await supabase.from("deleted_clients_log").insert({
+    client_id: client.id,
+    coach_id: client.coach_id,
+    full_name: client.profiles?.full_name ?? null,
+    email: client.profiles?.email ?? null,
+    subscription_end_date: client.subscription_end_date,
+  });
+
+  const { data: files } = await supabase.storage.from("nutrition-plans").list(client.id);
+  if (files?.length) {
+    await supabase.storage
+      .from("nutrition-plans")
+      .remove(files.map((f) => `${client.id}/${f.name}`));
+  }
+
+  await supabase.from("monthly_goals").delete().eq("client_id", client.id);
+  await supabase.from("monthly_reviews").delete().eq("client_id", client.id);
+
+  if (client.user_id) {
+    const { error } = await supabase.auth.admin.deleteUser(client.user_id);
+    if (error) {
+      console.error("daily-checks: error borrando auth user", client.id, error);
+      return; // no se manda la confirmación si el borrado falló
+    }
+  } else {
+    // No debería pasar en el flujo normal de la app (todo cliente real
+    // tiene un user_id vinculado desde el registro), pero por las dudas:
+    // sin user_id no hay nada de qué cascadear, se borra la fila directo.
+    await supabase.from("clients").delete().eq("id", client.id);
+  }
+
+  await sendPushToCoach(client.coach_id, {
+    title: "Cliente eliminado",
+    body: `Los datos de ${clientName} fueron eliminados de la base de datos por inactividad.`,
+    url: "/coach/clients",
+  });
 }
 
 // Bloque 5 (jul-2026) — "Voz Euskadi": voseo para el cliente, "tienes" para
@@ -170,6 +228,77 @@ Deno.serve(async () => {
       body: mesocicloBody,
       url: routine.clients?.id ? `/coach/clients/${routine.clients.id}` : "/coach/dashboard",
     });
+  }
+
+  // Renovaciones y retención (jul-2026): 5 chequeos sobre
+  // subscription_end_date, usando daysAgo tal cual (positivo = venció hace
+  // N días, negativo = vence en N días) para que coincida directo con el
+  // "hoy ± N" de la spec.
+  const { data: expiringClients } = await supabase
+    .from("clients")
+    .select(
+      `id, user_id, coach_id, subscription_status, subscription_end_date,
+       profiles!clients_user_id_fkey ( full_name, email )`
+    )
+    .not("subscription_end_date", "is", null)
+    .in("subscription_status", ["active", "inactive"]);
+
+  for (const client of expiringClients ?? []) {
+    if (!client.coach_id) continue;
+    const clientName =
+      client.profiles?.full_name ?? client.profiles?.email ?? "Tu cliente";
+    const days = daysAgo(client.subscription_end_date.slice(0, 10), now);
+
+    // (a) Vence mañana, todavía activo -> avisar a cliente y coach.
+    if (client.subscription_status === "active" && days === -1) {
+      await sendPushToClient(client.id, {
+        title: "Tu plan vence mañana",
+        body: "Renová la suscripción de tu plan para seguir mejorando y no perder tus registros!",
+        url: "/client/profile",
+      });
+      await sendPushToCoach(client.coach_id, {
+        title: "Vencimiento mañana",
+        body: `El plan de ${clientName} vence mañana. ¿Ya coordinaste el pago?`,
+        url: `/coach/clients/${client.id}`,
+      });
+      continue;
+    }
+
+    // (b) Venció ayer, todavía marcado activo -> desactivar, sin aviso.
+    if (client.subscription_status === "active" && days === 1) {
+      await supabase
+        .from("clients")
+        .update({ subscription_status: "inactive" })
+        .eq("id", client.id);
+      continue;
+    }
+
+    if (client.subscription_status !== "inactive") continue;
+
+    // (c) 2 días sin acceso -> avisar solo al coach.
+    if (days === 2) {
+      await sendPushToCoach(client.coach_id, {
+        title: "Cliente sin acceso",
+        body: `${clientName} lleva 2 días sin acceso. ¿Ya coordinaste el pago?`,
+        url: `/coach/clients/${client.id}`,
+      });
+      continue;
+    }
+
+    // (d) 4 días sin acceso -> aviso de eliminación en 24hs.
+    if (days === 4) {
+      await sendPushToCoach(client.coach_id, {
+        title: "Eliminación en 24 horas",
+        body: `Los datos de ${clientName} se eliminarán en 24 horas si no renovó su plan. Activá el acceso si ya pagó.`,
+        url: `/coach/clients/${client.id}`,
+      });
+      continue;
+    }
+
+    // (e) 5 días sin acceso -> eliminar en cascada.
+    if (days === 5) {
+      await deleteInactiveClient(client, clientName);
+    }
   }
 
   return new Response("ok");

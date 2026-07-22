@@ -165,6 +165,27 @@ CREATE TABLE public.clients (
 
 
 --
+-- Name: deleted_clients_log; Type: TABLE; Schema: public; Owner: -
+--
+-- Nota: schema.sql no está 100% al día con la base real (varias tablas de
+-- jul-2026 como anthropometric_evaluations/nutrition_plans/weight_logs
+-- viven solo en supabase/migrations/, no acá) — esta entrada se agrega
+-- igual por prolijidad, pero no asumas que el resto del archivo refleja el
+-- estado actual sin cruzar contra supabase/migrations/.
+--
+
+CREATE TABLE public.deleted_clients_log (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid NOT NULL,
+    coach_id uuid,
+    full_name text,
+    email text,
+    subscription_end_date timestamp with time zone,
+    deleted_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
 -- Name: exercises; Type: TABLE; Schema: public; Owner: -
 --
 
