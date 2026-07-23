@@ -21,10 +21,16 @@ export function CoachPushPermissionPrompt() {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Ver el comentario equivalente en components/client/push-permission-prompt.tsx
+  // (caso Fabrizzio, jul-2026): Notification.permission sobrevive a
+  // reinstalar la PWA y queda en "granted" para siempre apenas se concede
+  // una vez, sin importar si subscribe()/el guardado fallaron después —
+  // usarlo acá escondía el banner para siempre en ese escenario.
+  // PUSH_PROMPTED_KEY_COACH ya solo se pone en éxito o descarte explícito,
+  // así que alcanza sola.
   useEffect(() => {
     if (!isPushSupported()) return;
     if (localStorage.getItem(PUSH_PROMPTED_KEY_COACH)) return;
-    if (Notification.permission !== "default") return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setVisible(true);
   }, []);

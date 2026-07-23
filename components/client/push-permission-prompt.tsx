@@ -18,10 +18,21 @@ export function PushPermissionPrompt() {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Bug real encontrado jul-2026 (caso Fabrizzio): este efecto chequeaba
+  // "Notification.permission !== 'default' -> no mostrar", asumiendo que
+  // permiso ya resuelto significa que ya se completó la suscripción. Pero
+  // el permiso es un estado del navegador ligado al origen — sobrevive a
+  // reinstalar la PWA, y queda en "granted" para siempre apenas el usuario
+  // lo concede UNA vez, sin importar si subscribe() o el guardado en
+  // Supabase fallaron después. Resultado: si algo fallaba con el permiso
+  // ya concedido, el banner desaparecía para siempre y reinstalar no lo
+  // traía de vuelta. PUSH_PROMPTED_KEY ya es la marca correcta acá — solo
+  // se pone en localStorage cuando el flujo completo termina bien o el
+  // usuario lo descarta a propósito (nunca en un fallo), así que alcanza
+  // sola sin depender también de Notification.permission.
   useEffect(() => {
     if (!isPushSupported()) return;
     if (localStorage.getItem(PUSH_PROMPTED_KEY)) return;
-    if (Notification.permission !== "default") return;
     // Chequeo único de soporte/estado del navegador al montar, no un valor
     // derivado que deba mantenerse sincronizado.
     // eslint-disable-next-line react-hooks/set-state-in-effect
