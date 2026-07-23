@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
-import { urlBase64ToUint8Array, PUSH_PROMPTED_KEY } from "@/lib/constants/push";
+import { formatErrorDetail, urlBase64ToUint8Array, PUSH_PROMPTED_KEY } from "@/lib/constants/push";
 import { savePushSubscription } from "@/app/client/actions";
 
 function isPushSupported() {
@@ -65,7 +65,7 @@ export function PushPermissionPrompt() {
       });
     } catch (err) {
       console.error("PushPermissionPrompt: pushManager.subscribe() falló", err);
-      setError("No se pudo activar. Probá de nuevo más tarde.");
+      setError(`No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`);
       return;
     }
 
@@ -84,12 +84,12 @@ export function PushPermissionPrompt() {
       });
       if (result?.error) {
         console.error("PushPermissionPrompt: savePushSubscription devolvió error", result.error);
-        setError("No se pudo guardar la suscripción. Probá de nuevo más tarde.");
+        setError(`No se pudieron activar las notificaciones.\nError: ${result.error}`);
         return;
       }
     } catch (err) {
       console.error("PushPermissionPrompt: savePushSubscription lanzó una excepción", err);
-      setError("No se pudo guardar la suscripción. Probá de nuevo más tarde.");
+      setError(`No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`);
       return;
     }
 
@@ -126,7 +126,9 @@ export function PushPermissionPrompt() {
           <X className="size-4" />
         </button>
       </div>
-      {error && <p className="pl-8 text-xs text-[#ff6b6b]">{error}</p>}
+      {error && (
+        <p className="pl-8 text-xs whitespace-pre-line text-[#ff6b6b]">{error}</p>
+      )}
     </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
-import { urlBase64ToUint8Array, PUSH_PROMPTED_KEY_COACH } from "@/lib/constants/push";
+import { formatErrorDetail, urlBase64ToUint8Array, PUSH_PROMPTED_KEY_COACH } from "@/lib/constants/push";
 import { saveCoachPushSubscription } from "@/app/coach/actions";
 
 function isPushSupported() {
@@ -63,7 +63,7 @@ export function CoachPushPermissionPrompt() {
       });
     } catch (err) {
       console.error("CoachPushPermissionPrompt: pushManager.subscribe() falló", err);
-      setError("No se pudo activar. Probá de nuevo más tarde.");
+      setError(`No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`);
       return;
     }
 
@@ -82,12 +82,12 @@ export function CoachPushPermissionPrompt() {
       });
       if (result?.error) {
         console.error("CoachPushPermissionPrompt: saveCoachPushSubscription devolvió error", result.error);
-        setError("No se pudo guardar la suscripción. Probá de nuevo más tarde.");
+        setError(`No se pudieron activar las notificaciones.\nError: ${result.error}`);
         return;
       }
     } catch (err) {
       console.error("CoachPushPermissionPrompt: saveCoachPushSubscription lanzó una excepción", err);
-      setError("No se pudo guardar la suscripción. Probá de nuevo más tarde.");
+      setError(`No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`);
       return;
     }
 
@@ -124,7 +124,9 @@ export function CoachPushPermissionPrompt() {
           <X className="size-4" />
         </button>
       </div>
-      {error && <p className="pl-8 text-xs text-[#ff6b6b]">{error}</p>}
+      {error && (
+        <p className="pl-8 text-xs whitespace-pre-line text-[#ff6b6b]">{error}</p>
+      )}
     </div>
   );
 }

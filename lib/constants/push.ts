@@ -9,3 +9,19 @@ export function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 export const PUSH_PROMPTED_KEY = "fitcoach:push-prompted";
 export const PUSH_PROMPTED_KEY_COACH = "fitcoach:push-prompted-coach";
+
+// Diagnóstico jul-2026: en Android, "No se pudo activar" sin más detalle no
+// alcanza — el console.error correspondiente vive en la consola del propio
+// navegador del cliente, invisible tanto para el coach como para nosotros
+// sin depuración remota por USB. Mostrar name/message/code directo en la
+// UI deja que el cliente lea o mande una foto del error real sin depurar
+// nada.
+export function formatErrorDetail(err: unknown): string {
+  if (err instanceof Error) {
+    const withCode = err as Error & { code?: string | number };
+    const parts = [err.name, err.message];
+    if (withCode.code != null) parts.push(`code ${withCode.code}`);
+    return parts.filter(Boolean).join(" — ");
+  }
+  return String(err);
+}
