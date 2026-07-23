@@ -40,3 +40,18 @@ export async function saveCoachPushSubscription(
 
   return undefined;
 }
+
+// Ver el comentario equivalente en app/client/actions.ts (caso Fabrizzio,
+// jul-2026) — mismo chequeo contra la fuente de verdad real para el coach.
+export async function hasCoachPushSubscription(): Promise<boolean> {
+  const authUser = await getAuthUser();
+  if (!authUser) return false;
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("push_subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("coach_id", authUser.id);
+
+  return (count ?? 0) > 0;
+}

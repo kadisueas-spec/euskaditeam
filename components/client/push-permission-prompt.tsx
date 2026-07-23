@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 import { formatErrorDetail, urlBase64ToUint8Array, PUSH_PROMPTED_KEY } from "@/lib/constants/push";
-import { savePushSubscription } from "@/app/client/actions";
+import { hasPushSubscription, savePushSubscription } from "@/app/client/actions";
 
 function isPushSupported() {
   return (
@@ -18,25 +18,33 @@ export function PushPermissionPrompt() {
   const [visible, setVisible] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Bug real encontrado jul-2026 (caso Fabrizzio): este efecto chequeaba
-  // "Notification.permission !== 'default' -> no mostrar", asumiendo que
-  // permiso ya resuelto significa que ya se completó la suscripción. Pero
-  // el permiso es un estado del navegador ligado al origen — sobrevive a
-  // reinstalar la PWA, y queda en "granted" para siempre apenas el usuario
-  // lo concede UNA vez, sin importar si subscribe() o el guardado en
-  // Supabase fallaron después. Resultado: si algo fallaba con el permiso
-  // ya concedido, el banner desaparecía para siempre y reinstalar no lo
-  // traía de vuelta. PUSH_PROMPTED_KEY ya es la marca correcta acá — solo
-  // se pone en localStorage cuando el flujo completo termina bien o el
-  // usuario lo descarta a propósito (nunca en un fallo), así que alcanza
-  // sola sin depender también de Notification.permission.
+  // 2do bug real encontrado jul-2026 (caso Fabrizzio, sigue sin verse el
+  // banner después del fix anterior): PUSH_PROMPTED_KEY en localStorage
+  // puede quedar en "1" sin que exista ninguna suscripción real — por
+  // ejemplo si el usuario tocó la ✕ (dismiss) antes de intentar activar
+  // siquiera. Ese flag local sobrevive a reinstalar la PWA igual que
+  // Notification.permission, así que confiar solo en él tiene el mismo
+  // problema de fondo. Ahora, si el permiso ya está "granted", se
+  // consulta la fuente de verdad real (¿hay una fila en push_subscriptions
+  // para este cliente?) antes de decidir esconder el banner — sin
+  // importar qué diga el flag local. Con permiso "default"/"denied" (el
+  // usuario ni llegó a conceder nada) el flag local alcanza, para no
+  // insistir en cada visita a alguien que ya dijo que no quiere.
   useEffect(() => {
     if (!isPushSupported()) return;
-    if (localStorage.getItem(PUSH_PROMPTED_KEY)) return;
-    // Chequeo único de soporte/estado del navegador al montar, no un valor
-    // derivado que deba mantenerse sincronizado.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVisible(true);
+
+    (async () => {
+      if (Notification.permission === "granted") {
+        const subscribed = await hasPushSubscription();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (!subscribed) setVisible(true);
+        return;
+      }
+      if (localStorage.getItem(PUSH_PROMPTED_KEY)) return;
+      if (Notification.permission === "denied") return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisible(true);
+    })();
   }, []);
 
   // Diagnóstico jul-2026: notificaciones que funcionan en iPhone pero nunca

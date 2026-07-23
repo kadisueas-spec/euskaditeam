@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, X } from "lucide-react";
 import { formatErrorDetail, urlBase64ToUint8Array, PUSH_PROMPTED_KEY_COACH } from "@/lib/constants/push";
-import { saveCoachPushSubscription } from "@/app/coach/actions";
+import { hasCoachPushSubscription, saveCoachPushSubscription } from "@/app/coach/actions";
 
 function isPushSupported() {
   return (
@@ -22,17 +22,26 @@ export function CoachPushPermissionPrompt() {
   const [error, setError] = useState<string | null>(null);
 
   // Ver el comentario equivalente en components/client/push-permission-prompt.tsx
-  // (caso Fabrizzio, jul-2026): Notification.permission sobrevive a
-  // reinstalar la PWA y queda en "granted" para siempre apenas se concede
-  // una vez, sin importar si subscribe()/el guardado fallaron después —
-  // usarlo acá escondía el banner para siempre en ese escenario.
-  // PUSH_PROMPTED_KEY_COACH ya solo se pone en éxito o descarte explícito,
-  // así que alcanza sola.
+  // (caso Fabrizzio, jul-2026, 2do bug): PUSH_PROMPTED_KEY_COACH puede
+  // quedar en "1" sin ninguna suscripción real (ej. dismiss antes de
+  // intentar activar), y sobrevive a reinstalar la PWA igual que
+  // Notification.permission. Con permiso "granted" se consulta la fuente
+  // de verdad real (push_subscriptions) antes de esconder el banner.
   useEffect(() => {
     if (!isPushSupported()) return;
-    if (localStorage.getItem(PUSH_PROMPTED_KEY_COACH)) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setVisible(true);
+
+    (async () => {
+      if (Notification.permission === "granted") {
+        const subscribed = await hasCoachPushSubscription();
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (!subscribed) setVisible(true);
+        return;
+      }
+      if (localStorage.getItem(PUSH_PROMPTED_KEY_COACH)) return;
+      if (Notification.permission === "denied") return;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVisible(true);
+    })();
   }, []);
 
   // Ver el comentario equivalente en components/client/push-permission-prompt.tsx

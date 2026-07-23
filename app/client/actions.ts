@@ -91,3 +91,23 @@ export async function savePushSubscription(
 
   return undefined;
 }
+
+// Bug real encontrado jul-2026 (caso Fabrizzio): PUSH_PROMPTED_KEY en
+// localStorage puede quedar en "1" sin que exista ninguna suscripción real
+// (por ejemplo, si el usuario descartó el banner con la ✕ antes de que
+// existiera este chequeo) — sobrevive incluso a reinstalar la PWA. Este
+// chequeo contra la fuente de verdad real permite al banner mostrarse de
+// nuevo cuando el permiso ya está "granted" pero no hay ninguna
+// suscripción guardada, sin importar qué diga el flag local.
+export async function hasPushSubscription(): Promise<boolean> {
+  const client = await getCurrentClientRecord();
+  if (!client) return false;
+
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from("push_subscriptions")
+    .select("id", { count: "exact", head: true })
+    .eq("client_id", client.id);
+
+  return (count ?? 0) > 0;
+}
