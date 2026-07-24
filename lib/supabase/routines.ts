@@ -107,6 +107,7 @@ export type RoutineExerciseDetail = {
   rirTarget: number | null;
   restSeconds: number | null;
   notes: string | null;
+  weightIncrement: number;
 };
 
 export type RoutineDayDetail = {
@@ -159,6 +160,7 @@ type RoutineDetailRow = {
       rir_target: number | null;
       rest_seconds: number | null;
       coach_notes: string | null;
+      weight_increment: number;
       exercises: { name: string } | null;
     }[];
   }[];
@@ -182,7 +184,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
          id, name, day_number,
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
-           rir_target, rest_seconds, coach_notes,
+           rir_target, rest_seconds, coach_notes, weight_increment,
            exercises ( name )
          )
        )`
@@ -229,6 +231,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
           rirTarget: re.rir_target,
           restSeconds: re.rest_seconds,
           notes: re.coach_notes,
+          weightIncrement: re.weight_increment,
         })),
     })),
   };

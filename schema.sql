@@ -342,7 +342,8 @@ CREATE TABLE public.routine_exercises (
     weight_suggestion text,
     coach_notes text,
     is_optional boolean DEFAULT false,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    weight_increment numeric(5,2) DEFAULT 2.5 NOT NULL
 );
 
 

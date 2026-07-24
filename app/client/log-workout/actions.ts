@@ -356,6 +356,7 @@ export type WorkoutSuggestion = {
   weight: number | null;
   reps: number | null;
   rir: number | null;
+  progressionCase: "weight_increase" | "reps_increase" | null;
 };
 
 type SetLogRow = {
@@ -364,6 +365,13 @@ type SetLogRow = {
   reps_completed: number | null;
   rir_actual: number | null;
   workout_logs: { workout_date: string; is_completed: boolean } | null;
+};
+
+type RoutineExerciseRangeRow = {
+  id: string;
+  reps_min: number | null;
+  reps_max: number | null;
+  weight_increment: number;
 };
 
 // Lunes a domingo de la semana pasada (UTC), tomando "hoy" como referencia.
@@ -397,6 +405,16 @@ function lastWeekRange(now: Date): { from: string; to: string } {
 // misma función tal cual, sin necesitar una variante coach-scoped (sus
 // workout_logs usan coach_id, no client_id, así que filtrar por client_id
 // acá rompería ese reuso).
+//
+// Algoritmo de progresión (jul-2026): a partir del récord de la semana
+// pasada, sugiere el peso/reps ÓPTIMOS para esta semana en vez de repetir
+// el mismo récord.
+// - Si las reps del récord llegaron al techo del rango (reps_max): subir
+//   weight_increment kg y volver al piso del rango (reps_min).
+// - Si quedaron dentro del rango (o por debajo de reps_min, caso no
+//   cubierto explícitamente por el enunciado — se trata igual, sumar una
+//   rep es la lectura más conservadora): mismo peso, +1 rep.
+// El RIR sugerido siempre es el del récord, sin cambios.
 export async function getWorkoutSuggestions(
   routineExerciseIds: string[]
 ): Promise<Record<string, WorkoutSuggestion>> {
@@ -405,17 +423,24 @@ export async function getWorkoutSuggestions(
   const supabase = await createClient();
   const { from, to } = lastWeekRange(new Date());
 
-  const { data } = await supabase
-    .from("workout_set_logs")
-    .select(
-      `routine_exercise_id, weight_kg, reps_completed, rir_actual,
-       workout_logs!inner ( workout_date, is_completed )`
-    )
-    .in("routine_exercise_id", routineExerciseIds)
-    .eq("workout_logs.is_completed", true)
-    .gte("workout_logs.workout_date", from)
-    .lte("workout_logs.workout_date", to)
-    .returns<SetLogRow[]>();
+  const [{ data }, { data: ranges }] = await Promise.all([
+    supabase
+      .from("workout_set_logs")
+      .select(
+        `routine_exercise_id, weight_kg, reps_completed, rir_actual,
+         workout_logs!inner ( workout_date, is_completed )`
+      )
+      .in("routine_exercise_id", routineExerciseIds)
+      .eq("workout_logs.is_completed", true)
+      .gte("workout_logs.workout_date", from)
+      .lte("workout_logs.workout_date", to)
+      .returns<SetLogRow[]>(),
+    supabase
+      .from("routine_exercises")
+      .select("id, reps_min, reps_max, weight_increment")
+      .in("id", routineExerciseIds)
+      .returns<RoutineExerciseRangeRow[]>(),
+  ]);
 
   // La serie de mayor peso dentro de esa semana (empate -> más reps).
   const bestByExercise = new Map<string, SetLogRow>();
@@ -431,13 +456,44 @@ export async function getWorkoutSuggestions(
     }
   }
 
+  const rangeByExercise = new Map<string, RoutineExerciseRangeRow>();
+  for (const r of ranges ?? []) rangeByExercise.set(r.id, r);
+
   const result: Record<string, WorkoutSuggestion> = {};
   for (const [routineExerciseId, row] of bestByExercise) {
-    result[routineExerciseId] = {
-      weight: row.weight_kg,
-      reps: row.reps_completed,
-      rir: row.rir_actual,
-    };
+    const weightRecord = row.weight_kg;
+    const repsRecord = row.reps_completed;
+
+    if (weightRecord == null || repsRecord == null) {
+      result[routineExerciseId] = {
+        weight: weightRecord,
+        reps: repsRecord,
+        rir: row.rir_actual,
+        progressionCase: null,
+      };
+      continue;
+    }
+
+    const range = rangeByExercise.get(routineExerciseId);
+    const weightIncrement = range?.weight_increment ?? 2.5;
+    const repsMin = range?.reps_min ?? 1;
+    const repsMax = range?.reps_max ?? null;
+
+    if (repsMax != null && repsRecord >= repsMax) {
+      result[routineExerciseId] = {
+        weight: weightRecord + weightIncrement,
+        reps: repsMin,
+        rir: row.rir_actual,
+        progressionCase: "weight_increase",
+      };
+    } else {
+      result[routineExerciseId] = {
+        weight: weightRecord,
+        reps: repsRecord + 1,
+        rir: row.rir_actual,
+        progressionCase: "reps_increase",
+      };
+    }
   }
   return result;
 }

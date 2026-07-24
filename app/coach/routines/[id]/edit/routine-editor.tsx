@@ -29,6 +29,7 @@ type ExerciseRow = {
   rir: string;
   restSeconds: string;
   notes: string;
+  weightIncrement: string;
 };
 
 type DayRow = {
@@ -49,6 +50,7 @@ function newExerciseRow(): ExerciseRow {
     rir: "",
     restSeconds: "",
     notes: "",
+    weightIncrement: "2.5",
   };
 }
 
@@ -76,6 +78,7 @@ function daysFromRoutine(
       rir: ex.rirTarget != null ? String(ex.rirTarget) : "",
       restSeconds: secondsToMinutesInput(ex.restSeconds),
       notes: ex.notes ?? "",
+      weightIncrement: String(ex.weightIncrement),
     })),
   }));
 }
@@ -204,6 +207,7 @@ export function RoutineEditor({
             rir: e.rir ? Number(e.rir) : null,
             restSeconds: minutesInputToSeconds(e.restSeconds),
             notes: e.notes || null,
+            weightIncrement: Number(e.weightIncrement) || 2.5,
           })),
         })),
       });
@@ -408,6 +412,20 @@ export function RoutineEditor({
                       onChange={(e) =>
                         updateExercise(day.key, ex.key, {
                           restSeconds: sanitizeDecimalInput(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-xs">Incremento (kg)</Label>
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="2.5"
+                      value={ex.weightIncrement}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, {
+                          weightIncrement: sanitizeDecimalInput(e.target.value),
                         })
                       }
                     />

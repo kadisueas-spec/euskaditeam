@@ -120,6 +120,9 @@ export function WorkoutLogger({
     reps: false,
     rir: false,
   });
+  const [suggestionCase, setSuggestionCase] = useState<
+    WorkoutSuggestion["progressionCase"]
+  >(null);
   const [energyLevel, setEnergyLevel] = useState(3);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -220,13 +223,8 @@ export function WorkoutLogger({
   // como antes. Se descarta por completo la lógica vieja de
   // resumeKey/seenResumeKey.
   useEffect(() => {
-    // DEBUG TEMPORAL (jul-2026) — sacar junto con los otros console.log de
-    // este bloque una vez diagnosticado el bug de la sugerencia en el
-    // primer ejercicio.
-    console.log("[SUGGESTIONS] useEffect disparado");
     let cancelled = false;
     actions.getWorkoutSuggestions(day.exercises.map((ex) => ex.id)).then((result) => {
-      console.log("[SUGGESTIONS] data recibida:", result);
       if (!cancelled) setSuggestions(result);
     });
     return () => {
@@ -250,17 +248,6 @@ export function WorkoutLogger({
   // acá (todavía no hay ninguna serie cargada para este ejercicio).
   useEffect(() => {
     if (!exercise) return;
-    // DEBUG TEMPORAL (jul-2026) — sacar junto con los otros console.log de
-    // este bloque una vez diagnosticado el bug de la sugerencia en el
-    // primer ejercicio.
-    console.log(
-      "[SUGGESTIONS] aplicando para ejercicio:",
-      exercise.id,
-      "serie:",
-      nextSetNumber,
-      "sugerencia:",
-      suggestions[exercise.id]
-    );
     const prev = nextSetNumber === 1 ? suggestions[exercise.id] : undefined;
     const nextWeight = prev?.weight != null ? String(prev.weight) : "";
     const nextReps = prev?.reps != null ? String(prev.reps) : "";
@@ -273,15 +260,8 @@ export function WorkoutLogger({
       reps: prev?.reps != null,
       rir: prev?.rir != null,
     });
+    setSuggestionCase(prev?.progressionCase ?? null);
     setError(null);
-    // Log de lo que se acaba de aplicar, no de weight/reps/rir (el estado
-    // de React todavía no refleja el cambio en este mismo tick por el
-    // batching de setState — leerlos acá mostraría el valor VIEJO).
-    console.log("[SUGGESTIONS] autocompletado aplicado:", {
-      weight: nextWeight,
-      reps: nextReps,
-      rir: nextRir,
-    });
   }, [exercise?.id, nextSetNumber, suggestions]);
 
   function goNext() {
@@ -758,8 +738,12 @@ export function WorkoutLogger({
       </div>
       {(suggested.weight || suggested.reps || suggested.rir) && (
         <p className="-mt-2 flex items-center gap-1 text-xs text-amber-400">
-          <Check className="size-3" /> Sugerido según tu última vez — podés
-          editarlo
+          <Check className="size-3" />
+          {suggestionCase === "weight_increase"
+            ? "Subiste el peso esta semana 💪 podés editarlo"
+            : suggestionCase === "reps_increase"
+              ? "Una rep más que la semana pasada 🎯 podés editarlo"
+              : "Sugerido según tu última vez — podés editarlo"}
         </p>
       )}
 

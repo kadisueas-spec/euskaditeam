@@ -14,6 +14,7 @@ export type RoutineExerciseInput = {
   rir: number | null;
   restSeconds: number | null;
   notes: string | null;
+  weightIncrement: number;
 };
 
 export type RoutineDayInput = {
@@ -131,6 +132,7 @@ export async function createRoutine(
         rir_target: ex.rir,
         rest_seconds: ex.restSeconds,
         coach_notes: ex.notes,
+        weight_increment: ex.weightIncrement,
       }))
     );
 
@@ -298,6 +300,7 @@ export async function updateRoutine(
         rir_target: ex.rir,
         rest_seconds: ex.restSeconds,
         coach_notes: ex.notes,
+        weight_increment: ex.weightIncrement,
       };
 
       if (ex.id && existingExerciseIds.has(ex.id)) {
