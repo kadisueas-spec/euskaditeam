@@ -27,6 +27,7 @@ export type CreateRoutineInput = {
   description: string;
   objective: string;
   clientId: string;
+  mesocicloNombre: string;
   durationWeeks: number;
   startsAt: string;
   days: RoutineDayInput[];
@@ -48,6 +49,7 @@ export async function createRoutine(
   input: CreateRoutineInput
 ): Promise<CreateRoutineResult> {
   if (!input.name.trim()) return { error: "El nombre es obligatorio." };
+  if (!input.mesocicloNombre.trim()) return { error: "El nombre del mesociclo es obligatorio." };
   if (!input.clientId) return { error: "Selecciona un cliente." };
   if (input.days.length === 0) return { error: "Agrega al menos un día." };
 
@@ -60,6 +62,24 @@ export async function createRoutine(
   const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
   const startsAt = input.startsAt || new Date().toISOString().slice(0, 10);
 
+  // Sistema de mesociclos (jul-2026): archivar la rutina activa actual del
+  // cliente ANTES de insertar la nueva — obligatorio, no solo prolijo,
+  // desde que existe el constraint routines_one_active_per_client (índice
+  // único parcial en client_id where is_active). Sin esto, el insert de
+  // abajo violaría ese constraint para cualquier cliente que ya tenga una
+  // rutina activa. ends_at = hoy marca la fecha real de archivado (antes
+  // era solo la fecha planeada de fin del mesociclo).
+  const { error: archiveError } = await supabase
+    .from("routines")
+    .update({ is_active: false, ends_at: new Date().toISOString().slice(0, 10) })
+    .eq("client_id", input.clientId)
+    .eq("is_active", true);
+
+  if (archiveError) {
+    console.error("createRoutine archive previous routine error:", archiveError);
+    return { error: "No se pudo archivar la rutina anterior." };
+  }
+
   const { data: routine, error: routineError } = await supabase
     .from("routines")
     .insert({
@@ -68,6 +88,7 @@ export async function createRoutine(
       name: input.name.trim(),
       description: input.description.trim() || null,
       objective: input.objective.trim() || null,
+      mesociclo_nombre: input.mesocicloNombre.trim(),
       duration_weeks: durationWeeks,
       starts_at: startsAt,
       ends_at: computeEndsAt(startsAt, durationWeeks),
@@ -148,6 +169,7 @@ export async function updateRoutine(
   input: UpdateRoutineInput
 ): Promise<UpdateRoutineResult> {
   if (!input.name.trim()) return { error: "El nombre es obligatorio." };
+  if (!input.mesocicloNombre.trim()) return { error: "El nombre del mesociclo es obligatorio." };
   if (input.days.length === 0) return { error: "Agrega al menos un día." };
 
   const supabase = await createClient();
@@ -159,15 +181,22 @@ export async function updateRoutine(
   const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
   const startsAt = input.startsAt || new Date().toISOString().slice(0, 10);
 
+  // Sistema de mesociclos (jul-2026): a diferencia de createRoutine, ACÁ no
+  // se recalcula ends_at a partir de duration_weeks/starts_at en cada
+  // guardado — desde que existe "Extender mesociclo" (ver extendMesociclo
+  // más abajo), ends_at pasa a ser un campo que el coach controla aparte;
+  // recalcularlo acá pisaría cualquier extensión hecha después de crear la
+  // rutina cada vez que el coach edite cualquier otra cosa del editor
+  // normal.
   const { data: updatedRoutine, error: routineError } = await supabase
     .from("routines")
     .update({
       name: input.name.trim(),
       description: input.description.trim() || null,
       objective: input.objective.trim() || null,
+      mesociclo_nombre: input.mesocicloNombre.trim(),
       duration_weeks: durationWeeks,
       starts_at: startsAt,
-      ends_at: computeEndsAt(startsAt, durationWeeks),
     })
     .eq("id", routineId)
     .eq("coach_id", user.id)
@@ -383,6 +412,43 @@ export async function deleteRoutine(routineId: string): Promise<DeleteRoutineRes
 
   revalidatePath("/coach/routines");
   revalidatePath("/client/my-routine");
+
+  return { success: true };
+}
+
+export type ExtendMesocicloResult = { success: true } | { error: string };
+
+// Sistema de mesociclos (jul-2026): "Extender mesociclo" es intencionalmente
+// la única acción de la app que toca ends_at después de que la rutina ya
+// existe — sin archivar nada, sin crear una rutina nueva, sin tocar
+// is_active/mesociclo_nombre/starts_at. newEndsAt en null = "sin fecha de
+// fin" (indefinido).
+export async function extendMesociclo(
+  routineId: string,
+  newEndsAt: string | null
+): Promise<ExtendMesocicloResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "No autenticado." };
+
+  const { data: updated, error } = await supabase
+    .from("routines")
+    .update({ ends_at: newEndsAt })
+    .eq("id", routineId)
+    .eq("coach_id", user.id)
+    .select("client_id")
+    .single();
+
+  if (error || !updated) {
+    console.error("extendMesociclo error:", error);
+    return { error: "No se pudo actualizar la fecha de fin del mesociclo." };
+  }
+
+  if (updated.client_id) {
+    revalidatePath(`/coach/clients/${updated.client_id}`);
+  }
 
   return { success: true };
 }

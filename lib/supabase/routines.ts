@@ -45,25 +45,34 @@ export async function getRoutinesList(): Promise<RoutineListItem[]> {
   }));
 }
 
-export type ClientOption = { id: string; name: string };
+export type ClientOption = { id: string; name: string; hasActiveRoutine: boolean };
 
 type ClientOptionRow = {
   id: string;
   profiles: { full_name: string | null; email: string } | null;
+  routines: { is_active: boolean }[];
 };
 
 // Antes: 2 round trips (clients -> profiles). Ahora: 1.
+// hasActiveRoutine (jul-2026, sistema de mesociclos): el wizard lo usa para
+// avisar "esto va a archivar la rutina actual" antes de crear una nueva —
+// desde que existe el constraint routines_one_active_per_client, crear una
+// rutina activa para un cliente que ya tiene una falla si no se archiva la
+// vieja primero (ver createRoutine).
 export async function getClientsForSelect(): Promise<ClientOption[]> {
   const supabase = await createClient();
 
   const { data } = await supabase
     .from("clients")
-    .select(`id, profiles!clients_user_id_fkey ( full_name, email )`)
+    .select(
+      `id, profiles!clients_user_id_fkey ( full_name, email ), routines ( is_active )`
+    )
     .returns<ClientOptionRow[]>();
 
   return (data ?? []).map((c) => ({
     id: c.id,
     name: c.profiles?.full_name ?? c.profiles?.email ?? "Cliente",
+    hasActiveRoutine: c.routines.some((r) => r.is_active),
   }));
 }
 
@@ -115,6 +124,7 @@ export type RoutineDetail = {
   clientId: string | null;
   clientName: string | null;
   isActive: boolean;
+  mesocicloNombre: string | null;
   durationWeeks: number | null;
   startsAt: string | null;
   endsAt: string | null;
@@ -128,6 +138,7 @@ type RoutineDetailRow = {
   objective: string | null;
   is_active: boolean;
   client_id: string | null;
+  mesociclo_nombre: string | null;
   duration_weeks: number | null;
   starts_at: string | null;
   ends_at: string | null;
@@ -165,7 +176,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
     .from("routines")
     .select(
       `id, name, description, objective, is_active, client_id,
-       duration_weeks, starts_at, ends_at,
+       mesociclo_nombre, duration_weeks, starts_at, ends_at,
        clients ( profiles!clients_user_id_fkey ( full_name, email ) ),
        routine_days (
          id, name, day_number,
@@ -197,6 +208,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
       routine.clients?.profiles?.email ??
       null,
     isActive: routine.is_active,
+    mesocicloNombre: routine.mesociclo_nombre,
     durationWeeks: routine.duration_weeks,
     startsAt: routine.starts_at,
     endsAt: routine.ends_at,
@@ -261,4 +273,77 @@ export async function getNoActiveRoutineAlerts(): Promise<NoActiveRoutineAlert[]
       clientId: c.id,
       clientName: c.profiles?.full_name ?? c.profiles?.email ?? "Cliente",
     }));
+}
+
+export type RoutineHistoryEntry = {
+  id: string;
+  name: string;
+  mesocicloNombre: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  completedSessionsCount: number;
+};
+
+export type RoutineHistoryForClient = {
+  active: RoutineHistoryEntry | null;
+  archived: RoutineHistoryEntry[];
+};
+
+type RoutineHistoryRow = {
+  id: string;
+  name: string;
+  mesociclo_nombre: string | null;
+  is_active: boolean;
+  starts_at: string | null;
+  ends_at: string | null;
+  routine_days: {
+    workout_logs: { id: string; is_completed: boolean }[];
+  }[];
+};
+
+// Sistema de mesociclos (jul-2026): historial completo de rutinas de un
+// cliente (activa + archivadas) para el perfil del coach, separado de
+// getClientDetail porque necesita contar sesiones COMPLETADAS por rutina —
+// esa consulta solo trae las últimas 10 (para el feed de "Últimos
+// entrenamientos"), no todas las que hacen falta para el conteo histórico.
+export async function getRoutineHistoryForClient(
+  clientId: string
+): Promise<RoutineHistoryForClient> {
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("routines")
+    .select(
+      `id, name, mesociclo_nombre, is_active, starts_at, ends_at,
+       routine_days ( workout_logs ( id, is_completed ) )`
+    )
+    .eq("client_id", clientId)
+    .order("starts_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .returns<RoutineHistoryRow[]>();
+
+  let active: RoutineHistoryEntry | null = null;
+  const archived: RoutineHistoryEntry[] = [];
+
+  for (const r of data ?? []) {
+    const completedSessionsCount = r.routine_days.reduce(
+      (sum, day) => sum + day.workout_logs.filter((w) => w.is_completed).length,
+      0
+    );
+    const entry: RoutineHistoryEntry = {
+      id: r.id,
+      name: r.name,
+      mesocicloNombre: r.mesociclo_nombre,
+      startsAt: r.starts_at,
+      endsAt: r.ends_at,
+      completedSessionsCount,
+    };
+    if (r.is_active) {
+      active = entry;
+    } else {
+      archived.push(entry);
+    }
+  }
+
+  return { active, archived };
 }

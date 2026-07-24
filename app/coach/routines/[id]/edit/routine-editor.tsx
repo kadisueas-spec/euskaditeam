@@ -94,6 +94,7 @@ export function RoutineEditor({
   const [name, setName] = useState(routine.name);
   const [description, setDescription] = useState(routine.description ?? "");
   const [objective, setObjective] = useState(routine.objective ?? "");
+  const [mesocicloNombre, setMesocicloNombre] = useState(routine.mesocicloNombre ?? "");
   const [durationWeeks, setDurationWeeks] = useState(
     routine.durationWeeks != null ? String(routine.durationWeeks) : "4"
   );
@@ -165,6 +166,7 @@ export function RoutineEditor({
 
   function handleSubmit() {
     if (!name.trim()) return setError("El nombre es obligatorio.");
+    if (!mesocicloNombre.trim()) return setError("El nombre del mesociclo es obligatorio.");
     if (days.length === 0) return setError("Agrega al menos un día.");
     if (days.some((d) => !d.name.trim()))
       return setError("Todos los días necesitan un nombre.");
@@ -187,6 +189,7 @@ export function RoutineEditor({
         name,
         description,
         objective,
+        mesocicloNombre,
         durationWeeks: Number(durationWeeks) || 4,
         startsAt,
         days: days.map((d) => ({
@@ -244,6 +247,15 @@ export function RoutineEditor({
             value={objective}
             onChange={(e) => setObjective(e.target.value)}
             placeholder="Ej: Hipertrofia, fuerza, pérdida de grasa"
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="routine-mesociclo">Nombre del mesociclo</Label>
+          <Input
+            id="routine-mesociclo"
+            value={mesocicloNombre}
+            onChange={(e) => setMesocicloNombre(e.target.value)}
+            placeholder="Ej: Mesociclo 1 - Hipertrofia"
           />
         </div>
         <div className="grid grid-cols-2 gap-3">

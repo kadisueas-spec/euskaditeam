@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ClipboardList, History } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +9,9 @@ import { FeedbackList } from "@/components/coach/feedback-list";
 import { ClientDetailTabs } from "@/components/coach/client-detail-tabs";
 import { ClientMetricsTab } from "@/components/coach/client-metrics-tab";
 import { RecentLogsList } from "@/components/coach/recent-logs-list";
+import { ExtendMesocicloButton } from "@/components/coach/extend-mesociclo-button";
 import { getClientDetail } from "@/lib/supabase/clients";
+import { getRoutineHistoryForClient } from "@/lib/supabase/routines";
 import {
   getClientRoutineExercisesForSelect,
   getFeedbackForClient,
@@ -78,6 +81,7 @@ export default async function ClientDetailPage({
     weightLogs,
     nutritionPlans,
     subscription,
+    routineHistory,
   ] = await Promise.all([
     getFeedbackForClient(id),
     getRecentSessionsForSelect(id),
@@ -92,6 +96,7 @@ export default async function ClientDetailPage({
     getClientWeightLogs(id),
     getNutritionPlansForClient(id),
     getClientSubscription(id),
+    getRoutineHistoryForClient(id),
   ]);
 
   const metricsByRange: Record<MetricsRange, ClientMetrics> = {
@@ -200,10 +205,10 @@ export default async function ClientDetailPage({
       <FadeIn delay={0.15}>
         <Card className="border-[#1e1e1e] bg-[#111111]">
           <CardHeader>
-            <CardTitle className="text-base text-white">Rutinas</CardTitle>
+            <CardTitle className="text-base text-white">Rutina activa</CardTitle>
           </CardHeader>
-          <CardContent>
-            {client.routines.length === 0 ? (
+          <CardContent className="flex flex-col gap-4">
+            {!routineHistory.active ? (
               <EmptyState
                 icon={ClipboardList}
                 title="Este cliente todavía no tiene una rutina."
@@ -211,19 +216,76 @@ export default async function ClientDetailPage({
                 className="py-4"
               />
             ) : (
-              <ul className="flex flex-col gap-2">
-                {client.routines.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex items-center justify-between text-sm"
-                  >
-                    <span className="text-white">{r.name}</span>
-                    <Badge variant={r.isActive ? "default" : "outline"}>
-                      {r.isActive ? "Activa" : "Archivada"}
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
+              <>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    {routineHistory.active.mesocicloNombre && (
+                      <p className="text-xs tracking-wide text-[#888888] uppercase">
+                        {routineHistory.active.mesocicloNombre}
+                      </p>
+                    )}
+                    <Link
+                      href={`/coach/routines/${routineHistory.active.id}`}
+                      className="text-sm font-medium text-white hover:underline"
+                    >
+                      {routineHistory.active.name}
+                    </Link>
+                    <p className="text-xs text-[#888888]">
+                      {routineHistory.active.startsAt
+                        ? formatDate(routineHistory.active.startsAt)
+                        : "?"}{" "}
+                      →{" "}
+                      {routineHistory.active.endsAt
+                        ? formatDate(routineHistory.active.endsAt)
+                        : "Sin fecha de fin"}
+                    </p>
+                  </div>
+                  <Badge variant="default">Activa</Badge>
+                </div>
+                <ExtendMesocicloButton
+                  routineId={routineHistory.active.id}
+                  currentEndsAt={routineHistory.active.endsAt}
+                />
+              </>
+            )}
+
+            {routineHistory.archived.length > 0 && (
+              <details className="group">
+                <summary className="flex cursor-pointer items-center gap-2 text-sm text-[#888888] select-none hover:text-white">
+                  <History className="size-4" />
+                  Historial de rutinas ({routineHistory.archived.length})
+                </summary>
+                <ul className="mt-3 flex flex-col gap-3">
+                  {routineHistory.archived.map((r) => (
+                    <li
+                      key={r.id}
+                      className="rounded-xl border border-[#1e1e1e] p-3 text-sm"
+                    >
+                      {r.mesocicloNombre && (
+                        <p className="text-xs tracking-wide text-[#888888] uppercase">
+                          {r.mesocicloNombre}
+                        </p>
+                      )}
+                      <Link
+                        href={`/coach/routines/${r.id}`}
+                        className="font-medium text-white hover:underline"
+                      >
+                        {r.name}
+                      </Link>
+                      <p className="mt-1 text-xs text-[#888888]">
+                        {r.startsAt ? formatDate(r.startsAt) : "?"} →{" "}
+                        {r.endsAt ? formatDate(r.endsAt) : "?"}
+                      </p>
+                      <p className="text-xs text-[#888888]">
+                        {r.completedSessionsCount}{" "}
+                        {r.completedSessionsCount === 1
+                          ? "sesión completada"
+                          : "sesiones completadas"}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </details>
             )}
           </CardContent>
         </Card>

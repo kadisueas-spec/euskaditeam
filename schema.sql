@@ -357,6 +357,7 @@ CREATE TABLE public.routines (
     name text NOT NULL,
     description text,
     objective text,
+    mesociclo_nombre text,
     duration_weeks integer,
     is_active boolean DEFAULT true,
     starts_at date,
@@ -364,6 +365,15 @@ CREATE TABLE public.routines (
     created_at timestamp with time zone DEFAULT now(),
     updated_at timestamp with time zone DEFAULT now()
 );
+
+-- Sistema de mesociclos (jul-2026): a lo sumo una rutina activa por
+-- cliente. is_active hace de "archivada" invertido (no se agregó una
+-- columna nueva) y ends_at pasa a doblar como fecha real de archivado
+-- además de fecha planeada de fin — ver createRoutine/extendMesociclo en
+-- app/coach/routines/actions.ts.
+CREATE UNIQUE INDEX routines_one_active_per_client
+    ON public.routines (client_id)
+    WHERE is_active = true;
 
 
 --

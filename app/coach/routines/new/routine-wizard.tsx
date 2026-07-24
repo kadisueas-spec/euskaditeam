@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -67,6 +67,11 @@ export function RoutineWizard({
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Sistema de mesociclos (jul-2026): si el cliente elegido ya tiene una
+  // rutina activa, crear la nueva la va a archivar automáticamente
+  // (ver createRoutine) — se avisa antes de mandar el submit real, mismo
+  // patrón visual que DeleteRoutineButton/DeleteClientButton.
+  const [confirmingArchive, setConfirmingArchive] = useState(false);
 
   // Selector encadenado (paso 6): grupo muscular primero, después el
   // ejercicio filtrado por ese grupo — antes era un solo dropdown con los
@@ -79,12 +84,14 @@ export function RoutineWizard({
   const [description, setDescription] = useState("");
   const [objective, setObjective] = useState("");
   const [clientId, setClientId] = useState("");
+  const [mesocicloNombre, setMesocicloNombre] = useState("");
   const [durationWeeks, setDurationWeeks] = useState("4");
   const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 10));
   const [days, setDays] = useState<DayRow[]>([]);
 
   function goToStep2() {
     if (!name.trim()) return setError("El nombre es obligatorio.");
+    if (!mesocicloNombre.trim()) return setError("El nombre del mesociclo es obligatorio.");
     if (!clientId) return setError("Selecciona un cliente.");
     setError(null);
     setDays((prev) => (prev.length === 0 ? [newDayRow(1)] : prev));
@@ -167,12 +174,22 @@ export function RoutineWizard({
     }
     setError(null);
 
+    // El cliente elegido ya tiene una rutina activa -> createRoutine la va
+    // a archivar automáticamente. Se avisa una vez antes de mandar el
+    // submit real (mismo patrón que Eliminar rutina/cliente).
+    const selectedClient = clients.find((c) => c.id === clientId);
+    if (selectedClient?.hasActiveRoutine && !confirmingArchive) {
+      setConfirmingArchive(true);
+      return;
+    }
+
     startTransition(async () => {
       const result = await createRoutine({
         name,
         description,
         objective,
         clientId,
+        mesocicloNombre,
         durationWeeks: Number(durationWeeks) || 4,
         startsAt,
         days: days.map((d) => ({
@@ -259,6 +276,15 @@ export function RoutineWizard({
                 </option>
               ))}
             </NativeSelect>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="routine-mesociclo">Nombre del mesociclo</Label>
+            <Input
+              id="routine-mesociclo"
+              value={mesocicloNombre}
+              onChange={(e) => setMesocicloNombre(e.target.value)}
+              placeholder="Ej: Mesociclo 1 - Hipertrofia"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="flex flex-col gap-2">
@@ -481,15 +507,45 @@ export function RoutineWizard({
           ))}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
-          <div className="flex gap-3">
-            <Button variant="outline" onClick={() => setStep(2)} disabled={pending}>
-              Atrás
-            </Button>
-            <Button onClick={handleSubmit} disabled={pending}>
-              {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
-              {pending ? "Creando..." : "Crear rutina"}
-            </Button>
-          </div>
+
+          {confirmingArchive ? (
+            <div className="flex flex-col gap-3 rounded-2xl border border-[#e8001c]/40 bg-[#e8001c]/5 p-4">
+              <p className="flex items-center gap-2 text-sm font-medium text-amber-400">
+                <TriangleAlert className="size-4 shrink-0" />
+                La rutina actual de{" "}
+                {clients.find((c) => c.id === clientId)?.name ?? "este cliente"} se
+                va a archivar. ¿Confirmás?
+              </p>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => setConfirmingArchive(false)}
+                  disabled={pending}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  className="flex-1 bg-[#e8001c] hover:bg-[#b8001a]"
+                  onClick={handleSubmit}
+                  disabled={pending}
+                >
+                  {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
+                  {pending ? "Creando..." : "Confirmar y crear"}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex gap-3">
+              <Button variant="outline" onClick={() => setStep(2)} disabled={pending}>
+                Atrás
+              </Button>
+              <Button onClick={handleSubmit} disabled={pending}>
+                {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
+                {pending ? "Creando..." : "Crear rutina"}
+              </Button>
+            </div>
+          )}
         </FadeIn>
       )}
     </div>
