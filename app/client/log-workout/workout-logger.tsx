@@ -9,10 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ExerciseVideo } from "@/components/client/exercise-video";
+import { RecordCelebrationBanner } from "@/components/client/record-celebration-banner";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
 import { isNetworkError } from "@/lib/utils/is-network-error";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
+import {
+  detectWeeklyRecord,
+  recordSummaryLine,
+  recordSummaryMessage,
+  summarizeSessionRecords,
+  type SessionRecord,
+} from "@/lib/utils/session-records";
 import {
   addSet as defaultAddSet,
   finishWorkout as defaultFinishWorkout,
@@ -123,6 +131,12 @@ export function WorkoutLogger({
   const [suggestionCase, setSuggestionCase] = useState<
     WorkoutSuggestion["progressionCase"]
   >(null);
+  // Sistema de celebración de récords (jul-2026): sessionRecords acumula
+  // TODOS los récords de la sesión (para el resumen de Momento 2 al
+  // finalizar); celebrationQueue es la cola de banners de Momento 1
+  // pendientes de mostrar (uno a la vez, ver RecordCelebrationBanner).
+  const [sessionRecords, setSessionRecords] = useState<SessionRecord[]>([]);
+  const [celebrationQueue, setCelebrationQueue] = useState<SessionRecord[]>([]);
   const [energyLevel, setEnergyLevel] = useState(3);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -299,6 +313,32 @@ export function WorkoutLogger({
       rir: rir ? Number(rir) : null,
     };
 
+    // Récord vs la semana pasada (no vs el récord all-time del badge por
+    // serie, que es un concepto aparte — ver checkPersonalRecord en
+    // actions.ts, sin tocar). Se compara contra previousRecord, ya
+    // disponible en "suggestions" desde que se cargó el ejercicio, así que
+    // no hace falta ninguna consulta extra ni esperar la respuesta del
+    // servidor.
+    const previousRecord = suggestions[exercise.id]?.previousRecord ?? null;
+    const weeklyRecord = detectWeeklyRecord(previousRecord, {
+      weight: input.weightKg,
+      reps: input.reps,
+      rir: input.rir,
+    });
+    if (weeklyRecord && input.weightKg != null) {
+      const record: SessionRecord = {
+        id: crypto.randomUUID(),
+        exerciseId: exercise.id,
+        exerciseName: exercise.exerciseName,
+        weight: input.weightKg,
+        reps: input.reps,
+        rir: input.rir,
+        ...weeklyRecord,
+      };
+      setSessionRecords((prev) => [...prev, record]);
+      setCelebrationQueue((prev) => [...prev, record]);
+    }
+
     navigator.vibrate?.(50);
 
     // Optimistic UI: se agrega y se avanza al instante; el guardado real
@@ -417,6 +457,20 @@ export function WorkoutLogger({
     });
   }
 
+  // Momento 1 del sistema de celebración de récords: un banner a la vez,
+  // se renderiza como último hijo de la pantalla que corresponda (es
+  // position:fixed, así que no depende de dónde quede en el árbol) — así
+  // sobrevive a los distintos "phase" sin duplicar lógica de cola en cada
+  // return.
+  const activeRecordCelebration = celebrationQueue[0] ?? null;
+  const recordBanner = activeRecordCelebration ? (
+    <RecordCelebrationBanner
+      record={activeRecordCelebration}
+      onDismiss={() => setCelebrationQueue((q) => q.slice(1))}
+    />
+  ) : null;
+  const sessionSummaryRecords = summarizeSessionRecords(sessionRecords);
+
   if (initializing) {
     if (initError) {
       return (
@@ -492,6 +546,7 @@ export function WorkoutLogger({
           {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
           {pending ? "Guardando..." : "Finalizar entrenamiento"}
         </Button>
+        {recordBanner}
       </div>
     );
   }
@@ -545,12 +600,32 @@ export function WorkoutLogger({
           </div>
         </div>
 
+        {sessionSummaryRecords.length > 0 && (
+          <div className="flex w-full max-w-xs flex-col gap-2 rounded-2xl border border-[#e8001c]/30 bg-[#111111] p-4 text-left">
+            <p className="font-display text-xl tracking-wide text-[#e8001c] uppercase">
+              Tus récords de hoy
+            </p>
+            <ul className="flex flex-col gap-1.5">
+              {sessionSummaryRecords.map((record) => (
+                <li key={record.id} className="flex items-center gap-2 text-sm text-[#f5f5f5]">
+                  <Trophy className="size-3.5 shrink-0 text-[#e8001c]" />
+                  {recordSummaryLine(record)}
+                </li>
+              ))}
+            </ul>
+            <p className="text-xs text-[#888888]">
+              {recordSummaryMessage(sessionSummaryRecords.length)}
+            </p>
+          </div>
+        )}
+
         <Button
           onClick={() => router.push("/client/progress")}
           className="min-h-[52px] w-full max-w-xs text-base"
         >
           Continuar
         </Button>
+        {recordBanner}
       </div>
     );
   }
@@ -774,6 +849,7 @@ export function WorkoutLogger({
           {isLastExercise ? "Terminar ejercicios" : "Siguiente ejercicio"}
         </Button>
       </div>
+      {recordBanner}
     </div>
   );
 }

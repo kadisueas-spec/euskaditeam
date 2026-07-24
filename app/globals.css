@@ -248,6 +248,14 @@
 @utility animate-lock-pop {
   animation: lock-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
 }
+/* Sistema de celebración de récords (jul-2026) — banner parcial que sube
+   desde abajo al completar una serie con récord vs la semana pasada. */
+@utility animate-record-banner-in {
+  animation: record-banner-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@utility animate-record-banner-out {
+  animation: record-banner-out 0.25s ease-in both;
+}
 /* Bloque 3 — skeleton con shimmer (barrido sutil izquierda->derecha sobre
    #111111, en vez del pulse de opacidad genérico). skeleton-shimmer va en
    el contenedor (position:relative + overflow:hidden para recortar el
@@ -403,6 +411,28 @@
   }
 }
 
+@keyframes record-banner-in {
+  from {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes record-banner-out {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+}
+
 @keyframes shimmer-sweep {
   from {
     transform: translateX(-100%);
@@ -425,6 +455,8 @@
   .animate-confetti-fall,
   .animate-lock-shake,
   .animate-lock-pop,
+  .animate-record-banner-in,
+  .animate-record-banner-out,
   .animate-fade-in-up,
   .animate-page-in,
   .animate-slide-up-in,

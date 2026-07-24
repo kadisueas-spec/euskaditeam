@@ -357,6 +357,14 @@ export type WorkoutSuggestion = {
   reps: number | null;
   rir: number | null;
   progressionCase: "weight_increase" | "reps_increase" | null;
+  // Récord CRUDO de la semana pasada (mayor peso, empate -> más reps), sin
+  // el ajuste del algoritmo de progresión — a diferencia de weight/reps de
+  // arriba, que ya vienen proyectados hacia adelante. Sistema de
+  // celebración de récords (jul-2026) lo usa como base de comparación real
+  // para detectar si la serie recién cargada superó la semana pasada, sin
+  // repetir la consulta de "mejor serie de la semana anterior" que ya
+  // resuelve esta misma función.
+  previousRecord: { weight: number; reps: number; rir: number | null } | null;
 };
 
 type SetLogRow = {
@@ -470,10 +478,12 @@ export async function getWorkoutSuggestions(
         reps: repsRecord,
         rir: row.rir_actual,
         progressionCase: null,
+        previousRecord: null,
       };
       continue;
     }
 
+    const previousRecord = { weight: weightRecord, reps: repsRecord, rir: row.rir_actual };
     const range = rangeByExercise.get(routineExerciseId);
     const weightIncrement = range?.weight_increment ?? 2.5;
     const repsMin = range?.reps_min ?? 1;
@@ -485,6 +495,7 @@ export async function getWorkoutSuggestions(
         reps: repsMin,
         rir: row.rir_actual,
         progressionCase: "weight_increase",
+        previousRecord,
       };
     } else {
       result[routineExerciseId] = {
@@ -492,6 +503,7 @@ export async function getWorkoutSuggestions(
         reps: repsRecord + 1,
         rir: row.rir_actual,
         progressionCase: "reps_increase",
+        previousRecord,
       };
     }
   }
