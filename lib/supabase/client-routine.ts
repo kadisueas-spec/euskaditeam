@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
+import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
 
 export type MyRoutineExercise = {
   id: string;
@@ -112,6 +113,56 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
         })),
     })),
   };
+}
+
+export type MyRoutineWeekProgress = {
+  completedDayIds: string[];
+  suggestedDayId: string | null;
+};
+
+// "Próximo entrenamiento" (jul-2026): el día sugerido es el de menor
+// day_number que TODAVÍA no se completó en la semana en curso (lunes a
+// domingo) — no el "siguiente cronológico" tras el último completado, así
+// que si el cliente se salteó un día (completó 1 y 3), sugiere el 2, no el
+// 4. Si ya completó todos, no hay sugerido (semana completa). Una rutina
+// recién asignada a mitad de semana no tiene workout_logs con esos
+// routine_day_id todavía, así que cae sola en "sugerir el Día 1" sin
+// necesitar un caso especial.
+export async function getWeekProgress(
+  days: MyRoutineDay[]
+): Promise<MyRoutineWeekProgress> {
+  const client = await getCurrentClientRecord();
+  if (!client || days.length === 0) {
+    return { completedDayIds: [], suggestedDayId: null };
+  }
+
+  const supabase = await createClient();
+  const today = new Date().toISOString().slice(0, 10);
+  const weekStart = mondayKeyFor(today);
+  const weekEnd = addWeeks(weekStart, 1);
+
+  const { data } = await supabase
+    .from("workout_logs")
+    .select("routine_day_id")
+    .eq("client_id", client.id)
+    .eq("is_completed", true)
+    .gte("workout_date", weekStart)
+    .lt("workout_date", weekEnd);
+
+  const dayIds = new Set(days.map((d) => d.id));
+  const completedDayIds = Array.from(
+    new Set(
+      (data ?? [])
+        .map((l) => l.routine_day_id)
+        .filter((id): id is string => !!id && dayIds.has(id))
+    )
+  );
+
+  const completedSet = new Set(completedDayIds);
+  const sortedDays = [...days].sort((a, b) => a.dayNumber - b.dayNumber);
+  const suggestedDayId = sortedDays.find((d) => !completedSet.has(d.id))?.id ?? null;
+
+  return { completedDayIds, suggestedDayId };
 }
 
 export async function getRoutineDayForLogging(dayId: string) {

@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { ChevronDown, Dumbbell, Lightbulb, MessageSquare } from "lucide-react";
+import { Check, ChevronDown, Dumbbell, Lightbulb, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ClientGreeting } from "@/components/client/client-greeting";
 import { ExerciseVideo } from "@/components/client/exercise-video";
+import { NextWorkoutCard } from "@/components/client/next-workout-card";
 import { FadeIn } from "@/components/motion/fade-in";
-import { getMyActiveRoutine } from "@/lib/supabase/client-routine";
+import { getMyActiveRoutine, getWeekProgress } from "@/lib/supabase/client-routine";
 import { getMyFeedback } from "@/lib/supabase/feedback";
 import { getClientStats } from "@/lib/supabase/stats";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
@@ -27,6 +28,12 @@ export default async function MyRoutinePage() {
     getClientStats(),
     getCurrentProfile(),
   ]);
+  const weekProgress = routine
+    ? await getWeekProgress(routine.days)
+    : { completedDayIds: [], suggestedDayId: null };
+  const completedDaySet = new Set(weekProgress.completedDayIds);
+  const suggestedDay =
+    routine?.days.find((d) => d.id === weekProgress.suggestedDayId) ?? null;
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const motivationalPhrase = randomMotivationalPhrase();
 
@@ -81,14 +88,37 @@ export default async function MyRoutinePage() {
         </FadeIn>
       )}
 
-      {routine.days.map((day, dayIndex) => (
+      <FadeIn>
+        <NextWorkoutCard
+          suggestedDay={suggestedDay}
+          completedCount={completedDaySet.size}
+          plannedCount={routine.days.length}
+        />
+      </FadeIn>
+
+      {routine.days.map((day, dayIndex) => {
+        const isCompleted = completedDaySet.has(day.id);
+        const isSuggested = day.id === weekProgress.suggestedDayId;
+        return (
         <FadeIn key={day.id} delay={dayIndex * 0.06}>
-          <details className="overflow-hidden rounded-2xl border border-[#1e1e1e] bg-[#111111]">
+          <details
+            className={`overflow-hidden rounded-2xl border bg-[#111111] ${
+              isSuggested ? "border-[#e8001c]" : "border-[#1e1e1e]"
+            }`}
+          >
             <summary className="flex min-h-[44px] cursor-pointer list-none items-center justify-between p-5 select-none active:bg-white/5 [&::-webkit-details-marker]:hidden">
               <div>
-                <p className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
-                  {day.name}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
+                    {day.name}
+                  </p>
+                  {isCompleted && (
+                    <Badge className="gap-1">
+                      <Check className="size-3" />
+                      Completado
+                    </Badge>
+                  )}
+                </div>
                 <p className="text-sm text-[#888888]">
                   {day.exercises.length} ejercicio
                   {day.exercises.length === 1 ? "" : "s"}
@@ -170,7 +200,8 @@ export default async function MyRoutinePage() {
             </div>
           </details>
         </FadeIn>
-      ))}
+        );
+      })}
     </div>
   );
 }
