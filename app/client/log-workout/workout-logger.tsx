@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ExerciseVideo } from "@/components/client/exercise-video";
 import { RecordCelebrationBanner } from "@/components/client/record-celebration-banner";
+import { WeeklyCelebration } from "@/components/client/weekly-celebration";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
 import { isNetworkError } from "@/lib/utils/is-network-error";
@@ -33,6 +34,7 @@ import {
   type FinishWorkoutResult,
   type InProgressWorkout,
   type UpdateSetInput,
+  type WeeklyCelebrationSummary,
   type WorkoutSuggestion,
   type WorkoutSummary,
 } from "./actions";
@@ -116,6 +118,13 @@ export function WorkoutLogger({
   const [workoutSummary, setWorkoutSummary] = useState<WorkoutSummary | null>(
     null
   );
+  // Celebración semanal (jul-2026): llega junto con el resultado de
+  // finishWorkout si esta sesión completó todos los días planificados de
+  // la semana. Se muestra recién al tocar "Continuar" en la celebración
+  // de sesión normal (showWeeklyCelebration), nunca antes.
+  const [weeklyCelebration, setWeeklyCelebration] =
+    useState<WeeklyCelebrationSummary | null>(null);
+  const [showWeeklyCelebration, setShowWeeklyCelebration] = useState(false);
   const [setsByExercise, setSetsByExercise] = useState<
     Record<string, CommittedSet[]>
   >(() => Object.fromEntries(day.exercises.map((ex) => [ex.id, []])));
@@ -445,6 +454,7 @@ export function WorkoutLogger({
         }
         navigator.vibrate?.([30, 40, 30, 40, 60]);
         setWorkoutSummary(result.summary);
+        setWeeklyCelebration(result.weeklyCelebration ?? null);
         setPhase("celebration");
       } catch (err) {
         console.error("finishWorkout error:", err);
@@ -620,12 +630,22 @@ export function WorkoutLogger({
         )}
 
         <Button
-          onClick={() => router.push("/client/progress")}
+          onClick={() =>
+            weeklyCelebration
+              ? setShowWeeklyCelebration(true)
+              : router.push("/client/progress")
+          }
           className="min-h-[52px] w-full max-w-xs text-base"
         >
           Continuar
         </Button>
         {recordBanner}
+        {showWeeklyCelebration && weeklyCelebration && (
+          <WeeklyCelebration
+            summary={weeklyCelebration}
+            onClose={() => router.push("/client/my-routine")}
+          />
+        )}
       </div>
     );
   }

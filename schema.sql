@@ -260,6 +260,19 @@ CREATE TABLE public.monthly_goals (
 
 
 --
+-- Name: weekly_celebrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.weekly_celebrations (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    client_id uuid NOT NULL,
+    week_start date NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT weekly_celebrations_client_id_week_start_key UNIQUE (client_id, week_start)
+);
+
+
+--
 -- Name: monthly_reviews; Type: TABLE; Schema: public; Owner: -
 --
 

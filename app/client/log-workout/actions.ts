@@ -2,9 +2,16 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord, type ClientRecord } from "@/lib/supabase/client-profile";
+import { getClientStats } from "@/lib/supabase/stats";
 import { sendPushToCoach } from "@/lib/push/send-push";
 import { adherence80PushTitle } from "@/lib/constants/push-copy";
 import { validateSetInput } from "@/lib/utils/validate-set-input";
+import { mondayKeyFor, previousMondayKey, addWeeks } from "@/lib/utils/week";
+import {
+  detectWeeklyRecord,
+  summarizeSessionRecords,
+  type SessionRecord,
+} from "@/lib/utils/session-records";
 
 export type LoggedSet = {
   id: string;
@@ -220,8 +227,18 @@ export type WorkoutSummary = {
   durationMinutes: number;
 };
 
+export type WeeklyCelebrationSummary = {
+  completedDays: number;
+  plannedDays: number;
+  totalSets: number;
+  totalVolume: number;
+  weeklyStreak: number;
+  isFirstCompleteWeek: boolean;
+  records: SessionRecord[];
+};
+
 export type FinishWorkoutResult =
-  | { success: true; summary: WorkoutSummary }
+  | { success: true; summary: WorkoutSummary; weeklyCelebration?: WeeklyCelebrationSummary }
   | { error: string };
 
 // Push al coach cuando el cliente CRUZA el 80% de adherencia del mes (no
@@ -268,6 +285,142 @@ async function notifyCoachIfAdherenceCrossed80({
     body: "Revisa su progreso en tu panel.",
     url: `/coach/clients/${client.id}`,
   });
+}
+
+type WeeklySetLogRow = {
+  routine_exercise_id: string | null;
+  weight_kg: number | null;
+  reps_completed: number | null;
+  rir_actual: number | null;
+  workout_logs: { workout_date: string } | null;
+  routine_exercises: { exercises: { name: string } | null } | null;
+};
+
+// Mejor serie por ejercicio dentro de un subconjunto de filas ya filtrado
+// por rango de fechas (misma regla que bestByExercise de
+// getWorkoutSuggestions: mayor peso, empate -> más reps).
+function bestSetByExercise(rows: WeeklySetLogRow[]): Map<string, WeeklySetLogRow> {
+  const best = new Map<string, WeeklySetLogRow>();
+  for (const row of rows) {
+    if (!row.routine_exercise_id) continue;
+    const current = best.get(row.routine_exercise_id);
+    const weight = row.weight_kg ?? -Infinity;
+    const currentWeight = current?.weight_kg ?? -Infinity;
+    const reps = row.reps_completed ?? -Infinity;
+    const currentReps = current?.reps_completed ?? -Infinity;
+    if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
+      best.set(row.routine_exercise_id, row);
+    }
+  }
+  return best;
+}
+
+// Sistema de celebración semanal (jul-2026): al finalizar una sesión, si
+// esa sesión completó todos los días planificados de la semana calendario
+// en curso (lunes a domingo) Y esa semana no fue celebrada todavía,
+// devuelve el resumen para mostrar la celebración de pantalla completa.
+// El insert en weekly_celebrations hace de lock: si ya existe una fila
+// para (client_id, week_start) el insert falla con 23505 y no se repite.
+async function checkWeeklyCompletion({
+  supabase,
+  client,
+  workoutDate,
+  plannedDays,
+}: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  client: ClientRecord;
+  workoutDate: string | undefined;
+  plannedDays: number;
+}): Promise<WeeklyCelebrationSummary | null> {
+  if (!workoutDate || plannedDays <= 0) return null;
+
+  const weekStart = mondayKeyFor(workoutDate);
+  const weekEnd = addWeeks(weekStart, 1);
+  const prevWeekStart = previousMondayKey(weekStart);
+
+  const { data: weekLogs } = await supabase
+    .from("workout_logs")
+    .select("workout_date")
+    .eq("client_id", client.id)
+    .eq("is_completed", true)
+    .gte("workout_date", weekStart)
+    .lt("workout_date", weekEnd);
+
+  const completedDays = new Set((weekLogs ?? []).map((l) => l.workout_date)).size;
+  if (completedDays < plannedDays) return null;
+
+  const { error: insertError } = await supabase
+    .from("weekly_celebrations")
+    .insert({ client_id: client.id, week_start: weekStart });
+  if (insertError) {
+    if (insertError.code === "23505") return null; // ya celebrada
+    throw insertError;
+  }
+
+  const [{ count: priorCount }, { data: setRows }, stats] = await Promise.all([
+    supabase
+      .from("weekly_celebrations")
+      .select("id", { count: "exact", head: true })
+      .eq("client_id", client.id),
+    supabase
+      .from("workout_set_logs")
+      .select(
+        `routine_exercise_id, weight_kg, reps_completed, rir_actual,
+         workout_logs!inner ( workout_date, is_completed, client_id ),
+         routine_exercises!inner ( exercises ( name ) )`
+      )
+      .eq("workout_logs.client_id", client.id)
+      .eq("workout_logs.is_completed", true)
+      .gte("workout_logs.workout_date", prevWeekStart)
+      .lt("workout_logs.workout_date", weekEnd)
+      .returns<WeeklySetLogRow[]>(),
+    getClientStats(),
+  ]);
+
+  const rows = setRows ?? [];
+  const thisWeekRows = rows.filter(
+    (r) => r.workout_logs && r.workout_logs.workout_date >= weekStart
+  );
+  const prevWeekRows = rows.filter(
+    (r) => r.workout_logs && r.workout_logs.workout_date < weekStart
+  );
+  const thisWeekBest = bestSetByExercise(thisWeekRows);
+  const prevWeekBest = bestSetByExercise(prevWeekRows);
+
+  const records: SessionRecord[] = [];
+  for (const [routineExerciseId, row] of thisWeekBest) {
+    const prev = prevWeekBest.get(routineExerciseId);
+    if (!prev || prev.weight_kg == null || prev.reps_completed == null) continue;
+    const weeklyRecord = detectWeeklyRecord(
+      { weight: prev.weight_kg, reps: prev.reps_completed, rir: prev.rir_actual },
+      { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual }
+    );
+    if (!weeklyRecord) continue;
+    records.push({
+      id: crypto.randomUUID(),
+      exerciseId: routineExerciseId,
+      exerciseName: row.routine_exercises?.exercises?.name ?? "Ejercicio",
+      weight: row.weight_kg as number,
+      reps: row.reps_completed,
+      rir: row.rir_actual,
+      ...weeklyRecord,
+    });
+  }
+
+  const totalVolume = thisWeekRows.reduce(
+    (sum, r) => sum + (r.weight_kg != null && r.reps_completed != null ? r.weight_kg * r.reps_completed : 0),
+    0
+  );
+
+  return {
+    completedDays,
+    plannedDays,
+    totalSets: thisWeekRows.length,
+    totalVolume: Math.round(totalVolume),
+    weeklyStreak: stats.weeklyStreak,
+    isFirstCompleteWeek: priorCount === 1,
+    records: summarizeSessionRecords(records),
+  };
 }
 
 // Las series ya están guardadas (una por una, ver addSet). Acá solo se
@@ -349,7 +502,22 @@ export async function finishWorkout(
     durationMinutes,
   };
 
-  return { success: true, summary };
+  // Nunca debe tumbar el "sí, se guardó tu entrenamiento" — si esto falla,
+  // simplemente no aparece la celebración semanal esta vez.
+  let weeklyCelebration: WeeklyCelebrationSummary | undefined;
+  try {
+    weeklyCelebration =
+      (await checkWeeklyCompletion({
+        supabase,
+        client,
+        workoutDate: workoutLog?.workout_date,
+        plannedDays: activeRoutine?.routine_days[0]?.count ?? 0,
+      })) ?? undefined;
+  } catch (err) {
+    console.error("finishWorkout weekly celebration error:", err);
+  }
+
+  return { success: true, summary, weeklyCelebration };
 }
 
 export type WorkoutSuggestion = {

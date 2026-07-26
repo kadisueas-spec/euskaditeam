@@ -256,6 +256,12 @@
 @utility animate-record-banner-out {
   animation: record-banner-out 0.25s ease-in both;
 }
+/* Celebración semanal (jul-2026): mismo confeti que la celebración de
+   sesión (@keyframes confetti-fall), pero más abundante (más piezas
+   renderizadas, ver weekly-celebration.tsx) y de mayor duración. */
+@utility animate-confetti-fall-slow {
+  animation: confetti-fall 2.6s ease-in both;
+}
 /* Bloque 3 — skeleton con shimmer (barrido sutil izquierda->derecha sobre
    #111111, en vez del pulse de opacidad genérico). skeleton-shimmer va en
    el contenedor (position:relative + overflow:hidden para recortar el
@@ -457,6 +463,7 @@
   .animate-lock-pop,
   .animate-record-banner-in,
   .animate-record-banner-out,
+  .animate-confetti-fall-slow,
   .animate-fade-in-up,
   .animate-page-in,
   .animate-slide-up-in,
