@@ -176,7 +176,12 @@ export async function getRoutineDayForLogging(dayId: string) {
 // volvía tocando "Entrenar" en la nav, caía en la pantalla vacía de "elegí
 // un día" con cero indicio de que su sesión seguía abierta en el servidor.
 // Antes de mostrar esa pantalla, nos fijamos si hay un workout_log de HOY
-// sin terminar y, si existe, resolvemos directo a su día.
+// y, si existe, resolvemos directo a su día.
+//
+// Sin filtro de is_completed a propósito (jul-2026): si el cliente finalizó
+// por error hoy mismo y toca "Entrenar" de nuevo, también tiene que caer
+// directo en ese día — getOrCreateInProgressWorkout ya sabe reabrir un log
+// completado del mismo día en vez de crear uno nuevo (ver actions.ts).
 export async function getInProgressWorkoutDayId(): Promise<string | null> {
   const client = await getCurrentClientRecord();
   if (!client) return null;
@@ -189,7 +194,6 @@ export async function getInProgressWorkoutDayId(): Promise<string | null> {
     .select("routine_day_id")
     .eq("client_id", client.id)
     .eq("workout_date", today)
-    .eq("is_completed", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();

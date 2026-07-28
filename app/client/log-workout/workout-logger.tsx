@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, Pencil, Trophy } from "lucide-react";
+import { ArrowLeft, Check, Pencil, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,6 +33,7 @@ import {
   type FinishWorkoutInput,
   type FinishWorkoutResult,
   type InProgressWorkout,
+  type PlannedSetCount,
   type UpdateSetInput,
   type WeeklyCelebrationSummary,
   type WorkoutSuggestion,
@@ -46,7 +47,8 @@ import {
 // pasa `actions`, así que no cambia en nada.
 export type WorkoutLoggerActions = {
   getOrCreateInProgressWorkout: (
-    dayId: string
+    dayId: string,
+    plannedSets?: PlannedSetCount[]
   ) => Promise<InProgressWorkout | { error: string }>;
   getWorkoutSuggestions: (
     routineExerciseIds: string[]
@@ -140,6 +142,9 @@ export function WorkoutLogger({
   const [suggestionCase, setSuggestionCase] = useState<
     WorkoutSuggestion["progressionCase"]
   >(null);
+  // Bug jul-2026: cuántas semanas atrás es la referencia de la sugerencia
+  // (1 = semana pasada, 2+ = un dato viejo que hay que aclarar).
+  const [suggestionWeeksAgo, setSuggestionWeeksAgo] = useState<number | null>(null);
   // Sistema de celebración de récords (jul-2026): sessionRecords acumula
   // TODOS los récords de la sesión (para el resumen de Momento 2 al
   // finalizar); celebrationQueue es la cola de banners de Momento 1
@@ -150,6 +155,11 @@ export function WorkoutLogger({
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  // Bug jul-2026: una clienta tocó "Finalizar entrenamiento" con un
+  // ejercicio salteado (máquina ocupada) y no tuvo forma de volver ni de
+  // corregirlo después. confirmingFinish arma la misma confirmación
+  // inline que ya usa DeleteClientButton en vez de un modal nuevo.
+  const [confirmingFinish, setConfirmingFinish] = useState(false);
   const [editingSetId, setEditingSetId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState({
     weight: "",
@@ -180,7 +190,11 @@ export function WorkoutLogger({
     setInitError(null);
     (async () => {
       try {
-        const workoutResult = await actions.getOrCreateInProgressWorkout(day.id);
+        const plannedSets: PlannedSetCount[] = day.exercises.map((ex) => ({
+          routineExerciseId: ex.id,
+          sets: ex.sets,
+        }));
+        const workoutResult = await actions.getOrCreateInProgressWorkout(day.id, plannedSets);
         if (cancelled) return;
 
         if ("error" in workoutResult) {
@@ -260,6 +274,11 @@ export function WorkoutLogger({
   const isLastExercise = exerciseIndex === day.exercises.length - 1;
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
+  // Bug jul-2026: cuántos ejercicios tienen menos series cargadas que las
+  // planificadas — la base para la confirmación antes de finalizar.
+  const incompleteExerciseCount = day.exercises.filter(
+    (ex) => (setsByExercise[ex.id]?.length ?? 0) < ex.sets
+  ).length;
 
   // Aplica la sugerencia a los campos editables cuando cambia el ejercicio,
   // el número de serie, O cuando "suggestions" termina de cargar — las tres
@@ -284,6 +303,7 @@ export function WorkoutLogger({
       rir: prev?.rir != null,
     });
     setSuggestionCase(prev?.progressionCase ?? null);
+    setSuggestionWeeksAgo(prev?.weeksAgo ?? null);
     setError(null);
   }, [exercise?.id, nextSetNumber, suggestions]);
 
@@ -438,9 +458,37 @@ export function WorkoutLogger({
     setEditingSetId(null);
   }
 
+  // Bug jul-2026: tocar "Finalizar" con ejercicios incompletos ya no
+  // finaliza directo — si falta algo, arma la confirmación inline (mismo
+  // patrón que DeleteClientButton) en vez de disparar handleFinish.
+  function requestFinish() {
+    if (incompleteExerciseCount > 0) {
+      setConfirmingFinish(true);
+      return;
+    }
+    handleFinish();
+  }
+
+  // Bug jul-2026: desde el resumen (energía + notas) no había forma de
+  // volver a completar un ejercicio salteado. jumpToFirstIncomplete=true
+  // (desde "Seguir entrenando" en la confirmación) lleva directo al primer
+  // ejercicio con series pendientes en vez de dejar al cliente en el
+  // último ejercicio a ubicarse solo.
+  function goBackToLogging(jumpToFirstIncomplete: boolean) {
+    if (jumpToFirstIncomplete) {
+      const idx = day.exercises.findIndex(
+        (ex) => (setsByExercise[ex.id]?.length ?? 0) < ex.sets
+      );
+      if (idx !== -1) setExerciseIndex(idx);
+    }
+    setConfirmingFinish(false);
+    setPhase("logging");
+  }
+
   function handleFinish() {
     if (!workoutLogId) return;
     setError(null);
+    setConfirmingFinish(false);
     startTransition(async () => {
       // Mismo patrón que el cuelgue de "Iniciar entrenamiento": sin este
       // try/catch, un rechazo de red acá dejaba el botón trabado en
@@ -510,10 +558,27 @@ export function WorkoutLogger({
   if (phase === "summary") {
     return (
       <div className="flex flex-col gap-5">
-        <h1 className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
-          Resumen del entrenamiento
-        </h1>
-        <p className="text-sm text-[#888888]">{day.name} — completado</p>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => goBackToLogging(false)}
+            aria-label="Volver al entrenamiento"
+            className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg text-[#888888] transition-transform active:scale-90"
+          >
+            <ArrowLeft className="size-5" />
+          </button>
+          <h1 className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
+            Resumen del entrenamiento
+          </h1>
+        </div>
+        <p className="text-sm text-[#888888]">
+          {day.name} — {incompleteExerciseCount > 0 ? "sin completar" : "completado"}
+        </p>
+        {incompleteExerciseCount > 0 && (
+          <p className="-mt-3 text-sm text-amber-400">
+            Te falta{incompleteExerciseCount === 1 ? "n series de 1 ejercicio" : `n series de ${incompleteExerciseCount} ejercicios`}.
+          </p>
+        )}
 
         <div className="flex flex-col gap-2">
           <Label>¿Cómo te sentiste? (nivel de energía)</Label>
@@ -548,14 +613,44 @@ export function WorkoutLogger({
 
         {error && <p className="text-sm text-destructive">{error}</p>}
 
-        <Button
-          onClick={handleFinish}
-          disabled={pending}
-          className="min-h-[52px] w-full text-base"
-        >
-          {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
-          {pending ? "Guardando..." : "Finalizar entrenamiento"}
-        </Button>
+        {confirmingFinish ? (
+          <div className="flex flex-col gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/5 p-4">
+            <p className="text-sm text-white">
+              Te queda{incompleteExerciseCount === 1 ? "" : "n"}{" "}
+              {incompleteExerciseCount === 1
+                ? "1 ejercicio sin completar"
+                : `${incompleteExerciseCount} ejercicios sin completar`}
+              . ¿Finalizar igual?
+            </p>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                className="min-h-[44px] flex-1 text-sm"
+                onClick={() => goBackToLogging(true)}
+                disabled={pending}
+              >
+                Seguir entrenando
+              </Button>
+              <Button
+                className="min-h-[44px] flex-1 text-sm"
+                onClick={handleFinish}
+                disabled={pending}
+              >
+                {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
+                {pending ? "Guardando..." : "Finalizar"}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <Button
+            onClick={requestFinish}
+            disabled={pending}
+            className="min-h-[52px] w-full text-base"
+          >
+            {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
+            {pending ? "Guardando..." : "Finalizar entrenamiento"}
+          </Button>
+        )}
         {recordBanner}
       </div>
     );
@@ -834,11 +929,16 @@ export function WorkoutLogger({
       {(suggested.weight || suggested.reps || suggested.rir) && (
         <p className="-mt-2 flex items-center gap-1 text-xs text-amber-400">
           <Check className="size-3" />
-          {suggestionCase === "weight_increase"
-            ? "Subiste el peso esta semana 💪 podés editarlo"
-            : suggestionCase === "reps_increase"
-              ? "Una rep más que la semana pasada 🎯 podés editarlo"
-              : "Sugerido según tu última vez — podés editarlo"}
+          {suggestionWeeksAgo != null && suggestionWeeksAgo >= 2
+            ? // Bug jul-2026: dato de referencia no fresco (2+ semanas) — hay
+              // que avisar explícitamente para que no se lea como "esta
+              // semana", sea cual sea el progressionCase.
+              `Tu última vez con este ejercicio, hace ${suggestionWeeksAgo} semanas — podés editarlo`
+            : suggestionCase === "weight_increase"
+              ? "Subiste el peso esta semana 💪 podés editarlo"
+              : suggestionCase === "reps_increase"
+                ? "Una rep más que la semana pasada 🎯 podés editarlo"
+                : "Sugerido según tu última vez — podés editarlo"}
         </p>
       )}
 

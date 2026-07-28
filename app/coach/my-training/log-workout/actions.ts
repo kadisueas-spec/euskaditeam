@@ -9,6 +9,7 @@ import type {
   FinishWorkoutInput,
   FinishWorkoutResult,
   InProgressWorkout,
+  PlannedSetCount,
   UpdateSetInput,
   WorkoutSummary,
 } from "@/app/client/log-workout/actions";
@@ -24,8 +25,13 @@ import type {
 // el celular/compu con conexión, y el volumen de uso es bajo — si falla
 // una request, alcanza con reintentar.
 
+// Mismo fix jul-2026 que getOrCreateInProgressWorkout (ver
+// app/client/log-workout/actions.ts): ya no filtra por is_completed, y
+// solo reabre (is_completed -> false) el log encontrado si le faltan
+// series respecto de `plannedSets`.
 export async function getOrCreateInProgressTrainingWorkout(
-  dayId: string
+  dayId: string,
+  plannedSets?: PlannedSetCount[]
 ): Promise<InProgressWorkout | { error: string }> {
   const profile = await getCurrentProfile();
   if (!profile) return { error: "No se pudo identificar tu perfil." };
@@ -35,11 +41,10 @@ export async function getOrCreateInProgressTrainingWorkout(
 
   const { data: existing } = await supabase
     .from("workout_logs")
-    .select("id")
+    .select("id, is_completed")
     .eq("coach_id", profile.id)
     .eq("routine_day_id", dayId)
     .eq("workout_date", today)
-    .eq("is_completed", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -72,17 +77,38 @@ export async function getOrCreateInProgressTrainingWorkout(
     .eq("workout_log_id", workoutLogId)
     .order("set_number", { ascending: true });
 
-  return {
-    workoutLogId: workoutLogId as string,
-    loggedSets: (sets ?? []).map((s) => ({
-      id: s.id,
-      routineExerciseId: s.routine_exercise_id ?? "",
-      setNumber: s.set_number,
-      weightKg: s.weight_kg,
-      reps: s.reps_completed,
-      rir: s.rir_actual,
-    })),
-  };
+  const loggedSets = (sets ?? []).map((s) => ({
+    id: s.id,
+    routineExerciseId: s.routine_exercise_id ?? "",
+    setNumber: s.set_number,
+    weightKg: s.weight_kg,
+    reps: s.reps_completed,
+    rir: s.rir_actual,
+  }));
+
+  if (existing?.is_completed && plannedSets) {
+    const countByExercise = new Map<string, number>();
+    for (const s of loggedSets) {
+      countByExercise.set(
+        s.routineExerciseId,
+        (countByExercise.get(s.routineExerciseId) ?? 0) + 1
+      );
+    }
+    const isIncomplete = plannedSets.some(
+      (p) => (countByExercise.get(p.routineExerciseId) ?? 0) < p.sets
+    );
+    if (isIncomplete) {
+      const { error: reopenError } = await supabase
+        .from("workout_logs")
+        .update({ is_completed: false, finished_at: null })
+        .eq("id", workoutLogId);
+      if (reopenError) {
+        console.error("getOrCreateInProgressTrainingWorkout reopen error:", reopenError);
+      }
+    }
+  }
+
+  return { workoutLogId: workoutLogId as string, loggedSets };
 }
 
 type PriorMaxWeightRow = { weight_kg: number | null };

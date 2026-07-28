@@ -7,10 +7,13 @@ import { sendPushToCoach } from "@/lib/push/send-push";
 import { adherence80PushTitle } from "@/lib/constants/push-copy";
 import { validateSetInput } from "@/lib/utils/validate-set-input";
 import { mondayKeyFor, previousMondayKey, addWeeks } from "@/lib/utils/week";
+import { EDIT_WINDOW_DAYS, daysAgo } from "@/lib/utils/edit-window";
 import {
+  bestSetByExercise,
   detectWeeklyRecord,
   summarizeSessionRecords,
   type SessionRecord,
+  type SetLogWithExerciseRow,
 } from "@/lib/utils/session-records";
 
 export type LoggedSet = {
@@ -27,13 +30,34 @@ export type InProgressWorkout = {
   loggedSets: LoggedSet[];
 };
 
+export type PlannedSetCount = { routineExerciseId: string; sets: number };
+
 // A1: cada serie se guarda en el servidor apenas se completa (no se espera
 // a "Finalizar"), en un workout_log con is_completed=false. Si el cliente
 // cierra la app y vuelve, esta función encuentra ese mismo registro en
 // curso (por client+día+fecha) en vez de crear uno nuevo, y devuelve todas
 // las series ya guardadas para reconstruir dónde había quedado.
+//
+// Bug jul-2026 (reportado por Luis): la búsqueda de "en curso" filtraba
+// is_completed=false. Si una clienta finalizaba por error (con un
+// ejercicio salteado) y volvía a entrar a ESE MISMO día, esta función no
+// encontraba el log ya completado y creaba uno nuevo desde cero — perdía
+// todas las series ya cargadas, sin ningún aviso. Ahora la búsqueda ya no
+// filtra por is_completed: si existe un log de hoy para este client+día
+// (completado o no), se reusa ese mismo en vez de crear uno nuevo —
+// consistente con la restricción única que se agrega en la migración de la
+// BD (un solo workout_log por client+routine_day+fecha).
+//
+// `plannedSets` (opcional, lo manda WorkoutLogger con lo que ya tiene de
+// `day.exercises`) es la clave de por qué esto es seguro: si el log
+// encontrado ya estaba completado PERO le faltan series respecto de lo
+// planificado, se reabre (is_completed vuelve a false) para que el
+// cliente pueda seguir cargando. Si ya tiene TODAS las series
+// planificadas, se deja tal cual — no lo "desfinaliza" solo porque el
+// cliente volvió a entrar a esa pantalla a mirar o por error de tap.
 export async function getOrCreateInProgressWorkout(
-  dayId: string
+  dayId: string,
+  plannedSets?: PlannedSetCount[]
 ): Promise<InProgressWorkout | { error: string }> {
   const client = await getCurrentClientRecord();
   if (!client) return { error: "No se encontró tu perfil de cliente." };
@@ -43,11 +67,10 @@ export async function getOrCreateInProgressWorkout(
 
   const { data: existing } = await supabase
     .from("workout_logs")
-    .select("id")
+    .select("id, is_completed")
     .eq("client_id", client.id)
     .eq("routine_day_id", dayId)
     .eq("workout_date", today)
-    .eq("is_completed", false)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -80,17 +103,38 @@ export async function getOrCreateInProgressWorkout(
     .eq("workout_log_id", workoutLogId)
     .order("set_number", { ascending: true });
 
-  return {
-    workoutLogId: workoutLogId as string,
-    loggedSets: (sets ?? []).map((s) => ({
-      id: s.id,
-      routineExerciseId: s.routine_exercise_id ?? "",
-      setNumber: s.set_number,
-      weightKg: s.weight_kg,
-      reps: s.reps_completed,
-      rir: s.rir_actual,
-    })),
-  };
+  const loggedSets: LoggedSet[] = (sets ?? []).map((s) => ({
+    id: s.id,
+    routineExerciseId: s.routine_exercise_id ?? "",
+    setNumber: s.set_number,
+    weightKg: s.weight_kg,
+    reps: s.reps_completed,
+    rir: s.rir_actual,
+  }));
+
+  if (existing?.is_completed && plannedSets) {
+    const countByExercise = new Map<string, number>();
+    for (const s of loggedSets) {
+      countByExercise.set(
+        s.routineExerciseId,
+        (countByExercise.get(s.routineExerciseId) ?? 0) + 1
+      );
+    }
+    const isIncomplete = plannedSets.some(
+      (p) => (countByExercise.get(p.routineExerciseId) ?? 0) < p.sets
+    );
+    if (isIncomplete) {
+      const { error: reopenError } = await supabase
+        .from("workout_logs")
+        .update({ is_completed: false, finished_at: null })
+        .eq("id", workoutLogId);
+      if (reopenError) {
+        console.error("getOrCreateInProgressWorkout reopen error:", reopenError);
+      }
+    }
+  }
+
+  return { workoutLogId: workoutLogId as string, loggedSets };
 }
 
 export type AddSetInput = {
@@ -185,12 +229,23 @@ export type UpdateSetInput = {
   rir: number | null;
 };
 
-// A4: permite corregir una serie ya guardada dentro del entrenamiento en
-// curso (o de una sesión pasada, ver Bloque B2).
+type SetOwnershipRow = {
+  routine_exercise_id: string | null;
+  workout_logs: { client_id: string | null; workout_date: string } | null;
+};
+
+// A4 / B2 (jul-2026): permite corregir una serie ya guardada, dentro del
+// entrenamiento en curso o de una sesión pasada (desde el historial en
+// Progreso) — con el mismo límite de 7 días que agregar/eliminar series de
+// una sesión pasada, así que hace falta el mismo chequeo de dueño+fecha
+// antes de tocar nada (el entrenamiento en curso siempre está dentro de la
+// ventana, así que esto no cambia nada para ese flujo). También recalcula
+// isPersonalRecord: corregir un peso puede convertir (o dejar de ser) un
+// récord histórico.
 export async function updateSet(
   setId: string,
   patch: UpdateSetInput
-): Promise<{ success: true } | { error: string }> {
+): Promise<{ success: true; isPersonalRecord: boolean } | { error: string }> {
   const client = await getCurrentClientRecord();
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
@@ -198,6 +253,24 @@ export async function updateSet(
   if (validationError) return { error: validationError };
 
   const supabase = await createClient();
+
+  const { data: set } = await supabase
+    .from("workout_set_logs")
+    .select("routine_exercise_id, workout_logs!inner(client_id, workout_date)")
+    .eq("id", setId)
+    .eq("workout_logs.client_id", client.id)
+    .maybeSingle()
+    .returns<SetOwnershipRow>();
+
+  if (!set?.workout_logs) return { error: "Serie no encontrada." };
+  if (daysAgo(set.workout_logs.workout_date) > EDIT_WINDOW_DAYS) {
+    return { error: `Solo se pueden editar sesiones de los últimos ${EDIT_WINDOW_DAYS} días.` };
+  }
+
+  const isPersonalRecord = set.routine_exercise_id
+    ? await checkPersonalRecord(supabase, client.id, set.routine_exercise_id, patch.weightKg)
+    : false;
+
   const { error } = await supabase
     .from("workout_set_logs")
     .update({
@@ -210,6 +283,124 @@ export async function updateSet(
   if (error) {
     console.error("updateSet error:", error);
     return { error: "No se pudo actualizar la serie." };
+  }
+
+  return { success: true, isPersonalRecord };
+}
+
+export type EditPastSessionResult =
+  | {
+      success: true;
+      id: string;
+      isPersonalRecord: boolean;
+      weeklyCelebration?: WeeklyCelebrationSummary;
+    }
+  | { error: string };
+
+// B2 (jul-2026): agregar una serie a una sesión YA FINALIZADA — el caso
+// concreto es completar un ejercicio salteado que quedó con guiones en el
+// historial. Mismo chequeo de dueño+ventana que updateSet/deleteSet. Si
+// esta serie deja completa la semana en curso, dispara la celebración
+// semanal acá mismo — finishWorkout no vuelve a correr en este flujo, así
+// que es el único lugar donde ese chequeo puede pasar para una edición
+// retroactiva.
+export async function addSetToPastLog(input: AddSetInput): Promise<EditPastSessionResult> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const validationError = validateSetInput(input);
+  if (validationError) return { error: validationError };
+
+  const supabase = await createClient();
+
+  const { data: log } = await supabase
+    .from("workout_logs")
+    .select("id, workout_date")
+    .eq("id", input.workoutLogId)
+    .eq("client_id", client.id)
+    .maybeSingle();
+
+  if (!log) return { error: "Entrenamiento no encontrado." };
+  if (daysAgo(log.workout_date) > EDIT_WINDOW_DAYS) {
+    return { error: `Solo se pueden editar sesiones de los últimos ${EDIT_WINDOW_DAYS} días.` };
+  }
+
+  const isPersonalRecord = await checkPersonalRecord(
+    supabase,
+    client.id,
+    input.routineExerciseId,
+    input.weightKg
+  );
+
+  const { data, error } = await supabase
+    .from("workout_set_logs")
+    .insert({
+      workout_log_id: input.workoutLogId,
+      routine_exercise_id: input.routineExerciseId,
+      set_number: input.setNumber,
+      weight_kg: input.weightKg,
+      reps_completed: input.reps,
+      rir_actual: input.rir,
+    })
+    .select("id")
+    .single();
+
+  if (error || !data) {
+    console.error("addSetToPastLog error:", error);
+    return { error: "No se pudo guardar la serie." };
+  }
+
+  let weeklyCelebration: WeeklyCelebrationSummary | undefined;
+  try {
+    const { data: activeRoutine } = await supabase
+      .from("routines")
+      .select("id, routine_days(count)")
+      .eq("client_id", client.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .returns<{ id: string; routine_days: { count: number }[] } | null>();
+
+    weeklyCelebration =
+      (await checkWeeklyCompletion({
+        supabase,
+        client,
+        workoutDate: log.workout_date,
+        plannedDays: activeRoutine?.routine_days[0]?.count ?? 0,
+      })) ?? undefined;
+  } catch (err) {
+    console.error("addSetToPastLog weekly celebration error:", err);
+  }
+
+  return { success: true, id: data.id, isPersonalRecord, weeklyCelebration };
+}
+
+// B2 (jul-2026): borrar una serie cargada por error, desde el historial de
+// una sesión pasada. Mismo chequeo de dueño+ventana.
+export async function deleteSet(setId: string): Promise<{ success: true } | { error: string }> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const supabase = await createClient();
+
+  const { data: set } = await supabase
+    .from("workout_set_logs")
+    .select("id, workout_logs!inner(client_id, workout_date)")
+    .eq("id", setId)
+    .eq("workout_logs.client_id", client.id)
+    .maybeSingle()
+    .returns<SetOwnershipRow>();
+
+  if (!set?.workout_logs) return { error: "Serie no encontrada." };
+  if (daysAgo(set.workout_logs.workout_date) > EDIT_WINDOW_DAYS) {
+    return { error: `Solo se pueden editar sesiones de los últimos ${EDIT_WINDOW_DAYS} días.` };
+  }
+
+  const { error } = await supabase.from("workout_set_logs").delete().eq("id", setId);
+  if (error) {
+    console.error("deleteSet error:", error);
+    return { error: "No se pudo eliminar la serie." };
   }
 
   return { success: true };
@@ -287,34 +478,6 @@ async function notifyCoachIfAdherenceCrossed80({
   });
 }
 
-type WeeklySetLogRow = {
-  routine_exercise_id: string | null;
-  weight_kg: number | null;
-  reps_completed: number | null;
-  rir_actual: number | null;
-  workout_logs: { workout_date: string } | null;
-  routine_exercises: { exercises: { name: string } | null } | null;
-};
-
-// Mejor serie por ejercicio dentro de un subconjunto de filas ya filtrado
-// por rango de fechas (misma regla que bestByExercise de
-// getWorkoutSuggestions: mayor peso, empate -> más reps).
-function bestSetByExercise(rows: WeeklySetLogRow[]): Map<string, WeeklySetLogRow> {
-  const best = new Map<string, WeeklySetLogRow>();
-  for (const row of rows) {
-    if (!row.routine_exercise_id) continue;
-    const current = best.get(row.routine_exercise_id);
-    const weight = row.weight_kg ?? -Infinity;
-    const currentWeight = current?.weight_kg ?? -Infinity;
-    const reps = row.reps_completed ?? -Infinity;
-    const currentReps = current?.reps_completed ?? -Infinity;
-    if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
-      best.set(row.routine_exercise_id, row);
-    }
-  }
-  return best;
-}
-
 // Sistema de celebración semanal (jul-2026): al finalizar una sesión, si
 // esa sesión completó todos los días planificados de la semana calendario
 // en curso (lunes a domingo) Y esa semana no fue celebrada todavía,
@@ -373,7 +536,7 @@ async function checkWeeklyCompletion({
       .eq("workout_logs.is_completed", true)
       .gte("workout_logs.workout_date", prevWeekStart)
       .lt("workout_logs.workout_date", weekEnd)
-      .returns<WeeklySetLogRow[]>(),
+      .returns<SetLogWithExerciseRow[]>(),
     getClientStats(),
   ]);
 
@@ -525,14 +688,19 @@ export type WorkoutSuggestion = {
   reps: number | null;
   rir: number | null;
   progressionCase: "weight_increase" | "reps_increase" | null;
-  // Récord CRUDO de la semana pasada (mayor peso, empate -> más reps), sin
-  // el ajuste del algoritmo de progresión — a diferencia de weight/reps de
-  // arriba, que ya vienen proyectados hacia adelante. Sistema de
-  // celebración de récords (jul-2026) lo usa como base de comparación real
-  // para detectar si la serie recién cargada superó la semana pasada, sin
-  // repetir la consulta de "mejor serie de la semana anterior" que ya
-  // resuelve esta misma función.
+  // Récord CRUDO de la sesión de referencia (mayor peso, empate -> más
+  // reps), sin el ajuste del algoritmo de progresión — a diferencia de
+  // weight/reps de arriba, que ya vienen proyectados hacia adelante.
+  // Sistema de celebración de récords (jul-2026) lo usa como base de
+  // comparación real para detectar si la serie recién cargada superó esa
+  // referencia, sin repetir la consulta acá.
   previousRecord: { weight: number; reps: number; rir: number | null } | null;
+  // Bug jul-2026: hace cuántas semanas fue la sesión de referencia (1 =
+  // la semana pasada, 2 = hace dos semanas, ...). null si no hay ninguna
+  // referencia dentro de las últimas 8 semanas. El cliente usa esto para
+  // avisar cuándo el dato no es fresco ("Tu última vez con este
+  // ejercicio, hace X semanas").
+  weeksAgo: number | null;
 };
 
 type SetLogRow = {
@@ -550,28 +718,54 @@ type RoutineExerciseRangeRow = {
   weight_increment: number;
 };
 
-// Lunes a domingo de la semana pasada (UTC), tomando "hoy" como referencia.
-// getUTCDay(): 0=domingo..6=sábado. diffToMonday = días desde el lunes de
-// ESTA semana; restando 7 más se llega al lunes de la semana anterior.
-function lastWeekRange(now: Date): { from: string; to: string } {
+// Bug jul-2026: si el cliente se salteó una semana entera de un ejercicio
+// (semana 2 sin entrenarlo), la sugerencia quedaba vacía en la semana 3
+// aunque hubiera datos de la semana 1. `lastWeekRange` (ventana fija de
+// una sola semana) queda reemplazada por esta búsqueda hacia atrás.
+//
+// Cuántas semanas de calendario (lunes a domingo, UTC) hace que empezó la
+// semana que contiene `dateStr`, respecto de "hoy" — 1 = la semana pasada,
+// 2 = hace dos semanas, etc. Nunca cuenta la semana en curso (por diseño:
+// la ventana de búsqueda siempre termina el domingo pasado, ver
+// MAX_SUGGESTION_WEEKS_BACK más abajo).
+function weeksAgoForDate(now: Date, dateStr: string): number {
   const day = now.getUTCDay();
   const diffToMonday = day === 0 ? 6 : day - 1;
-  const thisMonday = new Date(
-    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday)
-  );
-  const lastMonday = new Date(thisMonday);
-  lastMonday.setUTCDate(thisMonday.getUTCDate() - 7);
-  const lastSunday = new Date(thisMonday);
-  lastSunday.setUTCDate(thisMonday.getUTCDate() - 1);
-  return { from: lastMonday.toISOString().slice(0, 10), to: lastSunday.toISOString().slice(0, 10) };
+  const thisMonday = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday);
+  const [y, m, d] = dateStr.split("-").map(Number);
+  const target = Date.UTC(y, m - 1, d);
+  const diffDays = Math.round((thisMonday - target) / 86400000);
+  return Math.ceil(diffDays / 7);
 }
 
-// Reescrito desde cero (jul-2026, 3er intento): el problema de los dos
-// intentos anteriores era 100% de timing en el cliente (ver historial en
-// workout-logger.tsx) — esta función en sí no cambia de estrategia general
-// (récord = serie de mayor peso, empate -> más reps), solo la ventana:
-// antes era "la sesión completada más reciente" (cualquier fecha), ahora es
-// puntualmente la semana calendario anterior (lunes a domingo). Devuelve un
+// Lunes de "hace N semanas" (UTC) — límites de la ventana de búsqueda.
+function mondayWeeksAgo(now: Date, weeksAgo: number): string {
+  const day = now.getUTCDay();
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - diffToMonday - 7 * weeksAgo)
+  );
+  return monday.toISOString().slice(0, 10);
+}
+
+// Tope de la búsqueda hacia atrás: si hace más de esto que el cliente no
+// hace este ejercicio, el dato ya no es representativo de su estado
+// actual y no se sugiere nada (mejor que una sugerencia vieja y engañosa).
+const MAX_SUGGESTION_WEEKS_BACK = 8;
+// A partir de esta cantidad de semanas sin hacer el ejercicio, no
+// corresponde subir la carga — se sugiere repetir el mismo peso/reps de
+// la última vez, no proyectar progresión sobre una pausa larga.
+const PROGRESSION_STALE_WEEKS = 4;
+
+// Reescrito desde cero (jul-2026, 3er intento de la versión original, 4to
+// contando este fix): el problema de los intentos anteriores era 100% de
+// timing en el cliente (ver historial en workout-logger.tsx); ESTE fix es
+// distinto — no es de timing, es de ventana: antes solo miraba la semana
+// calendario anterior, así que un ejercicio salteado una sola semana
+// dejaba la sugerencia vacía aunque hubiera datos recientes de 2+ semanas
+// atrás. Ahora busca semana por semana hacia atrás (hasta
+// MAX_SUGGESTION_WEEKS_BACK) la semana más reciente con datos de ESE
+// ejercicio, y arma la sugerencia sobre esa referencia. Devuelve un
 // objeto plano { [routineExerciseId]: sugerencia } en vez de un array —
 // más simple de consumir del lado del cliente, sin re-armar un Map ahí.
 //
@@ -582,22 +776,28 @@ function lastWeekRange(now: Date): { from: string; to: string } {
 // workout_logs usan coach_id, no client_id, así que filtrar por client_id
 // acá rompería ese reuso).
 //
-// Algoritmo de progresión (jul-2026): a partir del récord de la semana
-// pasada, sugiere el peso/reps ÓPTIMOS para esta semana en vez de repetir
-// el mismo récord.
-// - Si las reps del récord llegaron al techo del rango (reps_max): subir
-//   weight_increment kg y volver al piso del rango (reps_min).
-// - Si quedaron dentro del rango (o por debajo de reps_min, caso no
-//   cubierto explícitamente por el enunciado — se trata igual, sumar una
-//   rep es la lectura más conservadora): mismo peso, +1 rep.
-// El RIR sugerido siempre es el del récord, sin cambios.
+// Algoritmo de progresión (jul-2026, sin cambios en la lógica en sí,
+// ver Bug 4 más abajo para la excepción de pausa larga):
+// - Si las reps del récord de referencia llegaron al techo del rango
+//   (reps_max): subir weight_increment kg y volver al piso (reps_min).
+// - Si quedaron dentro del rango (o por debajo de reps_min): mismo peso,
+//   +1 rep.
+// - Excepción (Bug 4): si la referencia tiene PROGRESSION_STALE_WEEKS
+//   semanas o más, no se aplica ninguna de las dos — se sugiere repetir
+//   exactamente el peso/reps de esa sesión, sin progresión hacia arriba.
+// El RIR sugerido siempre es el de la referencia, sin cambios.
 export async function getWorkoutSuggestions(
   routineExerciseIds: string[]
 ): Promise<Record<string, WorkoutSuggestion>> {
   if (routineExerciseIds.length === 0) return {};
 
   const supabase = await createClient();
-  const { from, to } = lastWeekRange(new Date());
+  const now = new Date();
+  const from = mondayWeeksAgo(now, MAX_SUGGESTION_WEEKS_BACK);
+  const to = mondayWeeksAgo(now, 0); // lunes de esta semana, exclusivo más abajo (lte usaría el domingo pasado)
+  const lastSunday = new Date(`${to}T00:00:00Z`);
+  lastSunday.setUTCDate(lastSunday.getUTCDate() - 1);
+  const toInclusive = lastSunday.toISOString().slice(0, 10);
 
   const [{ data }, { data: ranges }] = await Promise.all([
     supabase
@@ -609,7 +809,7 @@ export async function getWorkoutSuggestions(
       .in("routine_exercise_id", routineExerciseIds)
       .eq("workout_logs.is_completed", true)
       .gte("workout_logs.workout_date", from)
-      .lte("workout_logs.workout_date", to)
+      .lte("workout_logs.workout_date", toInclusive)
       .returns<SetLogRow[]>(),
     supabase
       .from("routine_exercises")
@@ -618,17 +818,29 @@ export async function getWorkoutSuggestions(
       .returns<RoutineExerciseRangeRow[]>(),
   ]);
 
-  // La serie de mayor peso dentro de esa semana (empate -> más reps).
-  const bestByExercise = new Map<string, SetLogRow>();
+  // Por ejercicio: la semana más reciente (menor weeksAgo) que tiene datos,
+  // y dentro de esa semana la serie de mayor peso (empate -> más reps).
+  const bestByExercise = new Map<string, SetLogRow & { weeksAgo: number }>();
   for (const row of data ?? []) {
     if (!row.routine_exercise_id || !row.workout_logs) continue;
+    const rowWeeksAgo = weeksAgoForDate(now, row.workout_logs.workout_date);
+    if (rowWeeksAgo < 1 || rowWeeksAgo > MAX_SUGGESTION_WEEKS_BACK) continue;
+
     const current = bestByExercise.get(row.routine_exercise_id);
+    if (!current || rowWeeksAgo < current.weeksAgo) {
+      // Semana más reciente que la que teníamos: arranca de cero la
+      // comparación de "mejor serie" para esta semana nueva.
+      bestByExercise.set(row.routine_exercise_id, { ...row, weeksAgo: rowWeeksAgo });
+      continue;
+    }
+    if (rowWeeksAgo > current.weeksAgo) continue; // semana más vieja, ya tenemos una mejor
+
     const weight = row.weight_kg ?? -Infinity;
-    const currentWeight = current?.weight_kg ?? -Infinity;
+    const currentWeight = current.weight_kg ?? -Infinity;
     const reps = row.reps_completed ?? -Infinity;
-    const currentReps = current?.reps_completed ?? -Infinity;
-    if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
-      bestByExercise.set(row.routine_exercise_id, row);
+    const currentReps = current.reps_completed ?? -Infinity;
+    if (weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
+      bestByExercise.set(row.routine_exercise_id, { ...row, weeksAgo: rowWeeksAgo });
     }
   }
 
@@ -647,11 +859,26 @@ export async function getWorkoutSuggestions(
         rir: row.rir_actual,
         progressionCase: null,
         previousRecord: null,
+        weeksAgo: row.weeksAgo,
       };
       continue;
     }
 
     const previousRecord = { weight: weightRecord, reps: repsRecord, rir: row.rir_actual };
+
+    // Pausa larga (Bug 4): no proyectar progresión, repetir tal cual.
+    if (row.weeksAgo >= PROGRESSION_STALE_WEEKS) {
+      result[routineExerciseId] = {
+        weight: weightRecord,
+        reps: repsRecord,
+        rir: row.rir_actual,
+        progressionCase: null,
+        previousRecord,
+        weeksAgo: row.weeksAgo,
+      };
+      continue;
+    }
+
     const range = rangeByExercise.get(routineExerciseId);
     const weightIncrement = range?.weight_increment ?? 2.5;
     const repsMin = range?.reps_min ?? 1;
@@ -664,6 +891,7 @@ export async function getWorkoutSuggestions(
         rir: row.rir_actual,
         progressionCase: "weight_increase",
         previousRecord,
+        weeksAgo: row.weeksAgo,
       };
     } else {
       result[routineExerciseId] = {
@@ -672,6 +900,7 @@ export async function getWorkoutSuggestions(
         rir: row.rir_actual,
         progressionCase: "reps_increase",
         previousRecord,
+        weeksAgo: row.weeksAgo,
       };
     }
   }

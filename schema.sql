@@ -625,6 +625,14 @@ ALTER TABLE ONLY public.workout_logs
 
 
 --
+-- Name: workout_logs workout_logs_client_day_date_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.workout_logs
+    ADD CONSTRAINT workout_logs_client_day_date_key UNIQUE (client_id, routine_day_id, workout_date);
+
+
+--
 -- Name: workout_set_logs workout_set_logs_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 

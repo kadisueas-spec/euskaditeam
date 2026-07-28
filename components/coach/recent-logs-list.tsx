@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -160,7 +161,12 @@ export function RecentLogsList({
             </li>
           ) : (
             <li key={log.id} className="flex items-center justify-between text-sm">
-              <span className="text-[#888888]">{formatDate(log.workoutDate)}</span>
+              <Link
+                href={`/coach/clients/${clientId}/sessions/${log.id}`}
+                className="text-[#888888] hover:text-white hover:underline"
+              >
+                {formatDate(log.workoutDate)}
+              </Link>
               <div className="flex items-center gap-2">
                 <Badge variant={log.isCompleted ? "default" : "outline"}>
                   {log.isCompleted ? "Completado" : "En curso"}

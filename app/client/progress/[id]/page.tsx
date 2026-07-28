@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { FadeIn } from "@/components/motion/fade-in";
+import { Card, CardContent } from "@/components/ui/card";
 import { getWorkoutLogDetail } from "@/lib/supabase/workout-history";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
-import { EditableSetRow } from "./editable-set-row";
+import { EDIT_WINDOW_DAYS, isWithinEditWindow } from "@/lib/utils/edit-window";
+import { HistoryDetail } from "./history-detail";
 
 export default async function WorkoutLogDetailPage({
   params,
@@ -15,12 +15,7 @@ export default async function WorkoutLogDetailPage({
 
   if (!log) notFound();
 
-  const setsByExercise = new Map<string, typeof log.sets>();
-  for (const set of log.sets) {
-    const list = setsByExercise.get(set.exerciseName) ?? [];
-    list.push(set);
-    setsByExercise.set(set.exerciseName, list);
-  }
+  const editable = isWithinEditWindow(log.workoutDate);
 
   return (
     <div className="flex flex-col gap-4">
@@ -45,28 +40,13 @@ export default async function WorkoutLogDetailPage({
         </Card>
       )}
 
-      {setsByExercise.size === 0 ? (
-        <p className="text-sm text-[#888888]">No se registraron series.</p>
-      ) : (
-        Array.from(setsByExercise.entries()).map(([exerciseName, sets], i) => (
-          <FadeIn key={exerciseName} delay={Math.min(i * 0.05, 0.3)}>
-            <Card className="border-[#1e1e1e] bg-[#111111]">
-              <CardHeader>
-                <CardTitle className="text-base text-white">
-                  {exerciseName}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ul className="flex flex-col gap-2">
-                  {sets.map((set) => (
-                    <EditableSetRow key={set.id} set={set} />
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          </FadeIn>
-        ))
+      {!editable && (
+        <p className="text-xs text-[#666666]">
+          Esta sesión tiene más de {EDIT_WINDOW_DAYS} días — ya no se puede editar.
+        </p>
       )}
+
+      <HistoryDetail log={log} editable={editable} />
     </div>
   );
 }
