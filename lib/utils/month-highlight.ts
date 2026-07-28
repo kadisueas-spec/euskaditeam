@@ -55,7 +55,7 @@ function fmt(n: number, maxDecimals = 1): string {
 // El objetivo del cliente es texto libre (clients.goal) — sin keyword
 // claro de dirección, la candidata de peso queda descartada de plano en
 // vez de arriesgar festejar el sentido equivocado.
-function parseGoalDirection(goal: string | null): "lose" | "gain" | null {
+export function parseGoalDirection(goal: string | null): "lose" | "gain" | null {
   if (!goal) return null;
   const g = goal.toLowerCase();
   const loseWords = ["bajar", "perder", "reducir", "definir", "definición", "adelgazar", "grasa"];

@@ -18,6 +18,7 @@ import {
 } from "@/lib/supabase/metrics";
 import {
   computeMonthHighlight,
+  parseGoalDirection,
   PERIMETER_TYPES,
   type MonthHighlight,
   type MonthHighlightInput,
@@ -112,6 +113,70 @@ function buildShareBackups(params: {
   return [streakLine, trainedLine, weeksLine].filter((l): l is string => l != null).slice(0, 2);
 }
 
+// "Objetivo vs. realidad" (jul-2026) — el único sub-dato que se puede
+// verificar con un número es el peso (monthly_goals.weight_kg, cargado al
+// definir el objetivo, contra el último peso registrado ese mismo mes). El
+// resto del objetivo (main_goal) es texto libre sin criterio de
+// cumplimiento medible, así que NUNCA se le pone un veredicto inventado —
+// solo se muestra tal cual se cargó. "Objetivo de peso" se decide con el
+// mismo criterio que ya usa el highlight (parseGoalDirection sobre
+// clients.goal, el objetivo general y estable del cliente, no el texto
+// mensual) para no depender de adivinar keywords en main_goal.
+export type MonthGoalStatus = "met" | "close" | "missed";
+
+// Umbral sin spec numérica explícita (mismo criterio que otras constantes
+// de la app, ej. EXPIRING_SOON_DAYS): 1kg en la dirección correcta ya es
+// un cambio real -> "met"; menos de eso pero en la dirección correcta ->
+// "close" (no llegó del todo, pero va bien); nada o en contra -> "missed",
+// siempre con tono que no castiga (ver copy en el componente).
+const WEIGHT_GOAL_MET_KG = 1;
+
+export type MonthGoalWeightComparison = {
+  startWeightKg: number;
+  endWeightKg: number;
+  diffKg: number;
+  status: MonthGoalStatus;
+};
+
+export type MonthGoalComparison = {
+  mainGoal: string;
+  motivationLevel: number | null;
+  improveNote: string | null;
+  weightComparison: MonthGoalWeightComparison | null;
+};
+
+function buildGoalComparison(params: {
+  mainGoal: string;
+  motivationLevel: number | null;
+  improveNote: string | null;
+  startWeightKg: number | null;
+  clientGoal: string | null;
+  endWeightKg: number | null;
+}): MonthGoalComparison {
+  const { mainGoal, motivationLevel, improveNote, startWeightKg, clientGoal, endWeightKg } = params;
+
+  const direction = parseGoalDirection(clientGoal);
+  let weightComparison: MonthGoalWeightComparison | null = null;
+  if (direction && startWeightKg != null && endWeightKg != null) {
+    const diffKg = Math.round((endWeightKg - startWeightKg) * 10) / 10;
+    const wentRightWay = direction === "lose" ? diffKg < 0 : diffKg > 0;
+    const status: MonthGoalStatus = !wentRightWay
+      ? "missed"
+      : Math.abs(diffKg) >= WEIGHT_GOAL_MET_KG
+        ? "met"
+        : "close";
+    weightComparison = { startWeightKg, endWeightKg, diffKg, status };
+  }
+
+  return { mainGoal, motivationLevel, improveNote, weightComparison };
+}
+
+// "Mensaje de tu coach" (jul-2026) — el resumen que el coach escribe al
+// cerrar el mes (monthly_reviews.summary). Solo se muestra si el coach
+// REALMENTE lo completó (completed_at no nulo) — un review a medio
+// llenar no debería aparecer como si fuera un mensaje terminado.
+export type MonthCoachMessage = { summary: string; coachName: string };
+
 export type MonthNumberComparison = { diffPercent: number; direction: "up" | "down" } | null;
 
 export type MonthSummaryNumbers = {
@@ -177,6 +242,12 @@ export type MyMonthSummary = {
   // completas y récords en su lugar, para no mostrar el mismo número dos
   // veces y garantizar al menos 2 líneas.
   shareBackups: string[];
+  // null si el cliente no cargó objetivo mensual este mes -> el bloque se
+  // omite entero (ver buildGoalComparison).
+  goalComparison: MonthGoalComparison | null;
+  // null si el coach no completó el cierre de mes -> el bloque se omite
+  // entero, sin dejar hueco.
+  coachMessage: MonthCoachMessage | null;
 };
 
 type MonthSetRow = Omit<RawSetRow, "workout_logs"> & {
@@ -228,6 +299,10 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
     { data: prevMonthSetRows },
     { data: completeWeeks },
     { data: evaluations },
+    { data: monthGoal },
+    { data: monthReview },
+    { data: latestWeightLog },
+    { data: coachProfile },
   ] = await Promise.all([
     getCurrentProfile(),
     getClientStats(),
@@ -292,6 +367,30 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
       .lt("evaluation_date", monthEndExclusive)
       .order("evaluation_date", { ascending: true })
       .returns<EvaluationRow[]>(),
+    supabase
+      .from("monthly_goals")
+      .select("main_goal, weight_kg, motivation_level, improve_note")
+      .eq("client_id", client.id)
+      .eq("month", monthKey)
+      .maybeSingle(),
+    supabase
+      .from("monthly_reviews")
+      .select("summary, completed_at")
+      .eq("client_id", client.id)
+      .eq("month", monthKey)
+      .maybeSingle(),
+    supabase
+      .from("weight_logs")
+      .select("weight_kg")
+      .eq("client_id", client.id)
+      .gte("date", monthStart)
+      .lt("date", monthEndExclusive)
+      .order("date", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    client.coachId
+      ? supabase.from("profiles").select("full_name, email").eq("id", client.coachId).maybeSingle()
+      : Promise.resolve({ data: null as { full_name: string | null; email: string } | null }),
   ]);
 
   const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
@@ -520,6 +619,31 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
       })
     : [];
 
+  // "Peso final" del mes para la comparación de objetivo: prioriza el
+  // pesaje diario (weight_logs, más frecuente) y si no hay ninguno ese mes
+  // cae al último peso de las evaluaciones antropométricas ya calculadas
+  // arriba (bodyComposition) — no dispara una consulta nueva.
+  const endWeightKg = latestWeightLog?.weight_kg ?? bodyComposition?.weightKg.last ?? null;
+
+  const goalComparison = monthGoal
+    ? buildGoalComparison({
+        mainGoal: monthGoal.main_goal,
+        motivationLevel: monthGoal.motivation_level,
+        improveNote: monthGoal.improve_note,
+        startWeightKg: monthGoal.weight_kg,
+        clientGoal: client.goal,
+        endWeightKg,
+      })
+    : null;
+
+  const coachMessage: MonthCoachMessage | null =
+    monthReview?.completed_at && monthReview.summary
+      ? {
+          summary: monthReview.summary,
+          coachName: coachProfile?.full_name?.split(" ")[0] ?? coachProfile?.email ?? "Tu coach",
+        }
+      : null;
+
   return {
     monthLabel,
     clientFirstName: profile?.full_name?.split(" ")[0] ?? "",
@@ -530,5 +654,7 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
     bodyComposition,
     highlight,
     shareBackups,
+    goalComparison,
+    coachMessage,
   };
 }

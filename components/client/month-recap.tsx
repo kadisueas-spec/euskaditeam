@@ -1,10 +1,12 @@
 import { ScrollReveal } from "@/components/motion/scroll-reveal";
 import { MonthRecapCover } from "@/components/client/month-recap/cover";
 import { MonthRecapNumbers } from "@/components/client/month-recap/numbers";
+import { MonthRecapGoal } from "@/components/client/month-recap/goal-comparison";
 import { MonthRecapStreaks } from "@/components/client/month-recap/streaks";
 import { MonthRecapRecords } from "@/components/client/month-recap/records";
 import { MonthRecapTopExercises } from "@/components/client/month-recap/top-exercises";
 import { MonthRecapBodyComposition } from "@/components/client/month-recap/body-composition";
+import { MonthRecapCoachMessage } from "@/components/client/month-recap/coach-message";
 import { MonthRecapClosing } from "@/components/client/month-recap/closing";
 import type { MyMonthSummary } from "@/lib/supabase/month-summary";
 
@@ -27,6 +29,12 @@ export function MonthRecap({ data }: { data: MyMonthSummary }) {
         <MonthRecapNumbers numbers={data.numbers} />
       </ScrollReveal>
 
+      {data.goalComparison && (
+        <ScrollReveal>
+          <MonthRecapGoal goal={data.goalComparison} />
+        </ScrollReveal>
+      )}
+
       <ScrollReveal>
         <MonthRecapStreaks streaks={data.streaks} />
       </ScrollReveal>
@@ -42,6 +50,12 @@ export function MonthRecap({ data }: { data: MyMonthSummary }) {
       {data.bodyComposition && (
         <ScrollReveal>
           <MonthRecapBodyComposition data={data.bodyComposition} />
+        </ScrollReveal>
+      )}
+
+      {data.coachMessage && (
+        <ScrollReveal>
+          <MonthRecapCoachMessage message={data.coachMessage} />
         </ScrollReveal>
       )}
 
