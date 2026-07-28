@@ -262,6 +262,16 @@
 @utility animate-confetti-fall-slow {
   animation: confetti-fall 2.6s ease-in both;
 }
+/* Mi Mes (jul-2026): revelado por scroll. Sin JS no existe — la agrega el
+   propio script (ver ScrollReveal), así el contenido nunca depende de que
+   el JS corra para ser legible. */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(28px);
+}
+.scroll-reveal-visible {
+  animation: scroll-reveal-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
 /* Bloque 3 — skeleton con shimmer (barrido sutil izquierda->derecha sobre
    #111111, en vez del pulse de opacidad genérico). skeleton-shimmer va en
    el contenedor (position:relative + overflow:hidden para recortar el
@@ -439,6 +449,17 @@
   }
 }
 
+@keyframes scroll-reveal-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @keyframes shimmer-sweep {
   from {
     transform: translateX(-100%);
@@ -464,6 +485,7 @@
   .animate-record-banner-in,
   .animate-record-banner-out,
   .animate-confetti-fall-slow,
+  .scroll-reveal-visible,
   .animate-fade-in-up,
   .animate-page-in,
   .animate-slide-up-in,

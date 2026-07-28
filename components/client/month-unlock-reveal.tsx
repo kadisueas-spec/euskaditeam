@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { Lock, LockOpen } from "lucide-react";
-import { MyMonthUnlocked } from "./my-month-unlocked";
-import type { MyMonthUnlocked as MyMonthUnlockedData } from "@/lib/supabase/my-month";
+import { MonthRecap } from "./month-recap";
+import type { MyMonthSummary } from "@/lib/supabase/month-summary";
 
 function monthStorageKey() {
   return `mimes-unlock-seen-${new Date().toISOString().slice(0, 7)}`;
@@ -15,7 +15,7 @@ function monthStorageKey() {
 // (no por opacity animada), así con prefers-reduced-motion activado se ve
 // igual de claro, solo sin el shake/pop — nunca se queda "roto" a mitad de
 // camino (ver DESIGN.md).
-export function MonthUnlockReveal({ data }: { data: MyMonthUnlockedData }) {
+export function MonthUnlockReveal({ data }: { data: MyMonthSummary }) {
   const [stage, setStage] = useState<"checking" | "revealing" | "done">(
     "checking"
   );
@@ -71,5 +71,5 @@ export function MonthUnlockReveal({ data }: { data: MyMonthUnlockedData }) {
     );
   }
 
-  return <MyMonthUnlocked data={data} />;
+  return <MonthRecap data={data} />;
 }

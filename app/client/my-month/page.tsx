@@ -1,10 +1,8 @@
 import { Lock } from "lucide-react";
 import { MonthUnlockReveal } from "@/components/client/month-unlock-reveal";
 import { FadeIn } from "@/components/motion/fade-in";
-import {
-  getMyMonthProgress,
-  getMyMonthUnlockedData,
-} from "@/lib/supabase/my-month";
+import { getMyMonthProgress } from "@/lib/supabase/my-month";
+import { getMyMonthSummary } from "@/lib/supabase/month-summary";
 
 const WEEKDAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -33,7 +31,7 @@ export default async function MyMonthPage() {
   }
 
   if (progress.isUnlocked) {
-    const unlockedData = await getMyMonthUnlockedData();
+    const unlockedData = await getMyMonthSummary();
     return (
       <div className="flex flex-col gap-4">
         <h1 className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">

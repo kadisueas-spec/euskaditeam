@@ -113,3 +113,36 @@ export function summarizeSessionRecords(records: SessionRecord[]): SessionRecord
   }
   return Array.from(byExercise.values());
 }
+
+// Fila de workout_set_logs con lo necesario para agrupar "mejor serie por
+// ejercicio" en una ventana de fechas — compartida entre la celebración
+// semanal (checkWeeklyCompletion) y el resumen de Mi Mes (que corre esta
+// misma comparación semana por semana a lo largo de todo el mes).
+export type SetLogWithExerciseRow = {
+  routine_exercise_id: string | null;
+  weight_kg: number | null;
+  reps_completed: number | null;
+  rir_actual: number | null;
+  workout_logs: { workout_date: string } | null;
+  routine_exercises: { exercises: { name: string } | null } | null;
+};
+
+// Mejor serie por ejercicio dentro de un subconjunto de filas ya filtrado
+// por rango de fechas: mayor peso, empate -> más reps.
+export function bestSetByExercise<T extends SetLogWithExerciseRow>(
+  rows: T[]
+): Map<string, T> {
+  const best = new Map<string, T>();
+  for (const row of rows) {
+    if (!row.routine_exercise_id) continue;
+    const current = best.get(row.routine_exercise_id);
+    const weight = row.weight_kg ?? -Infinity;
+    const currentWeight = current?.weight_kg ?? -Infinity;
+    const reps = row.reps_completed ?? -Infinity;
+    const currentReps = current?.reps_completed ?? -Infinity;
+    if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
+      best.set(row.routine_exercise_id, row);
+    }
+  }
+  return best;
+}
