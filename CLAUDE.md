@@ -279,6 +279,17 @@ de clientes viejos en la base — todo corre solo, sobre `daily-checks`.
     `lib/supabase/dashboard.ts`) ya cubría el aviso preventivo — no hizo
     falta tocar el dashboard para este módulo.
     Migración: `supabase/migrations/20260722_deleted_clients_log.sql`.
+38. Excepción para cuentas de prueba dedicadas (ej. el cliente E2E de
+    Playwright, `e2e-test-client@fitcoach.test`): el query de vencimiento
+    de `daily-checks` filtra `.not("subscription_end_date", "is", null)`,
+    así que un cliente con `subscription_status = 'active'` y
+    `subscription_end_date = NULL` queda **totalmente afuera** del loop de
+    aviso/eliminación — acceso activo permanente sin fecha de vencimiento
+    que mantener, sin tocar código del Edge Function (que se deploya a
+    mano). Se eligió sobre una excepción por dominio en el código porque
+    no requiere redeploy y reusa la lógica que ya existe (`isAccessActive`
+    también trata `subscription_end_date: null` como "sin vencimiento").
+    Aplicar el mismo patrón a cualquier otra cuenta de prueba futura.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
