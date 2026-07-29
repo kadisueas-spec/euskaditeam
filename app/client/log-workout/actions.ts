@@ -406,6 +406,183 @@ export async function deleteSet(setId: string): Promise<{ success: true } | { er
   return { success: true };
 }
 
+export type FinishPastLogResult =
+  | { success: true; weeklyCelebration?: WeeklyCelebrationSummary }
+  | { error: string };
+
+// Problema 1 (jul-2026): completar todas las series de una sesión desde el
+// historial nunca la marcaba como finalizada — nada en addSetToPastLog ni
+// en updateSet toca is_completed, así que quedaba "en curso" para siempre
+// aunque no faltara ninguna serie. Mismo candado de dueño+ventana que el
+// resto de la edición retroactiva. Si esta sesión YA había pasado por
+// finishWorkout alguna vez (energy_level no nulo — el caso típico es una
+// sesión que se reabrió por quedar incompleta y el cliente la terminó
+// después desde acá), no vuelve a pedir energía/notas: mantiene lo que ya
+// había. Dispara el mismo recálculo que finishWorkout para récords +
+// celebración semanal (checkWeeklyCompletion) — no dispara el push de 80%
+// de adherencia al coach, que no tiene sentido para una sesión vieja.
+export async function finishPastLog(
+  workoutLogId: string,
+  energyLevel?: number,
+  notes?: string
+): Promise<FinishPastLogResult> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const supabase = await createClient();
+
+  const { data: log } = await supabase
+    .from("workout_logs")
+    .select("id, workout_date, is_completed, energy_level, client_notes")
+    .eq("id", workoutLogId)
+    .eq("client_id", client.id)
+    .maybeSingle();
+
+  if (!log) return { error: "Entrenamiento no encontrado." };
+  if (daysAgo(log.workout_date) > EDIT_WINDOW_DAYS) {
+    return { error: `Solo se pueden editar sesiones de los últimos ${EDIT_WINDOW_DAYS} días.` };
+  }
+  if (log.is_completed) return { success: true };
+
+  const alreadyFinishedBefore = log.energy_level != null;
+  if (!alreadyFinishedBefore && (energyLevel == null || energyLevel < 1 || energyLevel > 5)) {
+    return { error: "Indicá tu nivel de energía para finalizar." };
+  }
+
+  const { error } = await supabase
+    .from("workout_logs")
+    .update({
+      is_completed: true,
+      finished_at: new Date().toISOString(),
+      energy_level: alreadyFinishedBefore ? log.energy_level : energyLevel,
+      client_notes: alreadyFinishedBefore ? log.client_notes : notes || null,
+    })
+    .eq("id", workoutLogId);
+
+  if (error) {
+    console.error("finishPastLog error:", error);
+    return { error: "No se pudo finalizar el entrenamiento." };
+  }
+
+  let weeklyCelebration: WeeklyCelebrationSummary | undefined;
+  try {
+    const { data: activeRoutine } = await supabase
+      .from("routines")
+      .select("id, routine_days(count)")
+      .eq("client_id", client.id)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .returns<{ id: string; routine_days: { count: number }[] } | null>();
+
+    weeklyCelebration =
+      (await checkWeeklyCompletion({
+        supabase,
+        client,
+        workoutDate: log.workout_date,
+        plannedDays: activeRoutine?.routine_days[0]?.count ?? 0,
+      })) ?? undefined;
+  } catch (err) {
+    console.error("finishPastLog weekly celebration error:", err);
+  }
+
+  return { success: true, weeklyCelebration };
+}
+
+// Caso especial (jul-2026): si la sesión borrada había disparado la
+// celebración semanal y borrarla deja esa semana incompleta, hay que sacar
+// el lock de weekly_celebrations — si no, la semana queda marcada como "ya
+// celebrada" para siempre aunque en los hechos ya no lo esté (y
+// completeWeeksCount de Mi Mes la sigue contando de más). No pasa nada si
+// esa semana nunca se celebró (maybeSingle da null y no hace nada más).
+async function cleanupWeeklyCelebrationIfIncomplete(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  clientId: string,
+  weekStart: string
+): Promise<void> {
+  const { data: celebration } = await supabase
+    .from("weekly_celebrations")
+    .select("id")
+    .eq("client_id", clientId)
+    .eq("week_start", weekStart)
+    .maybeSingle();
+  if (!celebration) return;
+
+  const weekEnd = addWeeks(weekStart, 1);
+  const { data: activeRoutine } = await supabase
+    .from("routines")
+    .select("id, routine_days(count)")
+    .eq("client_id", clientId)
+    .eq("is_active", true)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+    .returns<{ id: string; routine_days: { count: number }[] } | null>();
+  const plannedDays = activeRoutine?.routine_days[0]?.count ?? 0;
+
+  const { data: weekLogs } = await supabase
+    .from("workout_logs")
+    .select("workout_date")
+    .eq("client_id", clientId)
+    .eq("is_completed", true)
+    .gte("workout_date", weekStart)
+    .lt("workout_date", weekEnd);
+
+  const completedDays = new Set((weekLogs ?? []).map((l) => l.workout_date)).size;
+  if (plannedDays > 0 && completedDays >= plannedDays) return; // sigue completa, no tocar
+
+  await supabase.from("weekly_celebrations").delete().eq("id", celebration.id);
+}
+
+// Problema 2 (jul-2026): el cliente puede eliminar sus propias sesiones
+// desde el historial — antes solo el coach podía (RLS ya permitía DELETE
+// al cliente sobre sus propios workout_logs vía "Client manages own
+// workout logs", que aplica a todos los comandos sin fecha límite; el
+// límite de 7 días es el mismo candado de aplicación que ya usan
+// updateSet/deleteSet/addSetToPastLog/finishPastLog, no una policy nueva).
+// Las series se borran solas (ON DELETE CASCADE). Después de borrar,
+// limpia weekly_celebrations si corresponde (ver cleanupWeeklyCelebrationIfIncomplete)
+// — récords/rachas/adherencia no necesitan recálculo aparte: se computan
+// en vivo desde workout_logs/workout_set_logs en cada lectura, así que
+// simplemente dejan de contar la sesión borrada.
+export async function deleteWorkoutLog(
+  workoutLogId: string
+): Promise<{ success: true } | { error: string }> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No se encontró tu perfil de cliente." };
+
+  const supabase = await createClient();
+
+  const { data: log } = await supabase
+    .from("workout_logs")
+    .select("id, workout_date")
+    .eq("id", workoutLogId)
+    .eq("client_id", client.id)
+    .maybeSingle();
+
+  if (!log) return { error: "Entrenamiento no encontrado." };
+  if (daysAgo(log.workout_date) > EDIT_WINDOW_DAYS) {
+    return { error: `Solo se pueden eliminar sesiones de los últimos ${EDIT_WINDOW_DAYS} días.` };
+  }
+
+  const weekStart = mondayKeyFor(log.workout_date);
+
+  const { error } = await supabase.from("workout_logs").delete().eq("id", workoutLogId);
+  if (error) {
+    console.error("deleteWorkoutLog error:", error);
+    return { error: "No se pudo eliminar el entrenamiento." };
+  }
+
+  try {
+    await cleanupWeeklyCelebrationIfIncomplete(supabase, client.id, weekStart);
+  } catch (err) {
+    console.error("deleteWorkoutLog weekly celebration cleanup error:", err);
+  }
+
+  return { success: true };
+}
+
 export type FinishWorkoutInput = {
   workoutLogId: string;
   energyLevel: number;

@@ -73,6 +73,7 @@ export type WorkoutLogDetail = {
   id: string;
   workoutDate: string;
   dayName: string | null;
+  isCompleted: boolean;
   energyLevel: number | null;
   clientNotes: string | null;
   exercises: WorkoutLogExerciseGroup[];
@@ -91,6 +92,7 @@ type SetLogRow = {
 type LogDetailRow = {
   id: string;
   workout_date: string;
+  is_completed: boolean;
   energy_level: number | null;
   client_notes: string | null;
   routine_day_id: string | null;
@@ -188,7 +190,7 @@ function buildExerciseGroups(
   return groups;
 }
 
-const LOG_DETAIL_SELECT = `id, workout_date, energy_level, client_notes, routine_day_id,
+const LOG_DETAIL_SELECT = `id, workout_date, is_completed, energy_level, client_notes, routine_day_id,
        routine_days ( name ),
        workout_set_logs (
          id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual,
@@ -232,6 +234,7 @@ export async function getWorkoutLogDetail(
     id: log.id,
     workoutDate: log.workout_date,
     dayName: log.routine_days?.name ?? null,
+    isCompleted: log.is_completed,
     energyLevel: log.energy_level,
     clientNotes: log.client_notes,
     exercises: buildExerciseGroups(planned, log.workout_set_logs),
@@ -266,6 +269,7 @@ export async function getWorkoutLogDetailForCoach(
     id: log.id,
     workoutDate: log.workout_date,
     dayName: log.routine_days?.name ?? null,
+    isCompleted: log.is_completed,
     energyLevel: log.energy_level,
     clientNotes: log.client_notes,
     exercises: buildExerciseGroups(planned, log.workout_set_logs),

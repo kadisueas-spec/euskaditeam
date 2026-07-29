@@ -82,6 +82,31 @@ fitcoach/
 11. Pantalla de registro por sesión (peso / reps / RIR por serie)
 12. Historial de entrenamientos
 13. Estadísticas y gráficos de progreso (peso levantado, volumen, adherencia)
+13.2. Sesiones "en curso" que quedaban huérfanas (jul-2026), dos arreglos
+    en `/client/progress/[id]`: (1) completar todas las series de una
+    sesión desde el historial nunca la marcaba como finalizada — nada en
+    `addSetToPastLog`/`updateSet` toca `is_completed`. Ahora
+    `finishPastLog` (`app/client/log-workout/actions.ts`) agrega un botón
+    "Finalizar entrenamiento" en `HistoryDetail`, con oferta destacada en
+    cuanto no falta ninguna serie (rastreado en vivo por
+    `completedCounts`, sin esperar a recargar la página); si la sesión ya
+    había pasado por `finishWorkout` alguna vez (`energy_level` no nulo)
+    no vuelve a pedir energía/notas. Dispara el mismo
+    `checkWeeklyCompletion` que `finishWorkout` (récords + celebración
+    semanal), sin el push de 80% de adherencia (no tiene sentido para una
+    sesión vieja). (2) El cliente ahora puede eliminar sus propias
+    sesiones (`deleteWorkoutLog`, `delete-workout-log-button.tsx`,
+    confirmación inline) — el RLS ya lo permitía ("Client manages own
+    workout logs" aplica a todos los comandos sin fecha límite, no hizo
+    falta migración nueva); el límite de 7 días es el mismo candado de
+    aplicación que ya usan `updateSet`/`deleteSet`/`addSetToPastLog`. Las
+    series se borran solas (`ON DELETE CASCADE`); récords/rachas/adherencia
+    no necesitan recálculo aparte porque se computan en vivo desde
+    `workout_logs`/`workout_set_logs` en cada lectura — el único dato
+    persistido que puede quedar inconsistente es `weekly_celebrations`
+    (lock de "semana ya celebrada"), así que si la sesión borrada había
+    disparado esa celebración y borrarla deja la semana incompleta,
+    `cleanupWeeklyCelebrationIfIncomplete` saca el lock.
 
 ### Fase 4 — Feedback y Comunicación
 14. Sistema de feedback del coach (por sesión, por ejercicio)

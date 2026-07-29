@@ -28,6 +28,8 @@ export function SetSlotRow({
   editable,
   onPersonalRecord,
   onWeeklyCelebration,
+  onSetCompleted,
+  onSetRemoved,
 }: {
   slot: WorkoutLogSetSlot;
   workoutLogId: string;
@@ -35,6 +37,11 @@ export function SetSlotRow({
   editable: boolean;
   onPersonalRecord: (setId: string) => void;
   onWeeklyCelebration: (summary: WeeklyCelebrationSummary) => void;
+  // Problema 1 (jul-2026): HistoryDetail necesita saber cuándo una serie
+  // pasa a completada (o se borra) para poder ofrecer "Finalizar
+  // entrenamiento" en cuanto no quede ninguna serie pendiente.
+  onSetCompleted?: (routineExerciseId: string) => void;
+  onSetRemoved?: (routineExerciseId: string) => void;
 }) {
   const [mode, setMode] = useState<"view" | "edit">("view");
   const [saving, setSaving] = useState(false);
@@ -68,6 +75,7 @@ export function SetSlotRow({
     setCompleted(true);
     if (result.isPersonalRecord) onPersonalRecord(result.id);
     if (result.weeklyCelebration) onWeeklyCelebration(result.weeklyCelebration);
+    onSetCompleted?.(routineExerciseId);
     return true;
   }
 
@@ -117,6 +125,7 @@ export function SetSlotRow({
         return;
       }
       setRemoved(true);
+      onSetRemoved?.(routineExerciseId);
     } catch {
       setError("Sin conexión. Revisá tu red y reintentá.");
     } finally {
