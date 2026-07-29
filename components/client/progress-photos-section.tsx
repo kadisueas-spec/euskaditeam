@@ -76,6 +76,8 @@ export function ProgressPhotosSection({
           id: `pending-${crypto.randomUUID()}`,
           takenAt: new Date().toISOString().slice(0, 10),
           category: category || null,
+          uploadedBy: "client",
+          publicUseAuthorized: false,
           photoUrl: URL.createObjectURL(compressed),
         },
         ...prev,
@@ -181,6 +183,10 @@ export function ProgressPhotosSection({
         </p>
       ) : (
         <div className="flex flex-col gap-2">
+          <p className="text-xs text-[#888888]">
+            Tus fotos son privadas. Solo vos y tu coach pueden verlas. Si querés, podés
+            autorizar alguna para que tu coach la use como ejemplo de resultados.
+          </p>
           <div className="flex gap-2">
             {(["front", "side", "back"] as PhotoCategory[]).map((c) => (
               <button
@@ -259,6 +265,11 @@ export function ProgressPhotosSection({
           onClose={() => setViewingPhoto(null)}
           onDelete={() => handleDelete(viewingPhoto.id)}
           deleting={pending && deletingId === viewingPhoto.id}
+          onAuthorizationChange={(authorized) => {
+            setPhotos((prev) =>
+              prev.map((p) => (p.id === viewingPhoto.id ? { ...p, publicUseAuthorized: authorized } : p))
+            );
+          }}
         />
       )}
     </div>

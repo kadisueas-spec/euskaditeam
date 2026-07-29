@@ -376,11 +376,12 @@ momento, no una galería genérica.
     foto una medición que ya no la describe). Borrado con confirmación
     inline de dos pasos (`photo-viewer.tsx`), mismo patrón que el resto
     de la app (nunca de un solo toque).
-42. Vista de solo lectura para el coach (`components/coach/client-progress-photos.tsx`),
-    dentro de la pestaña "Evaluaciones" de `/coach/clients/[id]` junto a
-    las evaluaciones del cliente — mismo componente de comparación
-    (`photo-comparison-view.tsx`, reusado tal cual), sin botón de subir ni
-    de eliminar (exclusivo del cliente, dueño de sus propias fotos).
+42. Vista del coach (`components/coach/client-progress-photos.tsx`), dentro
+    de la pestaña "Evaluaciones" de `/coach/clients/[id]` junto a las
+    evaluaciones del cliente — mismo componente de comparación
+    (`photo-comparison-view.tsx`, reusado con la prop `coachView`). Ver
+    ítem 45 (ago-2026) para la gestión completa que ganó después (subida,
+    descarga, consentimiento) — al principio era de solo lectura.
 43. Eliminación automática de Fase 10 (`deleteInactiveClient` en
     `supabase/functions/daily-checks`) ahora también borra los archivos
     del bucket `progress-photos` del cliente, mismo bloque que ya hacía
@@ -405,6 +406,47 @@ momento, no una galería genérica.
     optimista) o al descartarlo — en ambos casos de forma optimista en el
     cliente, sin esperar la respuesta del servidor. Sin push — es aviso
     puramente dentro de la app.
+45. Gestión de fotos de progreso para el coach + consentimiento de uso
+    público (ago-2026, migración
+    `supabase/migrations/20260801_progress_photos_coach_and_consent.sql`,
+    agrega `progress_photos.uploaded_by` y `.public_use_authorized`):
+    - **Subida del coach**: `app/coach/clients/[id]/photos-actions.ts`
+      (`uploadClientProgressPhoto`) — mismo flujo que la subida del
+      cliente (compresión, magic bytes) pero verificando `coach_id =
+      auth.uid()` en vez de `client_id` del propio cliente. RLS nueva de
+      solo INSERT para el coach, tanto en `progress_photos` como en
+      `storage.objects` — sin UPDATE ni DELETE, a propósito: el coach
+      puede agregar fotos (útil en una evaluación presencial) pero nunca
+      tocar el consentimiento ni borrar, eso sigue siendo 100% del
+      cliente incluso a nivel de base de datos, no solo de UI.
+    - **Quién la subió**: `progress_photos.uploaded_by` (`'client'` |
+      `'coach'`) se muestra en el visor del cliente
+      (`components/client/photo-viewer.tsx`) como "Subida por vos" /
+      "Subida por tu coach" — el cliente necesita saber cuáles fotos
+      cargó su coach durante una evaluación.
+    - **Consentimiento**: `progress_photos.public_use_authorized`
+      (default `false`, opt-in siempre). Toggle exclusivo del cliente en
+      `photo-viewer.tsx` (`setPhotoPublicUseAuthorization` en
+      `app/client/progress/photos-actions.ts`) — el coach no tiene policy
+      de UPDATE sobre la tabla, así que ni un bug de UI podría dejarlo
+      cambiarlo. En la vista del coach
+      (`components/coach/client-progress-photos.tsx`) las fotos
+      autorizadas llevan un badge verde con ✓ (grilla, visor individual y
+      comparación) — mismo criterio de color que los badges "Activo" de
+      estado de suscripción, es el único lugar de la app donde se usa
+      verde fuera de esos estados.
+    - **Descarga**: botón en el visor individual del coach y en cada
+      tarjeta de `photo-comparison-view.tsx` (prop nueva `coachView`, que
+      también agrega el badge de autorización — el cliente comparando
+      sus propias fotos no ve ninguna de las dos cosas). `<a
+      href={photoUrl} download>` sobre la URL firmada, mismo patrón que
+      la descarga de PDFs de nutrición. Si la foto no está autorizada, la
+      descarga funciona igual (el coach la necesita para su seguimiento)
+      pero con el aviso "Esta foto no está autorizada para uso público"
+      arriba del botón.
+    - **Texto de privacidad**: en la sección de subida del cliente
+      (`progress-photos-section.tsx`), explica que las fotos son
+      privadas y que el consentimiento es opcional y por foto.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

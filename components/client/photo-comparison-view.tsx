@@ -1,5 +1,6 @@
 "use client";
 
+import { CheckCircle2, Download } from "lucide-react";
 import { X } from "lucide-react";
 import type { ProgressPhoto } from "@/lib/supabase/progress-photos";
 import type { EvaluationDetail } from "@/lib/supabase/anthropometrics";
@@ -28,16 +29,24 @@ function closestEvaluation(
 function PhotoCard({
   photo,
   evaluation,
+  coachView,
 }: {
   photo: ProgressPhoto;
   evaluation: EvaluationDetail | null;
+  coachView: boolean;
 }) {
   return (
     <div className="flex flex-1 flex-col gap-2">
-      <div className="aspect-[3/4] overflow-hidden rounded-xl bg-white/5">
+      <div className="relative aspect-[3/4] overflow-hidden rounded-xl bg-white/5">
         {photo.photoUrl && (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo.photoUrl} alt="" className="size-full object-cover" />
+        )}
+        {coachView && photo.publicUseAuthorized && (
+          <span className="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-full bg-green-500/90 px-2 py-0.5 text-[10px] font-medium text-white">
+            <CheckCircle2 className="size-3" />
+            Autorizada
+          </span>
         )}
       </div>
       <p className="text-center text-sm font-medium text-white">{formatDate(photo.takenAt)}</p>
@@ -55,6 +64,16 @@ function PhotoCard({
       ) : (
         <p className="text-center text-xs text-[#666666]">Sin evaluación cercana</p>
       )}
+      {coachView && photo.photoUrl && (
+        <a
+          href={photo.photoUrl}
+          download={`foto-progreso-${photo.takenAt}.jpg`}
+          className="flex min-h-[36px] items-center justify-center gap-1.5 rounded-full bg-white/5 text-xs font-medium text-[#e8001c] active:bg-white/10"
+        >
+          <Download className="size-3.5" />
+          Descargar
+        </a>
+      )}
     </div>
   );
 }
@@ -63,10 +82,15 @@ export function PhotoComparisonView({
   photos,
   evaluations,
   onClose,
+  coachView = false,
 }: {
   photos: [ProgressPhoto, ProgressPhoto];
   evaluations: EvaluationDetail[];
   onClose: () => void;
+  // Vista del coach (client-progress-photos.tsx): agrega descarga y el
+  // badge de autorización a cada tarjeta. El cliente comparando sus
+  // propias fotos no necesita ninguna de las dos cosas.
+  coachView?: boolean;
 }) {
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/95 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
@@ -82,8 +106,16 @@ export function PhotoComparisonView({
         </button>
       </div>
       <div className="flex flex-1 items-start gap-3 overflow-y-auto px-4 pb-6">
-        <PhotoCard photo={photos[0]} evaluation={closestEvaluation(evaluations, photos[0].takenAt)} />
-        <PhotoCard photo={photos[1]} evaluation={closestEvaluation(evaluations, photos[1].takenAt)} />
+        <PhotoCard
+          photo={photos[0]}
+          evaluation={closestEvaluation(evaluations, photos[0].takenAt)}
+          coachView={coachView}
+        />
+        <PhotoCard
+          photo={photos[1]}
+          evaluation={closestEvaluation(evaluations, photos[1].takenAt)}
+          coachView={coachView}
+        />
       </div>
     </div>
   );

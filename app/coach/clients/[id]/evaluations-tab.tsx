@@ -37,7 +37,7 @@ export function EvaluationsTab({
 
       <ClientWeightChart logs={weightLogs} />
 
-      <ClientProgressPhotos photos={photos} evaluations={bodyEvaluations} />
+      <ClientProgressPhotos clientId={clientId} photos={photos} evaluations={bodyEvaluations} />
 
       {evaluations.length === 0 ? (
         <EmptyState

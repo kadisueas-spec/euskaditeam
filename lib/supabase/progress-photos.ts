@@ -2,11 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 
 export type PhotoCategory = "front" | "side" | "back";
+export type PhotoUploader = "client" | "coach";
 
 export type ProgressPhoto = {
   id: string;
   takenAt: string;
   category: PhotoCategory | null;
+  uploadedBy: PhotoUploader;
+  publicUseAuthorized: boolean;
   // Signed URL (bucket privado) — se genera fresca en cada request del
   // lado del servidor, mismo patrón que nutrition_plans. Vida corta a
   // propósito: son fotos corporales, el dato más sensible que maneja la
@@ -19,6 +22,8 @@ type ProgressPhotoRow = {
   taken_at: string;
   category: string | null;
   storage_path: string;
+  uploaded_by: string;
+  public_use_authorized: boolean;
 };
 
 const SIGNED_URL_TTL_SECONDS = 300;
@@ -35,11 +40,14 @@ async function withPhotoUrl(
     id: row.id,
     takenAt: row.taken_at,
     category: (row.category as PhotoCategory | null) ?? null,
+    uploadedBy: row.uploaded_by as PhotoUploader,
+    publicUseAuthorized: row.public_use_authorized,
     photoUrl: data?.signedUrl ?? null,
   };
 }
 
-const PROGRESS_PHOTO_SELECT = "id, taken_at, category, storage_path";
+const PROGRESS_PHOTO_SELECT =
+  "id, taken_at, category, storage_path, uploaded_by, public_use_authorized";
 
 export async function getProgressPhotosForClient(
   clientId: string
