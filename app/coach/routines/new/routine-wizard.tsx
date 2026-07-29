@@ -14,7 +14,14 @@ import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
 import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { minutesInputToSeconds } from "@/lib/utils/rest-time";
-import { createRoutine } from "../actions";
+import { createRoutine, type WarmupType } from "../actions";
+
+const WARMUP_LABEL: Record<WarmupType, string> = {
+  none: "Sin calentamiento",
+  percentage_with_kg: "Porcentaje con kilos calculados",
+  percentage_of_max: "Porcentaje del máximo",
+  fixed_weight: "Peso fijo",
+};
 
 type ExerciseRow = {
   key: string;
@@ -31,6 +38,8 @@ type ExerciseRow = {
   restSeconds: string;
   notes: string;
   weightIncrement: string;
+  warmupType: WarmupType;
+  warmupFixedWeight: string;
 };
 
 type DayRow = {
@@ -39,7 +48,11 @@ type DayRow = {
   exercises: ExerciseRow[];
 };
 
-function newExerciseRow(): ExerciseRow {
+// Banner de calentamiento (ago-2026): solo el primer ejercicio del día
+// arranca con calentamiento activo por defecto — el coach lo puede cambiar
+// después, no es una restricción, solo el default más útil (es el único
+// ejercicio para el que el banner llega a mostrarse).
+function newExerciseRow(isFirstOfDay: boolean): ExerciseRow {
   return {
     key: crypto.randomUUID(),
     exerciseId: "",
@@ -51,6 +64,8 @@ function newExerciseRow(): ExerciseRow {
     restSeconds: "",
     notes: "",
     weightIncrement: "2.5",
+    warmupType: isFirstOfDay ? "percentage_with_kg" : "none",
+    warmupFixedWeight: "",
   };
 }
 
@@ -126,7 +141,7 @@ export function RoutineWizard({
     setDays((prev) =>
       prev.map((d) =>
         d.key === dayKey
-          ? { ...d, exercises: [...d.exercises, newExerciseRow()] }
+          ? { ...d, exercises: [...d.exercises, newExerciseRow(d.exercises.length === 0)] }
           : d
       )
     );
@@ -205,6 +220,11 @@ export function RoutineWizard({
             restSeconds: minutesInputToSeconds(e.restSeconds),
             notes: e.notes || null,
             weightIncrement: Number(e.weightIncrement) || 2.5,
+            warmupType: e.warmupType,
+            warmupFixedWeightKg:
+              e.warmupType === "fixed_weight" && e.warmupFixedWeight
+                ? Number(e.warmupFixedWeight)
+                : null,
           })),
         })),
       });
@@ -492,6 +512,39 @@ export function RoutineWizard({
                         }
                       />
                     </div>
+                    <div className="col-span-2 sm:col-span-3">
+                      <Label className="text-xs">Calentamiento</Label>
+                      <NativeSelect
+                        value={ex.warmupType}
+                        onChange={(e) =>
+                          updateExercise(day.key, ex.key, {
+                            warmupType: e.target.value as WarmupType,
+                          })
+                        }
+                      >
+                        {(Object.keys(WARMUP_LABEL) as WarmupType[]).map((t) => (
+                          <option key={t} value={t}>
+                            {WARMUP_LABEL[t]}
+                          </option>
+                        ))}
+                      </NativeSelect>
+                    </div>
+                    {ex.warmupType === "fixed_weight" && (
+                      <div className="col-span-2 sm:col-span-2">
+                        <Label className="text-xs">Peso del calentamiento (kg)</Label>
+                        <Input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="20"
+                          value={ex.warmupFixedWeight}
+                          onChange={(e) =>
+                            updateExercise(day.key, ex.key, {
+                              warmupFixedWeight: sanitizeDecimalInput(e.target.value),
+                            })
+                          }
+                        />
+                      </div>
+                    )}
                     <div className="col-span-2 sm:col-span-5">
                       <Label className="text-xs">Notas</Label>
                       <Input

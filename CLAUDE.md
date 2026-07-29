@@ -461,6 +461,65 @@ momento, no una galería genérica.
       (`progress-photos-section.tsx`), simplificado a que las fotos son
       privadas — la explicación del consentimiento vive en el modal/
       toggle, no ahí.
+47. Banner de bienvenida de rutina (ago-2026, migración
+    `supabase/migrations/20260803_welcome_banner_and_warmup.sql`, agrega
+    `routines.welcome_banner_shown_at`): pantalla completa en
+    `/client/my-routine` (`components/client/routine-welcome-banner.tsx`),
+    dispara tanto la primera vez que el cliente entra a Mi Rutina como
+    cada vez que el coach le asigna una rutina nueva — ambos casos son en
+    realidad el mismo chequeo (`welcome_banner_shown_at IS NULL` para la
+    rutina activa), porque una rutina nueva siempre es una fila nueva con
+    la marca en null. Se guarda en la base al tocar "Empecemos"
+    (`dismissWelcomeBanner` en `app/client/my-routine/actions.ts`) — nunca
+    localStorage, para que no vuelva a aparecer en otro dispositivo. Sin
+    tap-afuera ni botón de cerrar a propósito (mismo criterio que
+    `MonthlyGoalModal`): tiene que leer el mensaje y tocar el botón.
+    - Saludo con género: usa `clients.sex` (`'male'`/`'female'`/null, ya
+      existía desde la migración de antropometría) — "Bienvenido" /
+      "Bienvenida" / "Bienvenido/a" si nunca se cargó.
+    - "Primera rutina" vs. "rutina nueva": `isClientsFirstRoutine` en
+      `lib/supabase/client-routine.ts` mira si existe CUALQUIER otra
+      rutina para el cliente (activa o archivada) aparte de la actual —
+      si no hay ninguna, es la primera de su vida y usa el mensaje
+      "acá arranca tu proceso"; si hay, usa "nueva etapa".
+48. Banner de calentamiento (mismo ago-2026, misma migración agrega
+    `routine_exercises.warmup_type` y `.warmup_fixed_weight_kg`):
+    - **Selector en el creador/editor de rutinas**
+      (`app/coach/routines/new/routine-wizard.tsx` y
+      `app/coach/routines/[id]/edit/routine-editor.tsx`) — 4 opciones:
+      "Sin calentamiento" (default), "Porcentaje con kilos calculados",
+      "Porcentaje del máximo", "Peso fijo" (habilita un campo de kg). Solo
+      el PRIMER ejercicio que se agrega a un día nuevo arranca en
+      "Porcentaje con kilos calculados" en vez de "Sin calentamiento" —
+      es el único ejercicio para el que el banner llega a mostrarse, así
+      que tiene sentido como default útil; el coach lo puede cambiar
+      igual.
+    - **Cálculo** (`components/client/warmup-banner.tsx`): Tipo A
+      (`percentage_with_kg`) usa el peso objetivo que ya calcula
+      `getWorkoutSuggestions` (`suggestions[exercise.id]?.weight`) — 50%
+      × 5, 70% × 3, 90% × 1, redondeado al múltiplo de 2,5 kg más cercano
+      **hacia abajo** (`Math.floor(kg / 2.5) * 2.5`, ej. 47,5kg → 50% =
+      23,75 → se muestra 22,5kg). Si no hay peso sugerido (el cliente
+      nunca hizo el ejercicio, o hace más de 8 semanas — mismo límite que
+      la sugerencia normal), cae al mismo formato de solo-porcentaje que
+      Tipo B. Tipo B (`percentage_of_max`) siempre en porcentaje, nunca
+      calcula kilos aunque haya datos — para clientes avanzados que
+      autorregulan. Tipo C (`fixed_weight`) siempre 3×8 con el
+      `warmup_fixed_weight_kg` que cargó el coach, sin cálculo.
+    - **Cuándo aparece**: en `workout-logger.tsx`, solo para el PRIMER
+      ejercicio del día (`exerciseIndex === 0`), antes de cargar su
+      primera serie (`currentSets.length === 0`), solo si ese ejercicio
+      tiene un tipo de calentamiento distinto de `'none'`, y recién
+      cuando terminó de cargar `getWorkoutSuggestions` (para no mostrar
+      el fallback de porcentaje un instante y "corregirse" a kilos apenas
+      llega el dato real). Se cierra con el botón o tocando afuera
+      (`warmupBannerDismissed`, estado local — a diferencia del banner de
+      bienvenida, acá no hay nada que persistir en la base: es puramente
+      informativo y se vuelve a mostrar en la próxima sesión de
+      entrenamiento).
+    - Texto final ("Estas series NO se registran...") siempre presente,
+      en los tres tipos; "Tanteá con un peso..." solo en Tipo B o en Tipo
+      A sin datos.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

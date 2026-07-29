@@ -96,6 +96,12 @@ export async function getExercisesForSelect(): Promise<ExerciseOption[]> {
   }));
 }
 
+export type WarmupType =
+  | "none"
+  | "percentage_with_kg"
+  | "percentage_of_max"
+  | "fixed_weight";
+
 export type RoutineExerciseDetail = {
   id: string;
   exerciseId: string;
@@ -108,6 +114,8 @@ export type RoutineExerciseDetail = {
   restSeconds: number | null;
   notes: string | null;
   weightIncrement: number;
+  warmupType: WarmupType;
+  warmupFixedWeightKg: number | null;
 };
 
 export type RoutineDayDetail = {
@@ -161,6 +169,8 @@ type RoutineDetailRow = {
       rest_seconds: number | null;
       coach_notes: string | null;
       weight_increment: number;
+      warmup_type: string;
+      warmup_fixed_weight_kg: number | null;
       exercises: { name: string } | null;
     }[];
   }[];
@@ -185,6 +195,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
            rir_target, rest_seconds, coach_notes, weight_increment,
+           warmup_type, warmup_fixed_weight_kg,
            exercises ( name )
          )
        )`
@@ -232,6 +243,8 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
           restSeconds: re.rest_seconds,
           notes: re.coach_notes,
           weightIncrement: re.weight_increment,
+          warmupType: re.warmup_type as WarmupType,
+          warmupFixedWeightKg: re.warmup_fixed_weight_kg,
         })),
     })),
   };

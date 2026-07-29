@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
-import type { MyRoutine, MyRoutineDay } from "@/lib/supabase/client-routine";
+import type { MyRoutine, MyRoutineDay, WarmupType } from "@/lib/supabase/client-routine";
 
 // Espejo de client-routine.ts para el entrenamiento propio del coach —
 // mismas formas de datos (MyRoutine/MyRoutineDay), pero filtrando por
@@ -27,6 +27,8 @@ type MyActiveRoutineRow = {
       rir_target: number | null;
       rest_seconds: number | null;
       coach_notes: string | null;
+      warmup_type: string;
+      warmup_fixed_weight_kg: number | null;
       exercises: { name: string; video_url: string | null } | null;
     }[];
   }[];
@@ -46,7 +48,7 @@ export async function getMyTrainingRoutine(): Promise<MyRoutine | null> {
          id, name, day_number,
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
-           rir_target, rest_seconds, coach_notes,
+           rir_target, rest_seconds, coach_notes, warmup_type, warmup_fixed_weight_kg,
            exercises ( name, video_url )
          )
        )`
@@ -67,6 +69,11 @@ export async function getMyTrainingRoutine(): Promise<MyRoutine | null> {
     id: routine.id,
     name: routine.name,
     objective: routine.objective,
+    // El entrenamiento propio del coach no usa el banner de bienvenida ni
+    // el nombre de mesociclo (son conceptos de "rutina asignada por el
+    // coach a un cliente") — quedan null a propósito.
+    mesocicloNombre: null,
+    welcomeBannerShownAt: null,
     days: days.map((d) => ({
       id: d.id,
       name: d.name,
@@ -85,6 +92,8 @@ export async function getMyTrainingRoutine(): Promise<MyRoutine | null> {
           rirTarget: re.rir_target,
           restSeconds: re.rest_seconds,
           coachNotes: re.coach_notes,
+          warmupType: re.warmup_type as WarmupType,
+          warmupFixedWeightKg: re.warmup_fixed_weight_kg,
         })),
     })),
   };

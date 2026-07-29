@@ -6,11 +6,17 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { ClientGreeting } from "@/components/client/client-greeting";
 import { ExerciseVideo } from "@/components/client/exercise-video";
 import { NextWorkoutCard } from "@/components/client/next-workout-card";
+import { RoutineWelcomeBanner } from "@/components/client/routine-welcome-banner";
 import { FadeIn } from "@/components/motion/fade-in";
-import { getMyActiveRoutine, getWeekProgress } from "@/lib/supabase/client-routine";
+import {
+  getMyActiveRoutine,
+  getWeekProgress,
+  isClientsFirstRoutine,
+} from "@/lib/supabase/client-routine";
 import { getMyFeedback } from "@/lib/supabase/feedback";
 import { getClientStats } from "@/lib/supabase/stats";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
+import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
 import { formatRestTime } from "@/lib/utils/format-rest";
 import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
@@ -22,11 +28,12 @@ function repsLabel(min: number | null, max: number | null) {
 }
 
 export default async function MyRoutinePage() {
-  const [routine, feedback, stats, profile] = await Promise.all([
+  const [routine, feedback, stats, profile, client] = await Promise.all([
     getMyActiveRoutine(),
     getMyFeedback(),
     getClientStats(),
     getCurrentProfile(),
+    getCurrentClientRecord(),
   ]);
   const weekProgress = routine
     ? await getWeekProgress(routine.days)
@@ -36,6 +43,15 @@ export default async function MyRoutinePage() {
     routine?.days.find((d) => d.id === weekProgress.suggestedDayId) ?? null;
   const firstName = profile?.full_name?.split(" ")[0] ?? "";
   const motivationalPhrase = randomMotivationalPhrase();
+
+  // Banner de bienvenida (ago-2026): solo se calcula si hace falta
+  // mostrarlo (routine existe y todavía no se marcó para esta rutina) —
+  // evita la consulta extra de isClientsFirstRoutine en el caso común de
+  // que ya se vio.
+  const showWelcomeBanner = !!routine && !routine.welcomeBannerShownAt && !!client;
+  const isFirstRoutine = showWelcomeBanner
+    ? await isClientsFirstRoutine(client.id, routine.id)
+    : false;
 
   const feedbackByExercise = new Map<string, typeof feedback>();
   for (const f of feedback) {
@@ -202,6 +218,18 @@ export default async function MyRoutinePage() {
         </FadeIn>
         );
       })}
+
+      {showWelcomeBanner && client && (
+        <RoutineWelcomeBanner
+          routineId={routine.id}
+          firstName={firstName}
+          sex={client.sex}
+          routineName={routine.name}
+          mesocicloNombre={routine.mesocicloNombre}
+          daysPerWeek={routine.days.length}
+          isFirstRoutine={isFirstRoutine}
+        />
+      )}
     </div>
   );
 }

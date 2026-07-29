@@ -2,6 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
 
+export type WarmupType =
+  | "none"
+  | "percentage_with_kg"
+  | "percentage_of_max"
+  | "fixed_weight";
+
 export type MyRoutineExercise = {
   id: string;
   exerciseId: string;
@@ -14,6 +20,8 @@ export type MyRoutineExercise = {
   rirTarget: number | null;
   restSeconds: number | null;
   coachNotes: string | null;
+  warmupType: WarmupType;
+  warmupFixedWeightKg: number | null;
 };
 
 export type MyRoutineDay = {
@@ -27,6 +35,10 @@ export type MyRoutine = {
   id: string;
   name: string;
   objective: string | null;
+  mesocicloNombre: string | null;
+  // Banner de bienvenida (ago-2026): null = todavía no se mostró para esta
+  // rutina puntual — ver dismissWelcomeBanner en app/client/my-routine/actions.ts.
+  welcomeBannerShownAt: string | null;
   days: MyRoutineDay[];
 };
 
@@ -34,6 +46,8 @@ type MyActiveRoutineRow = {
   id: string;
   name: string;
   objective: string | null;
+  mesociclo_nombre: string | null;
+  welcome_banner_shown_at: string | null;
   routine_days: {
     id: string;
     name: string;
@@ -48,6 +62,8 @@ type MyActiveRoutineRow = {
       rir_target: number | null;
       rest_seconds: number | null;
       coach_notes: string | null;
+      warmup_type: string;
+      warmup_fixed_weight_kg: number | null;
       exercises: { name: string; video_url: string | null } | null;
     }[];
   }[];
@@ -65,12 +81,12 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
   const { data: routine } = await supabase
     .from("routines")
     .select(
-      `id, name, objective,
+      `id, name, objective, mesociclo_nombre, welcome_banner_shown_at,
        routine_days (
          id, name, day_number,
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
-           rir_target, rest_seconds, coach_notes,
+           rir_target, rest_seconds, coach_notes, warmup_type, warmup_fixed_weight_kg,
            exercises ( name, video_url )
          )
        )`
@@ -92,6 +108,8 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
     id: routine.id,
     name: routine.name,
     objective: routine.objective,
+    mesocicloNombre: routine.mesociclo_nombre,
+    welcomeBannerShownAt: routine.welcome_banner_shown_at,
     days: days.map((d) => ({
       id: d.id,
       name: d.name,
@@ -110,9 +128,30 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
           rirTarget: re.rir_target,
           restSeconds: re.rest_seconds,
           coachNotes: re.coach_notes,
+          warmupType: re.warmup_type as WarmupType,
+          warmupFixedWeightKg: re.warmup_fixed_weight_kg,
         })),
     })),
   };
+}
+
+// Banner de bienvenida (ago-2026): distingue "primera rutina de tu vida"
+// (mensaje "acá arranca tu proceso") de "rutina nueva" (mensaje "nueva
+// etapa") — mirando si existe CUALQUIER otra rutina para este cliente,
+// activa o archivada, aparte de la actual.
+export async function isClientsFirstRoutine(
+  clientId: string,
+  currentRoutineId: string
+): Promise<boolean> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("routines")
+    .select("id")
+    .eq("client_id", clientId)
+    .neq("id", currentRoutineId)
+    .limit(1)
+    .maybeSingle();
+  return !data;
 }
 
 export type MyRoutineWeekProgress = {

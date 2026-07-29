@@ -5,6 +5,12 @@ import { createClient } from "@/lib/supabase/server";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { NEW_ROUTINE_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
 
+export type WarmupType =
+  | "none"
+  | "percentage_with_kg"
+  | "percentage_of_max"
+  | "fixed_weight";
+
 export type RoutineExerciseInput = {
   id?: string;
   exerciseId: string;
@@ -15,6 +21,8 @@ export type RoutineExerciseInput = {
   restSeconds: number | null;
   notes: string | null;
   weightIncrement: number;
+  warmupType: WarmupType;
+  warmupFixedWeightKg: number | null;
 };
 
 export type RoutineDayInput = {
@@ -133,6 +141,8 @@ export async function createRoutine(
         rest_seconds: ex.restSeconds,
         coach_notes: ex.notes,
         weight_increment: ex.weightIncrement,
+        warmup_type: ex.warmupType,
+        warmup_fixed_weight_kg: ex.warmupFixedWeightKg,
       }))
     );
 
@@ -301,6 +311,8 @@ export async function updateRoutine(
         rest_seconds: ex.restSeconds,
         coach_notes: ex.notes,
         weight_increment: ex.weightIncrement,
+        warmup_type: ex.warmupType,
+        warmup_fixed_weight_kg: ex.warmupFixedWeightKg,
       };
 
       if (ex.id && existingExerciseIds.has(ex.id)) {

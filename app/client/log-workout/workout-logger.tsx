@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ExerciseVideo } from "@/components/client/exercise-video";
 import { RecordCelebrationBanner } from "@/components/client/record-celebration-banner";
 import { RestTimerBar } from "@/components/client/rest-timer-bar";
+import { WarmupBanner } from "@/components/client/warmup-banner";
 import { WeeklyCelebration } from "@/components/client/weekly-celebration";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
@@ -141,6 +142,12 @@ export function WorkoutLogger({
     Record<string, CommittedSet[]>
   >(() => Object.fromEntries(day.exercises.map((ex) => [ex.id, []])));
   const [suggestions, setSuggestions] = useState<Record<string, WorkoutSuggestion>>({});
+  // Banner de calentamiento (ago-2026): espera a que lleguen las
+  // sugerencias antes de decidir si se muestra, para no arrancar en el
+  // fallback de porcentaje y "corregirse" un instante después a kilos
+  // calculados cuando sí hay dato — ver showWarmupBanner más abajo.
+  const [suggestionsLoaded, setSuggestionsLoaded] = useState(false);
+  const [warmupBannerDismissed, setWarmupBannerDismissed] = useState(false);
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState("");
@@ -300,7 +307,10 @@ export function WorkoutLogger({
   useEffect(() => {
     let cancelled = false;
     actions.getWorkoutSuggestions(day.exercises.map((ex) => ex.id)).then((result) => {
-      if (!cancelled) setSuggestions(result);
+      if (!cancelled) {
+        setSuggestions(result);
+        setSuggestionsLoaded(true);
+      }
     });
     return () => {
       cancelled = true;
@@ -338,6 +348,17 @@ export function WorkoutLogger({
   const isLastExercise = exerciseIndex === day.exercises.length - 1;
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
+  // Banner de calentamiento (ago-2026): solo para el primer ejercicio del
+  // día, antes de cargar su primera serie, y solo si el coach le configuró
+  // un tipo de calentamiento a ese ejercicio puntual.
+  const showWarmupBanner =
+    !initializing &&
+    suggestionsLoaded &&
+    !warmupBannerDismissed &&
+    exerciseIndex === 0 &&
+    currentSets.length === 0 &&
+    !!exercise &&
+    exercise.warmupType !== "none";
   // Bug jul-2026: cuántos ejercicios tienen menos series cargadas que las
   // planificadas — la base para la confirmación antes de finalizar.
   const incompleteExerciseCount = day.exercises.filter(
@@ -1079,6 +1100,15 @@ export function WorkoutLogger({
           vibrationEnabled={restTimerPrefs.vibration}
           audioCtxRef={audioCtxRef}
           onHide={clearRestTimer}
+        />
+      )}
+      {showWarmupBanner && (
+        <WarmupBanner
+          exerciseName={exercise.exerciseName}
+          warmupType={exercise.warmupType}
+          warmupFixedWeightKg={exercise.warmupFixedWeightKg}
+          suggestedWeightKg={suggestions[exercise.id]?.weight ?? null}
+          onClose={() => setWarmupBannerDismissed(true)}
         />
       )}
     </div>

@@ -11,10 +11,17 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
-import type { ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
+import type { ExerciseOption, RoutineDetail, WarmupType } from "@/lib/supabase/routines";
 import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { minutesInputToSeconds, secondsToMinutesInput } from "@/lib/utils/rest-time";
 import { updateRoutine } from "../../actions";
+
+const WARMUP_LABEL: Record<WarmupType, string> = {
+  none: "Sin calentamiento",
+  percentage_with_kg: "Porcentaje con kilos calculados",
+  percentage_of_max: "Porcentaje del máximo",
+  fixed_weight: "Peso fijo",
+};
 
 type ExerciseRow = {
   key: string;
@@ -30,6 +37,8 @@ type ExerciseRow = {
   restSeconds: string;
   notes: string;
   weightIncrement: string;
+  warmupType: WarmupType;
+  warmupFixedWeight: string;
 };
 
 type DayRow = {
@@ -39,7 +48,9 @@ type DayRow = {
   exercises: ExerciseRow[];
 };
 
-function newExerciseRow(): ExerciseRow {
+// Mismo criterio que el wizard: el primer ejercicio de un día nuevo arranca
+// con calentamiento activo por defecto.
+function newExerciseRow(isFirstOfDay: boolean): ExerciseRow {
   return {
     key: crypto.randomUUID(),
     exerciseId: "",
@@ -51,6 +62,8 @@ function newExerciseRow(): ExerciseRow {
     restSeconds: "",
     notes: "",
     weightIncrement: "2.5",
+    warmupType: isFirstOfDay ? "percentage_with_kg" : "none",
+    warmupFixedWeight: "",
   };
 }
 
@@ -79,6 +92,8 @@ function daysFromRoutine(
       restSeconds: secondsToMinutesInput(ex.restSeconds),
       notes: ex.notes ?? "",
       weightIncrement: String(ex.weightIncrement),
+      warmupType: ex.warmupType,
+      warmupFixedWeight: ex.warmupFixedWeightKg != null ? String(ex.warmupFixedWeightKg) : "",
     })),
   }));
 }
@@ -132,7 +147,7 @@ export function RoutineEditor({
     setDays((prev) =>
       prev.map((d) =>
         d.key === dayKey
-          ? { ...d, exercises: [...d.exercises, newExerciseRow()] }
+          ? { ...d, exercises: [...d.exercises, newExerciseRow(d.exercises.length === 0)] }
           : d
       )
     );
@@ -208,6 +223,11 @@ export function RoutineEditor({
             restSeconds: minutesInputToSeconds(e.restSeconds),
             notes: e.notes || null,
             weightIncrement: Number(e.weightIncrement) || 2.5,
+            warmupType: e.warmupType,
+            warmupFixedWeightKg:
+              e.warmupType === "fixed_weight" && e.warmupFixedWeight
+                ? Number(e.warmupFixedWeight)
+                : null,
           })),
         })),
       });
@@ -430,6 +450,39 @@ export function RoutineEditor({
                       }
                     />
                   </div>
+                  <div className="col-span-2 sm:col-span-3">
+                    <Label className="text-xs">Calentamiento</Label>
+                    <NativeSelect
+                      value={ex.warmupType}
+                      onChange={(e) =>
+                        updateExercise(day.key, ex.key, {
+                          warmupType: e.target.value as WarmupType,
+                        })
+                      }
+                    >
+                      {(Object.keys(WARMUP_LABEL) as WarmupType[]).map((t) => (
+                        <option key={t} value={t}>
+                          {WARMUP_LABEL[t]}
+                        </option>
+                      ))}
+                    </NativeSelect>
+                  </div>
+                  {ex.warmupType === "fixed_weight" && (
+                    <div className="col-span-2 sm:col-span-2">
+                      <Label className="text-xs">Peso del calentamiento (kg)</Label>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        placeholder="20"
+                        value={ex.warmupFixedWeight}
+                        onChange={(e) =>
+                          updateExercise(day.key, ex.key, {
+                            warmupFixedWeight: sanitizeDecimalInput(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                  )}
                   <div className="col-span-2 sm:col-span-5">
                     <Label className="text-xs">Notas</Label>
                     <Input
