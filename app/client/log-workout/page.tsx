@@ -4,6 +4,7 @@ import {
   getInProgressWorkoutDayId,
   getRoutineDayForLogging,
 } from "@/lib/supabase/client-routine";
+import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { WorkoutLogger } from "./workout-logger";
 
 export default async function LogWorkoutPage({
@@ -59,5 +60,14 @@ export default async function LogWorkoutPage({
     );
   }
 
-  return <WorkoutLogger day={day} />;
+  const client = await getCurrentClientRecord();
+  const restTimerPrefs = client
+    ? {
+        enabled: client.restTimerEnabled,
+        sound: client.restTimerSoundEnabled,
+        vibration: client.restTimerVibrationEnabled,
+      }
+    : undefined;
+
+  return <WorkoutLogger day={day} restTimerPrefs={restTimerPrefs} />;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Pencil, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -10,11 +10,13 @@ import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { ExerciseVideo } from "@/components/client/exercise-video";
 import { RecordCelebrationBanner } from "@/components/client/record-celebration-banner";
+import { RestTimerBar } from "@/components/client/rest-timer-bar";
 import { WeeklyCelebration } from "@/components/client/weekly-celebration";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
 import { isNetworkError } from "@/lib/utils/is-network-error";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
+import { clearStoredRestTimer, readStoredRestTimer } from "@/lib/utils/rest-timer-storage";
 import {
   detectWeeklyRecord,
   recordSummaryLine,
@@ -99,14 +101,22 @@ const CONFETTI_PIECES = [
 // editable (lo que se cargó la vez anterior), no un dato ya confirmado.
 const SUGGESTED_CLASS = "border-amber-400/50 bg-amber-400/10 text-amber-200";
 
+// Temporizador de descanso (jul-2026) — defaults "todo activado" para que
+// el coach (que reusa este mismo componente en /coach/my-training sin
+// pantalla de preferencias propia) tenga el mismo comportamiento de
+// siempre sin necesitar plomería extra.
+const DEFAULT_REST_TIMER_PREFS = { enabled: true, sound: true, vibration: true };
+
 export function WorkoutLogger({
   day,
   actions = DEFAULT_ACTIONS,
   enableOfflineSync = true,
+  restTimerPrefs = DEFAULT_REST_TIMER_PREFS,
 }: {
   day: MyRoutineDay;
   actions?: WorkoutLoggerActions;
   enableOfflineSync?: boolean;
+  restTimerPrefs?: { enabled: boolean; sound: boolean; vibration: boolean };
 }) {
   const router = useRouter();
   const [initializing, setInitializing] = useState(true);
@@ -167,6 +177,16 @@ export function WorkoutLogger({
     rir: "",
   });
   const [savingEdit, setSavingEdit] = useState(false);
+  // Temporizador de descanso (jul-2026): instanceId nuevo en cada serie
+  // completada, así RestTimerBar sabe si tiene que arrancar de cero o
+  // reusar lo guardado en localStorage (misma instancia = el cliente
+  // navegó afuera y volvió, o cerró la app — ver rest-timer-bar.tsx).
+  const [restTimer, setRestTimer] = useState<{
+    routineExerciseId: string;
+    restSeconds: number;
+    instanceId: string;
+  } | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
 
   // A1: al montar, encontrar (o crear) el entrenamiento en curso en el
   // servidor y reconstruir exactamente dónde había quedado el cliente —
@@ -227,6 +247,24 @@ export function WorkoutLogger({
           setPhase("summary");
         } else {
           setExerciseIndex(resumeIndex);
+
+          // Temporizador de descanso: si el cliente cerró la app o navegó
+          // afuera con un descanso en curso, retomarlo acá — solo si sigue
+          // en el MISMO ejercicio en el que se guardó (si el servidor lo
+          // reubica en otro, el guardado quedó obsoleto y se descarta).
+          if (restTimerPrefs.enabled) {
+            const stored = readStoredRestTimer(workoutResult.workoutLogId);
+            const resumedExercise = day.exercises[resumeIndex];
+            if (stored && stored.routineExerciseId === resumedExercise.id) {
+              setRestTimer({
+                routineExerciseId: stored.routineExerciseId,
+                restSeconds: resumedExercise.restSeconds ?? 0,
+                instanceId: stored.instanceId,
+              });
+            } else if (stored) {
+              clearStoredRestTimer(workoutResult.workoutLogId);
+            }
+          }
         }
         setInitializing(false);
       } catch (err) {
@@ -268,6 +306,32 @@ export function WorkoutLogger({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Temporizador de descanso — sonido: Safari iOS exige que el
+  // AudioContext se CREE (no solo se use) dentro de un gesto real del
+  // usuario, o queda mudo para siempre. Por eso no se crea al montar el
+  // componente — se crea recién en el primer toque acá adentro, con un
+  // listener que se saca solo apenas dispara una vez.
+  useEffect(() => {
+    function unlockAudio() {
+      if (!audioCtxRef.current) {
+        const AudioContextCtor =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (AudioContextCtor) {
+          try {
+            audioCtxRef.current = new AudioContextCtor();
+          } catch (err) {
+            console.error("AudioContext init error:", err);
+          }
+        }
+      } else {
+        audioCtxRef.current.resume?.().catch(() => {});
+      }
+    }
+    document.addEventListener("pointerdown", unlockAudio, { once: true });
+    return () => document.removeEventListener("pointerdown", unlockAudio);
   }, []);
 
   const exercise = day.exercises[exerciseIndex];
@@ -321,6 +385,17 @@ export function WorkoutLogger({
     }
   }
 
+  // Temporizador de descanso: se llama SOLO desde la navegación manual
+  // entre ejercicios (botones "Anterior"/"Siguiente ejercicio"), nunca
+  // desde el avance automático que hace handleCompleteSet al completar la
+  // última serie de un ejercicio — ese avance no debe cortar un descanso
+  // que recién arrancó, el cliente igual necesita descansar antes de la
+  // primera serie del ejercicio siguiente.
+  function clearRestTimer() {
+    if (workoutLogId) clearStoredRestTimer(workoutLogId);
+    setRestTimer(null);
+  }
+
   async function handleCompleteSet() {
     if (!weight && !reps) {
       setError("Ingresá al menos peso o reps.");
@@ -369,6 +444,22 @@ export function WorkoutLogger({
     }
 
     navigator.vibrate?.(50);
+
+    // Temporizador de descanso: arranca con el rest_seconds del ejercicio
+    // que se acaba de completar (no del que venga después). Si no tiene
+    // descanso configurado (0 o null) o el cliente lo desactivó en su
+    // perfil, no arranca — instanceId nuevo en cada serie para que
+    // RestTimerBar sepa que es un período de descanso distinto y no algo
+    // para resumir desde localStorage.
+    if (restTimerPrefs.enabled && exercise.restSeconds && exercise.restSeconds > 0) {
+      setRestTimer({
+        routineExerciseId: exercise.id,
+        restSeconds: exercise.restSeconds,
+        instanceId: crypto.randomUUID(),
+      });
+    } else {
+      clearRestTimer();
+    }
 
     // Optimistic UI: se agrega y se avanza al instante; el guardado real
     // corre en paralelo.
@@ -489,6 +580,7 @@ export function WorkoutLogger({
     if (!workoutLogId) return;
     setError(null);
     setConfirmingFinish(false);
+    clearRestTimer();
     startTransition(async () => {
       // Mismo patrón que el cuelgue de "Iniciar entrenamiento": sin este
       // try/catch, un rechazo de red acá dejaba el botón trabado en
@@ -746,7 +838,7 @@ export function WorkoutLogger({
   }
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className={`flex flex-col gap-4 ${restTimer ? "pb-24" : ""}`}>
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#888888]">
           Ejercicio {exerciseIndex + 1} de {day.exercises.length}
@@ -955,7 +1047,10 @@ export function WorkoutLogger({
         {exerciseIndex > 0 && (
           <Button
             variant="outline"
-            onClick={goBackExercise}
+            onClick={() => {
+              clearRestTimer();
+              goBackExercise();
+            }}
             className="min-h-[52px] flex-1 text-base"
           >
             Anterior
@@ -963,13 +1058,29 @@ export function WorkoutLogger({
         )}
         <Button
           variant="outline"
-          onClick={goNext}
+          onClick={() => {
+            clearRestTimer();
+            goNext();
+          }}
           className="min-h-[52px] flex-1 text-base"
         >
           {isLastExercise ? "Terminar ejercicios" : "Siguiente ejercicio"}
         </Button>
       </div>
       {recordBanner}
+      {phase === "logging" && restTimer && workoutLogId && (
+        <RestTimerBar
+          key={restTimer.instanceId}
+          workoutLogId={workoutLogId}
+          routineExerciseId={restTimer.routineExerciseId}
+          restSeconds={restTimer.restSeconds}
+          instanceId={restTimer.instanceId}
+          soundEnabled={restTimerPrefs.sound}
+          vibrationEnabled={restTimerPrefs.vibration}
+          audioCtxRef={audioCtxRef}
+          onHide={clearRestTimer}
+        />
+      )}
     </div>
   );
 }

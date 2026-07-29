@@ -13,6 +13,9 @@ export type ClientRecord = {
   isActive: boolean;
   subscriptionStatus: string;
   subscriptionEndDate: string | null;
+  restTimerEnabled: boolean;
+  restTimerSoundEnabled: boolean;
+  restTimerVibrationEnabled: boolean;
 };
 
 // cache(): varias funciones de este módulo llaman a getCurrentClientRecord()
@@ -28,7 +31,7 @@ export const getCurrentClientRecord = cache(async function getCurrentClientRecor
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date"
+      "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date, rest_timer_enabled, rest_timer_sound_enabled, rest_timer_vibration_enabled"
     )
     .eq("user_id", authUser.id)
     .single();
@@ -46,5 +49,8 @@ export const getCurrentClientRecord = cache(async function getCurrentClientRecor
     isActive: data.is_active,
     subscriptionStatus: data.subscription_status,
     subscriptionEndDate: data.subscription_end_date,
+    restTimerEnabled: data.rest_timer_enabled,
+    restTimerSoundEnabled: data.rest_timer_sound_enabled,
+    restTimerVibrationEnabled: data.rest_timer_vibration_enabled,
   };
 });

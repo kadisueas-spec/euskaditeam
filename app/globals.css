@@ -490,7 +490,8 @@
   .animate-page-in,
   .animate-slide-up-in,
   .animate-shimmer-sweep,
-  .glow-pulse {
+  .glow-pulse,
+  .animate-pulse {
     animation: none !important;
   }
 }

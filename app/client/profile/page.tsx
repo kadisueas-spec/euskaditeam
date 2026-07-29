@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { LogoutButton } from "@/components/auth/logout-button";
+import { RestTimerSettings } from "@/components/client/rest-timer-settings";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getMySubscription } from "@/lib/supabase/subscriptions";
@@ -69,6 +70,19 @@ export default async function ProfilePage() {
           {subscription && subscription.status !== "canceled" && (
             <CancelSubscriptionButton />
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-[#1e1e1e] bg-[#111111]">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Entrenamiento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <RestTimerSettings
+            initialEnabled={client?.restTimerEnabled ?? true}
+            initialSound={client?.restTimerSoundEnabled ?? true}
+            initialVibration={client?.restTimerVibrationEnabled ?? true}
+          />
         </CardContent>
       </Card>
 

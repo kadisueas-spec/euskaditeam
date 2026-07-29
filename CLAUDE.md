@@ -82,6 +82,26 @@ fitcoach/
 11. Pantalla de registro por sesión (peso / reps / RIR por serie)
 12. Historial de entrenamientos
 13. Estadísticas y gráficos de progreso (peso levantado, volumen, adherencia)
+13.1. Temporizador de descanso automático (jul-2026): al completar una
+    serie arranca solo con el `rest_seconds` de ese ejercicio (si es 0 o
+    null, no arranca) — barra fija sobre la navegación
+    (`components/client/rest-timer-bar.tsx`), controles −15s/+15s/Saltear,
+    se queda clavado en 0:00 (no oculto) hasta la próxima serie. Persiste
+    en `localStorage` por `workoutLogId` (`lib/utils/rest-timer-storage.ts`)
+    para sobrevivir a navegar afuera y volver, o cerrar la app — el
+    `endsAt` guardado es una marca de tiempo real, no un contador que se
+    reinicia. Sonido con Web Audio API (beep generado, sin archivo) — el
+    `AudioContext` se crea recién en el primer toque dentro de la pantalla
+    de Entrenar (Safari iOS lo exige, si se crea al montar el componente
+    queda mudo para siempre). Vibración con `navigator.vibrate?.()` (no
+    existe en Safari iOS, siempre con optional chaining). Preferencias
+    (temporizador on/off, sonido, vibración — las 3 activadas por
+    default) en `/client/profile` (`rest-timer-settings.tsx`), guardadas
+    en `clients.rest_timer_*` (no localStorage, para persistir entre
+    dispositivos — migración `20260729_rest_timer_prefs.sql`). El toggle
+    de vibración se oculta solo si el dispositivo no la soporta. El coach
+    reusa el mismo `WorkoutLogger` en `/coach/my-training` sin pantalla de
+    preferencias propia — recibe defaults (todo activado).
 13.2. Sesiones "en curso" que quedaban huérfanas (jul-2026), dos arreglos
     en `/client/progress/[id]`: (1) completar todas las series de una
     sesión desde el historial nunca la marcaba como finalizada — nada en
