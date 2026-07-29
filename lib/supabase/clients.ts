@@ -71,6 +71,9 @@ export type ClientDetail = {
   paymentMethod: string | null;
   routines: { id: string; name: string; isActive: boolean; createdAt: string }[];
   recentLogs: { id: string; workoutDate: string; isCompleted: boolean }[];
+  // Consentimiento único de uso público de fotos de progreso (ago-2026) —
+  // null = el cliente todavía no respondió.
+  photosPublicUseAuthorized: boolean | null;
 };
 
 type ClientDetailRow = {
@@ -86,6 +89,7 @@ type ClientDetailRow = {
   subscription_status: string;
   subscription_end_date: string | null;
   payment_method: string | null;
+  photos_public_use_authorized: boolean | null;
   profiles: { full_name: string | null; email: string; avatar_url: string | null } | null;
   routines: { id: string; name: string; is_active: boolean; created_at: string }[];
   workout_logs: { id: string; workout_date: string; is_completed: boolean }[];
@@ -104,6 +108,7 @@ export async function getClientDetail(
     .select(
       `id, user_id, birth_date, weight_kg, height_cm, goal, training_experience,
        notes_coach, is_active, subscription_status, subscription_end_date, payment_method,
+       photos_public_use_authorized,
        profiles!clients_user_id_fkey ( full_name, email, avatar_url ),
        routines ( id, name, is_active, created_at ),
        workout_logs ( id, workout_date, is_completed )`
@@ -133,6 +138,7 @@ export async function getClientDetail(
     subscriptionStatus: client.subscription_status,
     subscriptionEndDate: client.subscription_end_date,
     paymentMethod: client.payment_method,
+    photosPublicUseAuthorized: client.photos_public_use_authorized,
     routines: client.routines.map((r) => ({
       id: r.id,
       name: r.name,

@@ -9,7 +9,6 @@ export type ProgressPhoto = {
   takenAt: string;
   category: PhotoCategory | null;
   uploadedBy: PhotoUploader;
-  publicUseAuthorized: boolean;
   // Signed URL (bucket privado) — se genera fresca en cada request del
   // lado del servidor, mismo patrón que nutrition_plans. Vida corta a
   // propósito: son fotos corporales, el dato más sensible que maneja la
@@ -23,7 +22,6 @@ type ProgressPhotoRow = {
   category: string | null;
   storage_path: string;
   uploaded_by: string;
-  public_use_authorized: boolean;
 };
 
 const SIGNED_URL_TTL_SECONDS = 300;
@@ -41,13 +39,11 @@ async function withPhotoUrl(
     takenAt: row.taken_at,
     category: (row.category as PhotoCategory | null) ?? null,
     uploadedBy: row.uploaded_by as PhotoUploader,
-    publicUseAuthorized: row.public_use_authorized,
     photoUrl: data?.signedUrl ?? null,
   };
 }
 
-const PROGRESS_PHOTO_SELECT =
-  "id, taken_at, category, storage_path, uploaded_by, public_use_authorized";
+const PROGRESS_PHOTO_SELECT = "id, taken_at, category, storage_path, uploaded_by";
 
 export async function getProgressPhotosForClient(
   clientId: string

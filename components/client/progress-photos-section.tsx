@@ -15,6 +15,7 @@ import type { EvaluationDetail } from "@/lib/supabase/anthropometrics";
 import { formatDate } from "@/lib/utils/format-date";
 import { PhotoComparisonView } from "./photo-comparison-view";
 import { PhotoViewer } from "./photo-viewer";
+import { PhotosConsentModal } from "./photos-consent-modal";
 
 const CATEGORY_LABEL: Record<PhotoCategory, string> = {
   front: "Frente",
@@ -31,16 +32,21 @@ export function ProgressPhotosSection({
   photos: initialPhotos,
   evaluations,
   showReminder,
+  photosConsent,
 }: {
   photos: ProgressPhoto[];
   evaluations: EvaluationDetail[];
   showReminder: boolean;
+  // null = todavía no respondió el consentimiento único de uso público —
+  // dispara PhotosConsentModal la primera vez que entra a esta sección.
+  photosConsent: boolean | null;
 }) {
   const [photos, setPhotos] = useState(initialPhotos);
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [category, setCategory] = useState<PhotoCategory | "">("");
   const [reminderHidden, setReminderHidden] = useState(false);
+  const [consentPending, setConsentPending] = useState(photosConsent === null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [viewingPhoto, setViewingPhoto] = useState<ProgressPhoto | null>(null);
@@ -77,7 +83,6 @@ export function ProgressPhotosSection({
           takenAt: new Date().toISOString().slice(0, 10),
           category: category || null,
           uploadedBy: "client",
-          publicUseAuthorized: false,
           photoUrl: URL.createObjectURL(compressed),
         },
         ...prev,
@@ -184,8 +189,7 @@ export function ProgressPhotosSection({
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-xs text-[#888888]">
-            Tus fotos son privadas. Solo vos y tu coach pueden verlas. Si querés, podés
-            autorizar alguna para que tu coach la use como ejemplo de resultados.
+            Tus fotos son privadas. Solo vos y tu coach pueden verlas.
           </p>
           <div className="flex gap-2">
             {(["front", "side", "back"] as PhotoCategory[]).map((c) => (
@@ -265,12 +269,11 @@ export function ProgressPhotosSection({
           onClose={() => setViewingPhoto(null)}
           onDelete={() => handleDelete(viewingPhoto.id)}
           deleting={pending && deletingId === viewingPhoto.id}
-          onAuthorizationChange={(authorized) => {
-            setPhotos((prev) =>
-              prev.map((p) => (p.id === viewingPhoto.id ? { ...p, publicUseAuthorized: authorized } : p))
-            );
-          }}
         />
+      )}
+
+      {consentPending && (
+        <PhotosConsentModal onAnswered={() => setConsentPending(false)} />
       )}
     </div>
   );

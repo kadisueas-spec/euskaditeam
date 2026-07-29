@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { RestTimerSettings } from "@/components/client/rest-timer-settings";
+import { PhotosConsentToggle } from "@/components/client/photos-consent-toggle";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getMySubscription } from "@/lib/supabase/subscriptions";
@@ -83,6 +84,15 @@ export default async function ProfilePage() {
             initialSound={client?.restTimerSoundEnabled ?? true}
             initialVibration={client?.restTimerVibrationEnabled ?? true}
           />
+        </CardContent>
+      </Card>
+
+      <Card className="border-[#1e1e1e] bg-[#111111]">
+        <CardHeader>
+          <CardTitle className="text-base text-white">Privacidad</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <PhotosConsentToggle initialAuthorized={client?.photosPublicUseAuthorized ?? null} />
         </CardContent>
       </Card>
 

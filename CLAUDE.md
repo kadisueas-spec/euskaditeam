@@ -406,47 +406,61 @@ momento, no una galería genérica.
     optimista) o al descartarlo — en ambos casos de forma optimista en el
     cliente, sin esperar la respuesta del servidor. Sin push — es aviso
     puramente dentro de la app.
-45. Gestión de fotos de progreso para el coach + consentimiento de uso
-    público (ago-2026, migración
+45. Gestión de fotos de progreso para el coach (ago-2026, migración
     `supabase/migrations/20260801_progress_photos_coach_and_consent.sql`,
-    agrega `progress_photos.uploaded_by` y `.public_use_authorized`):
+    agrega `progress_photos.uploaded_by`):
     - **Subida del coach**: `app/coach/clients/[id]/photos-actions.ts`
       (`uploadClientProgressPhoto`) — mismo flujo que la subida del
       cliente (compresión, magic bytes) pero verificando `coach_id =
-      auth.uid()` en vez de `client_id` del propio cliente. RLS nueva de
-      solo INSERT para el coach, tanto en `progress_photos` como en
+      auth.uid()` en vez de `client_id` del propio cliente. RLS de solo
+      INSERT para el coach, tanto en `progress_photos` como en
       `storage.objects` — sin UPDATE ni DELETE, a propósito: el coach
       puede agregar fotos (útil en una evaluación presencial) pero nunca
-      tocar el consentimiento ni borrar, eso sigue siendo 100% del
-      cliente incluso a nivel de base de datos, no solo de UI.
+      borrarlas ni tocar el consentimiento (ver ítem 46), eso sigue
+      siendo 100% del cliente incluso a nivel de base de datos, no solo
+      de UI.
     - **Quién la subió**: `progress_photos.uploaded_by` (`'client'` |
       `'coach'`) se muestra en el visor del cliente
       (`components/client/photo-viewer.tsx`) como "Subida por vos" /
       "Subida por tu coach" — el cliente necesita saber cuáles fotos
       cargó su coach durante una evaluación.
-    - **Consentimiento**: `progress_photos.public_use_authorized`
-      (default `false`, opt-in siempre). Toggle exclusivo del cliente en
-      `photo-viewer.tsx` (`setPhotoPublicUseAuthorization` en
-      `app/client/progress/photos-actions.ts`) — el coach no tiene policy
-      de UPDATE sobre la tabla, así que ni un bug de UI podría dejarlo
-      cambiarlo. En la vista del coach
-      (`components/coach/client-progress-photos.tsx`) las fotos
-      autorizadas llevan un badge verde con ✓ (grilla, visor individual y
-      comparación) — mismo criterio de color que los badges "Activo" de
-      estado de suscripción, es el único lugar de la app donde se usa
-      verde fuera de esos estados.
     - **Descarga**: botón en el visor individual del coach y en cada
-      tarjeta de `photo-comparison-view.tsx` (prop nueva `coachView`, que
-      también agrega el badge de autorización — el cliente comparando
-      sus propias fotos no ve ninguna de las dos cosas). `<a
+      tarjeta de `photo-comparison-view.tsx` (prop `coachView`). `<a
       href={photoUrl} download>` sobre la URL firmada, mismo patrón que
-      la descarga de PDFs de nutrición. Si la foto no está autorizada, la
-      descarga funciona igual (el coach la necesita para su seguimiento)
-      pero con el aviso "Esta foto no está autorizada para uso público"
-      arriba del botón.
+      la descarga de PDFs de nutrición. Funciona igual sea cual sea el
+      consentimiento del cliente (ver ítem 46) — el coach la necesita
+      para su seguimiento de cualquier forma.
+46. Consentimiento de uso público — simplificado (ago-2026, migración
+    `supabase/migrations/20260802_simplify_photo_consent.sql`): arrancó
+    siendo por foto (`progress_photos.public_use_authorized`, ítem 45
+    original) y se reemplazó por UNA sola decisión en el cliente
+    (`clients.photos_public_use_authorized`, nullable — `null` = todavía
+    no respondió). La migración también le sacó la condición
+    `public_use_authorized = false` al WITH CHECK de la policy de INSERT
+    del coach (ya no existe esa columna) y borró la columna de
+    `progress_photos`.
+    - **Primera vez**: `components/client/photos-consent-modal.tsx` —
+      se monta dentro de `progress-photos-section.tsx`, que a su vez solo
+      se monta la primera vez que el cliente visita la pestaña "Mi
+      Cuerpo" (`progress-tabs.tsx` ya maneja el "recién se monta al
+      visitar", no hizo falta lógica extra para el "primera vez que
+      entra"). Sin botón de cerrar — Sí/No sin preseleccionar, tiene que
+      elegir.
+    - **Revocable**: toggle en `/client/profile`
+      (`components/client/photos-consent-toggle.tsx`), misma acción de
+      servidor que el modal (`setPhotosPublicUseAuthorization` en
+      `app/client/profile/actions.ts`) — sin push al cambiarlo.
+    - **Vista del coach**: pill simple arriba de la galería en
+      `client-progress-photos.tsx` — "Autoriza uso público" (verde,
+      mismo criterio de color que los badges "Activo" de suscripción) o
+      "No autoriza" (gris, cubre tanto `false` como `null` — un cliente
+      que nunca respondió se trata como no autorizado, nunca al revés).
+      Ya no hay distinción por foto individual en la grilla, el visor ni
+      la comparación.
     - **Texto de privacidad**: en la sección de subida del cliente
-      (`progress-photos-section.tsx`), explica que las fotos son
-      privadas y que el consentimiento es opcional y por foto.
+      (`progress-photos-section.tsx`), simplificado a que las fotos son
+      privadas — la explicación del consentimiento vive en el modal/
+      toggle, no ahí.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

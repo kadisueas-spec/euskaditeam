@@ -22,10 +22,10 @@ export type UploadClientPhotoResult = { success: true } | { error: string };
 
 // El coach sube una foto de progreso de un cliente suyo (ej. en una
 // evaluación presencial) — comprimida en el browser antes de llegar acá,
-// mismo compressImage() que usa el cliente. Marcada uploaded_by='coach' y
-// public_use_authorized=false SIEMPRE (el RLS de la migración
-// 20260801 lo exige igual a nivel de base, esto es solo defensa en
-// profundidad): el consentimiento lo da el cliente, nunca el coach.
+// mismo compressImage() que usa el cliente. Marcada uploaded_by='coach'
+// (el RLS lo exige igual a nivel de base, ver migración 20260802). El
+// consentimiento de uso público ya no vive en progress_photos (ago-2026,
+// pasó a ser una sola decisión por cliente) — el coach nunca lo toca.
 export async function uploadClientProgressPhoto(
   clientId: string,
   formData: FormData
@@ -76,7 +76,6 @@ export async function uploadClientProgressPhoto(
     category,
     storage_path: storagePath,
     uploaded_by: "coach",
-    public_use_authorized: false,
   });
   if (insertError) {
     console.error("uploadClientProgressPhoto insert error:", insertError);

@@ -18,6 +18,9 @@ export type ClientRecord = {
   restTimerVibrationEnabled: boolean;
   createdAt: string;
   progressPhotoReminderDismissedAt: string | null;
+  // Consentimiento único de uso público de fotos de progreso (ago-2026,
+  // reemplaza el toggle por foto) — null = todavía no se le preguntó.
+  photosPublicUseAuthorized: boolean | null;
 };
 
 // cache(): varias funciones de este módulo llaman a getCurrentClientRecord()
@@ -33,7 +36,7 @@ export const getCurrentClientRecord = cache(async function getCurrentClientRecor
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date, rest_timer_enabled, rest_timer_sound_enabled, rest_timer_vibration_enabled, created_at, progress_photo_reminder_dismissed_at"
+      "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date, rest_timer_enabled, rest_timer_sound_enabled, rest_timer_vibration_enabled, created_at, progress_photo_reminder_dismissed_at, photos_public_use_authorized"
     )
     .eq("user_id", authUser.id)
     .single();
@@ -56,5 +59,6 @@ export const getCurrentClientRecord = cache(async function getCurrentClientRecor
     restTimerVibrationEnabled: data.rest_timer_vibration_enabled,
     createdAt: data.created_at,
     progressPhotoReminderDismissedAt: data.progress_photo_reminder_dismissed_at,
+    photosPublicUseAuthorized: data.photos_public_use_authorized,
   };
 });

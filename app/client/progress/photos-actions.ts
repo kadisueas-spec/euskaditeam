@@ -66,7 +66,6 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
     category,
     storage_path: storagePath,
     uploaded_by: "client",
-    public_use_authorized: false,
   });
   if (insertError) {
     console.error("uploadProgressPhoto insert error:", insertError);
@@ -104,41 +103,6 @@ export async function deleteProgressPhoto(photoId: string): Promise<DeletePhotoR
   }
 
   await supabase.storage.from("progress-photos").remove([photo.storage_path]);
-
-  revalidatePath("/client/progress");
-  return { success: true };
-}
-
-export type SetPhotoAuthorizationResult = { success: true } | { error: string };
-
-// Consentimiento de uso público por foto (jul-2026) — exclusivo del
-// cliente, el coach no tiene policy de UPDATE sobre progress_photos así
-// que ni con un bug de UI podría tocar esto. Default NO, opt-in siempre.
-export async function setPhotoPublicUseAuthorization(
-  photoId: string,
-  authorized: boolean
-): Promise<SetPhotoAuthorizationResult> {
-  const client = await getCurrentClientRecord();
-  if (!client) return { error: "No se encontró tu perfil de cliente." };
-
-  const supabase = await createClient();
-
-  const { data: photo } = await supabase
-    .from("progress_photos")
-    .select("id")
-    .eq("id", photoId)
-    .eq("client_id", client.id)
-    .maybeSingle();
-  if (!photo) return { error: "Foto no encontrada." };
-
-  const { error } = await supabase
-    .from("progress_photos")
-    .update({ public_use_authorized: authorized })
-    .eq("id", photoId);
-  if (error) {
-    console.error("setPhotoPublicUseAuthorization error:", error);
-    return { error: "No se pudo actualizar el permiso." };
-  }
 
   revalidatePath("/client/progress");
   return { success: true };

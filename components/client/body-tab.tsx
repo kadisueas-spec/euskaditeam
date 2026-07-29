@@ -50,10 +50,12 @@ export function BodyTab({
   evaluations,
   photos,
   showPhotoReminder,
+  photosConsent,
 }: {
   evaluations: EvaluationDetail[];
   photos: ProgressPhoto[];
   showPhotoReminder: boolean;
+  photosConsent: boolean | null;
 }) {
   const [perimeterType, setPerimeterType] = useState<PerimeterType>("waist");
 
@@ -69,6 +71,7 @@ export function BodyTab({
           photos={photos}
           evaluations={evaluations}
           showReminder={showPhotoReminder}
+          photosConsent={photosConsent}
         />
       </div>
     );
@@ -226,6 +229,7 @@ export function BodyTab({
         photos={photos}
         evaluations={evaluations}
         showReminder={showPhotoReminder}
+        photosConsent={photosConsent}
       />
     </div>
   );

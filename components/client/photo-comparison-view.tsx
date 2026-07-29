@@ -1,7 +1,6 @@
 "use client";
 
-import { CheckCircle2, Download } from "lucide-react";
-import { X } from "lucide-react";
+import { Download, X } from "lucide-react";
 import type { ProgressPhoto } from "@/lib/supabase/progress-photos";
 import type { EvaluationDetail } from "@/lib/supabase/anthropometrics";
 import { formatDate } from "@/lib/utils/format-date";
@@ -42,12 +41,6 @@ function PhotoCard({
           // eslint-disable-next-line @next/next/no-img-element
           <img src={photo.photoUrl} alt="" className="size-full object-cover" />
         )}
-        {coachView && photo.publicUseAuthorized && (
-          <span className="absolute top-1.5 left-1.5 flex items-center gap-1 rounded-full bg-green-500/90 px-2 py-0.5 text-[10px] font-medium text-white">
-            <CheckCircle2 className="size-3" />
-            Autorizada
-          </span>
-        )}
       </div>
       <p className="text-center text-sm font-medium text-white">{formatDate(photo.takenAt)}</p>
       {/* Esto es lo que diferencia esto de una galería común: la foto
@@ -87,9 +80,8 @@ export function PhotoComparisonView({
   photos: [ProgressPhoto, ProgressPhoto];
   evaluations: EvaluationDetail[];
   onClose: () => void;
-  // Vista del coach (client-progress-photos.tsx): agrega descarga y el
-  // badge de autorización a cada tarjeta. El cliente comparando sus
-  // propias fotos no necesita ninguna de las dos cosas.
+  // Vista del coach (client-progress-photos.tsx): agrega descarga a cada
+  // tarjeta. El cliente comparando sus propias fotos no la necesita.
   coachView?: boolean;
 }) {
   return (

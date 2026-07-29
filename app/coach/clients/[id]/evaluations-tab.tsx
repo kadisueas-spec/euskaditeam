@@ -18,12 +18,14 @@ export function EvaluationsTab({
   bodyEvaluations,
   weightLogs,
   photos,
+  photosPublicUseAuthorized,
 }: {
   clientId: string;
   evaluations: EvaluationListItem[];
   bodyEvaluations: EvaluationDetail[];
   weightLogs: WeightLogEntry[];
   photos: ProgressPhoto[];
+  photosPublicUseAuthorized: boolean | null;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -37,7 +39,12 @@ export function EvaluationsTab({
 
       <ClientWeightChart logs={weightLogs} />
 
-      <ClientProgressPhotos clientId={clientId} photos={photos} evaluations={bodyEvaluations} />
+      <ClientProgressPhotos
+        clientId={clientId}
+        photos={photos}
+        evaluations={bodyEvaluations}
+        photosPublicUseAuthorized={photosPublicUseAuthorized}
+      />
 
       {evaluations.length === 0 ? (
         <EmptyState

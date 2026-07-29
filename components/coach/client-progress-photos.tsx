@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { AlertTriangle, Camera, CheckCircle2, Download, X } from "lucide-react";
+import { Camera, CheckCircle2, Download, X, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
@@ -21,17 +21,21 @@ const CATEGORY_LABEL: Record<PhotoCategory, string> = {
 // Fotos de progreso del cliente, vistas + gestionadas desde el coach
 // (jul-2026): el coach puede subir (ej. en una evaluación presencial) y
 // descargar, pero nunca borrar ni tocar el consentimiento de uso público
-// — eso sigue siendo exclusivo del cliente (ver
-// app/client/progress/photos-actions.ts y el RLS de la migración
-// 20260801, que no le da UPDATE/DELETE al coach sobre esta tabla).
+// — eso sigue siendo exclusivo del cliente. Consentimiento simplificado
+// (ago-2026): una sola decisión por cliente, no por foto (ver
+// PhotosConsentModal) — la descarga funciona igual esté o no autorizado,
+// sin avisos por foto (el coach la necesita para su seguimiento de
+// cualquier forma).
 export function ClientProgressPhotos({
   clientId,
   photos: initialPhotos,
   evaluations,
+  photosPublicUseAuthorized,
 }: {
   clientId: string;
   photos: ProgressPhoto[];
   evaluations: EvaluationDetail[];
+  photosPublicUseAuthorized: boolean | null;
 }) {
   const [photos, setPhotos] = useState(initialPhotos);
   const [uploading, setUploading] = useState(false);
@@ -68,7 +72,6 @@ export function ClientProgressPhotos({
           takenAt: new Date().toISOString().slice(0, 10),
           category: category || null,
           uploadedBy: "coach",
-          publicUseAuthorized: false,
           photoUrl: URL.createObjectURL(compressed),
         },
         ...prev,
@@ -111,6 +114,21 @@ export function ClientProgressPhotos({
           </button>
         )}
       </div>
+
+      <p
+        className={`flex w-fit items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${
+          photosPublicUseAuthorized
+            ? "bg-green-500/15 text-green-400"
+            : "bg-white/5 text-[#888888]"
+        }`}
+      >
+        {photosPublicUseAuthorized ? (
+          <CheckCircle2 className="size-3.5" />
+        ) : (
+          <XCircle className="size-3.5" />
+        )}
+        {photosPublicUseAuthorized ? "Autoriza uso público" : "No autoriza"}
+      </p>
 
       <input
         ref={fileInputRef}
@@ -179,11 +197,6 @@ export function ClientProgressPhotos({
                   // eslint-disable-next-line @next/next/no-img-element
                   <img src={photo.photoUrl} alt="" className="size-full object-cover" />
                 )}
-                {photo.publicUseAuthorized && (
-                  <span className="absolute top-1.5 left-1.5 flex items-center justify-center rounded-full bg-green-500/90 p-1 text-white">
-                    <CheckCircle2 className="size-3" />
-                  </span>
-                )}
                 {selectedIndex !== -1 && (
                   <span className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-[#e8001c] text-xs font-bold text-white">
                     {selectedIndex + 1}
@@ -215,17 +228,9 @@ export function ClientProgressPhotos({
           <div className="flex items-center justify-between px-4 py-3">
             <div>
               <p className="text-sm font-medium text-white">{formatDate(viewingPhoto.takenAt)}</p>
-              <p className="flex items-center gap-1 text-xs text-[#888888]">
-                {viewingPhoto.category && `${CATEGORY_LABEL[viewingPhoto.category]} · `}
-                {viewingPhoto.publicUseAuthorized ? (
-                  <span className="flex items-center gap-1 text-green-400">
-                    <CheckCircle2 className="size-3" />
-                    Autorizada para uso público
-                  </span>
-                ) : (
-                  "No autorizada para uso público"
-                )}
-              </p>
+              {viewingPhoto.category && (
+                <p className="text-xs text-[#888888]">{CATEGORY_LABEL[viewingPhoto.category]}</p>
+              )}
             </div>
             <button
               type="button"
@@ -246,13 +251,7 @@ export function ClientProgressPhotos({
               />
             )}
           </div>
-          <div className="flex flex-col gap-2 p-4">
-            {!viewingPhoto.publicUseAuthorized && (
-              <p className="flex items-center gap-2 rounded-lg border border-[#e8001c]/40 bg-[#e8001c]/10 p-2.5 text-xs text-white">
-                <AlertTriangle className="size-4 shrink-0 text-[#e8001c]" />
-                Esta foto no está autorizada para uso público.
-              </p>
-            )}
+          <div className="p-4">
             {viewingPhoto.photoUrl && (
               <a
                 href={viewingPhoto.photoUrl}

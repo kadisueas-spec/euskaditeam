@@ -132,6 +132,7 @@ export default async function ClientDetailPage({
             bodyEvaluations={bodyEvaluations}
             weightLogs={weightLogs}
             photos={progressPhotos}
+            photosPublicUseAuthorized={client.photosPublicUseAuthorized}
           />
         }
         nutricion={<NutritionTab clientId={id} plans={nutritionPlans} />}
