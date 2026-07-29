@@ -336,6 +336,76 @@ de clientes viejos en la base — todo corre solo, sobre `daily-checks`.
     también trata `subscription_end_date: null` como "sin vencimiento").
     Aplicar el mismo patrón a cualquier otra cuenta de prueba futura.
 
+### Fase 10.5 — Fotos de Progreso Corporal
+Objetivo: complementar las evaluaciones antropométricas con evidencia
+visual — el dato medido (peso, % grasa) acompañado de la foto de ese
+momento, no una galería genérica.
+39. `progress_photos` (migración `supabase/migrations/20260730_progress_photos.sql`):
+    `client_id`, `taken_at` (fecha automática al subir, no la elige el
+    cliente), `category` (`front`/`side`/`back`, opcional), `storage_path`.
+    RLS espejo invertido del patrón de `nutrition_plans` — ahí el coach
+    gestiona y el cliente solo lee; acá el **cliente** gestiona (sube y
+    borra las suyas) y el **coach** solo lee las de sus clientes. Bucket
+    de Storage `progress-photos`, privado, creado a mano en el Dashboard
+    (Storage > New bucket) antes de correr la migración. Política de
+    `storage.objects` verifica `(storage.foldername(name))[1]::uuid` (el
+    primer segmento del path = `client_id`) contra el cliente autenticado
+    — mismo mecanismo que ya usa `nutrition-plans`, evita que un cliente
+    acceda a fotos de otro manipulando la URL.
+40. Compresión en el cliente antes de subir (`lib/utils/compress-image.ts`):
+    `createImageBitmap` + `<canvas>`, reescala al lado mayor a 1200px y
+    reencodea siempre a JPEG calidad 0.8 sea cual sea el formato original
+    — así el servidor solo valida UNA firma de archivo. Validación de
+    magic bytes en `app/client/progress/photos-actions.ts`
+    (`hasValidImageSignature`, firma JPEG `FF D8 FF` o PNG por si el
+    compresor falla y llega el archivo sin comprimir) — mismo criterio
+    que los PDFs de nutrición en la auditoría de seguridad, nunca confiar
+    en `file.type` del navegador. URLs firmadas de 300s
+    (`lib/supabase/progress-photos.ts`), regeneradas en cada lectura del
+    servidor, mismo patrón que `lib/supabase/nutrition.ts`.
+41. UI cliente (`components/client/progress-photos-section.tsx`), dentro
+    de la pestaña "Mi Cuerpo" (`body-tab.tsx`) junto a las evaluaciones:
+    grilla de miniaturas por fecha (más reciente primero), botón "Agregar
+    foto" con selector opcional de categoría, input de archivo sin
+    `capture` fijo para que el selector nativo ofrezca tanto cámara como
+    galería. Modo "Comparar" con selección de hasta 2 fotos (la tercera
+    reemplaza la más vieja) que abre `photo-comparison-view.tsx`: las dos
+    fotos lado a lado y, debajo de cada una, el peso y % de grasa de la
+    evaluación antropométrica más cercana en el tiempo (ventana de 14
+    días — más allá de eso no se muestra dato, para no atribuirle a la
+    foto una medición que ya no la describe). Borrado con confirmación
+    inline de dos pasos (`photo-viewer.tsx`), mismo patrón que el resto
+    de la app (nunca de un solo toque).
+42. Vista de solo lectura para el coach (`components/coach/client-progress-photos.tsx`),
+    dentro de la pestaña "Evaluaciones" de `/coach/clients/[id]` junto a
+    las evaluaciones del cliente — mismo componente de comparación
+    (`photo-comparison-view.tsx`, reusado tal cual), sin botón de subir ni
+    de eliminar (exclusivo del cliente, dueño de sus propias fotos).
+43. Eliminación automática de Fase 10 (`deleteInactiveClient` en
+    `supabase/functions/daily-checks`) ahora también borra los archivos
+    del bucket `progress-photos` del cliente, mismo bloque que ya hacía
+    esto para `nutrition-plans` (el DELETE en cascada de la fila borra el
+    registro pero no el archivo físico del Storage).
+44. Recordatorio mensual de fotos (migración
+    `supabase/migrations/20260731_progress_photo_reminder.sql`, agrega
+    `clients.progress_photo_reminder_dismissed_at`): banner arriba de la
+    galería en `progress-photos-section.tsx`, mismo tratamiento visual que
+    los avisos del dashboard del coach (`border-[#e8001c]/40
+    bg-[#e8001c]/10`). Se dispara si pasaron 30+ días desde la última foto
+    (`photos[0].takenAt`, ya viene ordenado por fecha desde
+    `getProgressPhotosForClient`) o, si nunca subió ninguna, desde
+    `clients.created_at` (`shouldShowPhotoReminder` en
+    `lib/supabase/progress-photos.ts`) — salvo que lo haya descartado hace
+    menos de 7 días (`dismissProgressPhotoReminder`, guarda el timestamp
+    en vez de usar localStorage, mismo criterio que las preferencias del
+    temporizador de descanso: tiene que sobrevivir entre dispositivos).
+    Botón "Subir foto" del banner dispara el mismo `fileInputRef` que ya
+    usa el flujo de subida normal, no duplica lógica. Se oculta solo al
+    subir una foto (mismo punto donde se agrega la foto al estado
+    optimista) o al descartarlo — en ambos casos de forma optimista en el
+    cliente, sin esperar la respuesta del servidor. Sin push — es aviso
+    puramente dentro de la app.
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)

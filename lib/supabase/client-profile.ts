@@ -16,6 +16,8 @@ export type ClientRecord = {
   restTimerEnabled: boolean;
   restTimerSoundEnabled: boolean;
   restTimerVibrationEnabled: boolean;
+  createdAt: string;
+  progressPhotoReminderDismissedAt: string | null;
 };
 
 // cache(): varias funciones de este módulo llaman a getCurrentClientRecord()
@@ -31,7 +33,7 @@ export const getCurrentClientRecord = cache(async function getCurrentClientRecor
   const { data } = await supabase
     .from("clients")
     .select(
-      "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date, rest_timer_enabled, rest_timer_sound_enabled, rest_timer_vibration_enabled"
+      "id, user_id, coach_id, weight_kg, height_cm, goal, training_experience, is_active, subscription_status, subscription_end_date, rest_timer_enabled, rest_timer_sound_enabled, rest_timer_vibration_enabled, created_at, progress_photo_reminder_dismissed_at"
     )
     .eq("user_id", authUser.id)
     .single();
@@ -52,5 +54,7 @@ export const getCurrentClientRecord = cache(async function getCurrentClientRecor
     restTimerEnabled: data.rest_timer_enabled,
     restTimerSoundEnabled: data.rest_timer_sound_enabled,
     restTimerVibrationEnabled: data.rest_timer_vibration_enabled,
+    createdAt: data.created_at,
+    progressPhotoReminderDismissedAt: data.progress_photo_reminder_dismissed_at,
   };
 });

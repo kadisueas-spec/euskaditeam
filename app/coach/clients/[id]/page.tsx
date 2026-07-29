@@ -31,6 +31,7 @@ import {
 import { getClientWeightLogs } from "@/lib/supabase/weight-logs";
 import { getClientSubscription } from "@/lib/supabase/subscriptions";
 import { getNutritionPlansForClient } from "@/lib/supabase/nutrition";
+import { getProgressPhotosForClient } from "@/lib/supabase/progress-photos";
 import { EvaluationsTab } from "./evaluations-tab";
 import { NutritionTab } from "./nutrition-tab";
 import { getAccessDisplayStatus, PAYMENT_METHOD_LABEL } from "@/lib/constants/access";
@@ -82,6 +83,7 @@ export default async function ClientDetailPage({
     nutritionPlans,
     subscription,
     routineHistory,
+    progressPhotos,
   ] = await Promise.all([
     getFeedbackForClient(id),
     getRecentSessionsForSelect(id),
@@ -97,6 +99,7 @@ export default async function ClientDetailPage({
     getNutritionPlansForClient(id),
     getClientSubscription(id),
     getRoutineHistoryForClient(id),
+    getProgressPhotosForClient(id),
   ]);
 
   const metricsByRange: Record<MetricsRange, ClientMetrics> = {
@@ -128,6 +131,7 @@ export default async function ClientDetailPage({
             evaluations={evaluations}
             bodyEvaluations={bodyEvaluations}
             weightLogs={weightLogs}
+            photos={progressPhotos}
           />
         }
         nutricion={<NutritionTab clientId={id} plans={nutritionPlans} />}

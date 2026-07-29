@@ -10,6 +10,8 @@ import {
   type ChartPoint,
 } from "@/components/charts/evaluation-evolution-chart";
 import type { EvaluationDetail } from "@/lib/supabase/anthropometrics";
+import type { ProgressPhoto } from "@/lib/supabase/progress-photos";
+import { ProgressPhotosSection } from "@/components/client/progress-photos-section";
 import {
   PERIMETER_LABELS,
   PERIMETER_TYPES,
@@ -44,16 +46,31 @@ function ComparisonRow({
   );
 }
 
-export function BodyTab({ evaluations }: { evaluations: EvaluationDetail[] }) {
+export function BodyTab({
+  evaluations,
+  photos,
+  showPhotoReminder,
+}: {
+  evaluations: EvaluationDetail[];
+  photos: ProgressPhoto[];
+  showPhotoReminder: boolean;
+}) {
   const [perimeterType, setPerimeterType] = useState<PerimeterType>("waist");
 
   if (evaluations.length === 0) {
     return (
-      <EmptyState
-        icon={Ruler}
-        title="Tu coach todavía no cargó ninguna evaluación."
-        description="Cuando tengas tu primera evaluación antropométrica, la vas a ver acá."
-      />
+      <div className="flex flex-col gap-6">
+        <EmptyState
+          icon={Ruler}
+          title="Tu coach todavía no cargó ninguna evaluación."
+          description="Cuando tengas tu primera evaluación antropométrica, la vas a ver acá."
+        />
+        <ProgressPhotosSection
+          photos={photos}
+          evaluations={evaluations}
+          showReminder={showPhotoReminder}
+        />
+      </div>
     );
   }
 
@@ -204,6 +221,12 @@ export function BodyTab({ evaluations }: { evaluations: EvaluationDetail[] }) {
           </ul>
         </div>
       )}
+
+      <ProgressPhotosSection
+        photos={photos}
+        evaluations={evaluations}
+        showReminder={showPhotoReminder}
+      />
     </div>
   );
 }

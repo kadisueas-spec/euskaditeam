@@ -11,6 +11,7 @@ import { getWorkoutHistory } from "@/lib/supabase/workout-history";
 import { getMyBodyEvaluations } from "@/lib/supabase/anthropometrics";
 import { getMyWeightLogs } from "@/lib/supabase/weight-logs";
 import { getMyNutritionPlans } from "@/lib/supabase/nutrition";
+import { getMyProgressPhotos, shouldShowPhotoReminder } from "@/lib/supabase/progress-photos";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
 
 export default async function ProgressPage({
@@ -18,13 +19,15 @@ export default async function ProgressPage({
 }: {
   searchParams: Promise<{ tab?: string }>;
 }) {
-  const [{ tab }, history, evaluations, weightLogs, nutritionPlans] = await Promise.all([
+  const [{ tab }, history, evaluations, weightLogs, nutritionPlans, photos] = await Promise.all([
     searchParams,
     getWorkoutHistory(),
     getMyBodyEvaluations(),
     getMyWeightLogs(),
     getMyNutritionPlans(),
+    getMyProgressPhotos(),
   ]);
+  const showPhotoReminder = await shouldShowPhotoReminder(photos);
 
   return (
     <div className="flex flex-col gap-4">
@@ -81,7 +84,13 @@ export default async function ProgressPage({
             )}
           </>
         }
-        cuerpo={<BodyTab evaluations={evaluations} />}
+        cuerpo={
+          <BodyTab
+            evaluations={evaluations}
+            photos={photos}
+            showPhotoReminder={showPhotoReminder}
+          />
+        }
         peso={<WeightTab logs={weightLogs} />}
         nutricion={<NutritionClientTab plans={nutritionPlans} />}
       />

@@ -5,8 +5,10 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FadeIn } from "@/components/motion/fade-in";
 import { ClientBodyAnalysis } from "@/components/coach/client-body-analysis";
 import { ClientWeightChart } from "@/components/coach/client-weight-chart";
+import { ClientProgressPhotos } from "@/components/coach/client-progress-photos";
 import type { EvaluationDetail, EvaluationListItem } from "@/lib/supabase/anthropometrics";
 import type { WeightLogEntry } from "@/lib/supabase/weight-logs";
+import type { ProgressPhoto } from "@/lib/supabase/progress-photos";
 import { PROTOCOL_LABELS } from "@/lib/anthropometrics/constants";
 import { formatDate } from "@/lib/utils/format-date";
 
@@ -15,11 +17,13 @@ export function EvaluationsTab({
   evaluations,
   bodyEvaluations,
   weightLogs,
+  photos,
 }: {
   clientId: string;
   evaluations: EvaluationListItem[];
   bodyEvaluations: EvaluationDetail[];
   weightLogs: WeightLogEntry[];
+  photos: ProgressPhoto[];
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -32,6 +36,8 @@ export function EvaluationsTab({
       </Link>
 
       <ClientWeightChart logs={weightLogs} />
+
+      <ClientProgressPhotos photos={photos} evaluations={bodyEvaluations} />
 
       {evaluations.length === 0 ? (
         <EmptyState

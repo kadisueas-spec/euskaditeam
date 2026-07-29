@@ -103,6 +103,16 @@ async function deleteInactiveClient(client, clientName) {
       .remove(files.map((f) => `${client.id}/${f.name}`));
   }
 
+  // Fotos de progreso (jul-2026) — mismo motivo que nutrition-plans: el
+  // DELETE en cascada de la fila progress_photos no borra el archivo
+  // físico del bucket, hay que listarlo y borrarlo a mano.
+  const { data: photoFiles } = await supabase.storage.from("progress-photos").list(client.id);
+  if (photoFiles?.length) {
+    await supabase.storage
+      .from("progress-photos")
+      .remove(photoFiles.map((f) => `${client.id}/${f.name}`));
+  }
+
   await supabase.from("monthly_goals").delete().eq("client_id", client.id);
   await supabase.from("monthly_reviews").delete().eq("client_id", client.id);
 
