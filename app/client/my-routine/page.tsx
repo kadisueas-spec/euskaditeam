@@ -80,7 +80,7 @@ export default async function MyRoutinePage() {
     <div className="flex flex-col gap-4">
       <FadeIn>
         <ClientGreeting name={firstName} />
-        <p className="mt-1 text-sm text-[#888888] italic">
+        <p className="mt-2 text-xl leading-snug font-medium text-[#f5f5f5] italic">
           &ldquo;{motivationalPhrase}&rdquo;
         </p>
       </FadeIn>

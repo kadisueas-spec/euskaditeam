@@ -8,26 +8,36 @@ import {
   writeStoredRestTimer,
 } from "@/lib/utils/rest-timer-storage";
 
-// Beep corto vía Web Audio API (jul-2026) — nada de archivo externo. Un
-// tono simple con ataque/decay rápidos (envelope de ganancia) en vez de un
-// "click" seco. Usa el AudioContext ya desbloqueado por un toque previo
-// del cliente (ver workoutLogger — Safari iOS lo exige, si se crea el
-// contexto recién acá sin gesto previo no suena). Respeta el modo
-// silencioso del dispositivo por comportamiento default de Web Audio API
-// en iOS (no hace falta código extra: eso rompería si el propio navegador
-// no lo respetara ya).
-function playBeep(ctx: AudioContext) {
+// Beep vía Web Audio API — nada de archivo externo. Tono simple con
+// ataque/decay rápidos (envelope de ganancia) en vez de un "click" seco.
+// Usa el AudioContext ya desbloqueado por un toque previo del cliente (ver
+// workoutLogger — Safari iOS lo exige, si se crea el contexto recién acá
+// sin gesto previo no suena). Respeta el modo silencioso del dispositivo
+// por comportamiento default de Web Audio API en iOS (no hace falta código
+// extra: eso rompería si el propio navegador no lo respetara ya).
+//
+// Ago-2026: apenas se escuchaba en el gimnasio (ruido ambiente + música) —
+// volumen pico subido de 0.35 a 0.75 (cerca del techo antes de distorsión)
+// y DOS beeps cortos en vez de uno solo (más perceptible que un tono único
+// más largo, mismo patrón que una alarma de horno).
+function playSingleBeep(ctx: AudioContext, startTime: number) {
   const osc = ctx.createOscillator();
   const gain = ctx.createGain();
   osc.type = "sine";
   osc.frequency.value = 880;
-  gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-  gain.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.01);
-  gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.35);
+  gain.gain.setValueAtTime(0.0001, startTime);
+  gain.gain.exponentialRampToValueAtTime(0.75, startTime + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, startTime + 0.22);
   osc.connect(gain);
   gain.connect(ctx.destination);
-  osc.start();
-  osc.stop(ctx.currentTime + 0.36);
+  osc.start(startTime);
+  osc.stop(startTime + 0.24);
+}
+
+function playBeep(ctx: AudioContext) {
+  const now = ctx.currentTime;
+  playSingleBeep(ctx, now);
+  playSingleBeep(ctx, now + 0.28);
 }
 
 export function RestTimerBar({
@@ -88,7 +98,10 @@ export function RestTimerBar({
     // navigator.vibrate NO existe en Safari iOS — llamar sin chequear
     // rompió esta misma pantalla antes (ver comentario en workout-logger),
     // por eso el optional chaining acá también.
-    if (vibrationEnabled) navigator.vibrate?.([80, 60, 80]);
+    // Ago-2026: patrón viejo (un solo pulso corto) apenas se sentía en el
+    // bolsillo/muñeca en el gimnasio — ahora son 3 pulsos más largos y
+    // repetidos, ~650ms en total en vez de ~220ms.
+    if (vibrationEnabled) navigator.vibrate?.([150, 100, 150, 100, 150]);
 
     if (soundEnabled && audioCtxRef.current) {
       try {

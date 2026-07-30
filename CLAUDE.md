@@ -520,6 +520,24 @@ momento, no una galería genérica.
     - Texto final ("Estas series NO se registran...") siempre presente,
       en los tres tipos; "Tanteá con un peso..." solo en Tipo B o en Tipo
       A sin datos.
+49. Legibilidad en gimnasio (ago-2026) — tres ajustes sobre feedback real
+    de uso, sin schema nuevo:
+    - `workout-logger.tsx`: el detalle "3 series · 8-10 reps · RIR 3" (una
+      sola línea `text-sm` gris) pasó a ser 2-3 tarjetas lado a lado con el
+      número en Bebas Neue grande (`text-4xl`) y el label chico debajo —
+      mismo patrón "número protagonista" que el resumen de sesión y las
+      celebraciones, para que se lea de un vistazo con el teléfono apoyado
+      mientras se entrena.
+    - `app/client/my-routine/page.tsx`: la frase motivacional pasó de
+      `text-sm text-[#888888]` a `text-xl` en blanco (`#f5f5f5`), más
+      presencia visual sin agregar ningún elemento nuevo (nada de
+      side-stripe ni card extra).
+    - `rest-timer-bar.tsx`: el beep del temporizador (Web Audio API) casi
+      no se escuchaba en el gimnasio — volumen pico subido de 0.35 a 0.75
+      y ahora son DOS beeps cortos en vez de uno (`playSingleBeep` x2 con
+      un gap de 0.28s), más perceptible que un tono único más largo. La
+      vibración pasó de un pulso único (`[80, 60, 80]`, ~220ms) a un
+      patrón de 3 pulsos repetidos (`[150, 100, 150, 100, 150]`, ~650ms).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

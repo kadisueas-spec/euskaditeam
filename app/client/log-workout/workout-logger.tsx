@@ -108,6 +108,12 @@ const SUGGESTED_CLASS = "border-amber-400/50 bg-amber-400/10 text-amber-200";
 // siempre sin necesitar plomería extra.
 const DEFAULT_REST_TIMER_PREFS = { enabled: true, sound: true, vibration: true };
 
+function repsRangeLabel(min: number | null, max: number | null): string | null {
+  if (min == null && max == null) return null;
+  if (min != null && max != null && min !== max) return `${min}-${max}`;
+  return String(min ?? max);
+}
+
 export function WorkoutLogger({
   day,
   actions = DEFAULT_ACTIONS,
@@ -867,19 +873,42 @@ export function WorkoutLogger({
         <p className="text-sm text-[#888888]">{day.name}</p>
       </div>
 
-      <div>
+      <div className="flex flex-col gap-3">
         <h1 className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
           {exercise.exerciseName}
         </h1>
-        <p className="text-sm text-[#888888]">
-          Objetivo: {exercise.sets} series
-          {exercise.repsMin || exercise.repsMax
-            ? ` · ${exercise.repsMin ?? "?"}-${exercise.repsMax ?? "?"} reps`
-            : ""}
-          {exercise.rirTarget != null ? ` · RIR ${exercise.rirTarget}` : ""}
-        </p>
+
+        {/* Bloque de lectura rápida (ago-2026): antes era una sola línea de
+            texto chico ("Objetivo: 3 series · 8-10 reps · RIR 3"), ilegible
+            con el teléfono apoyado a media distancia mientras se entrena.
+            Mismo tratamiento "número protagonista" que el resto de la app
+            (Bebas Neue grande + label chico debajo) — se lee de un vistazo. */}
+        <div className="flex gap-2">
+          {[
+            { label: "Series", value: String(exercise.sets) },
+            ...(repsRangeLabel(exercise.repsMin, exercise.repsMax)
+              ? [{ label: "Reps", value: repsRangeLabel(exercise.repsMin, exercise.repsMax)! }]
+              : []),
+            ...(exercise.rirTarget != null
+              ? [{ label: "RIR", value: String(exercise.rirTarget) }]
+              : []),
+          ].map((stat) => (
+            <div
+              key={stat.label}
+              className="flex flex-1 flex-col items-center rounded-xl bg-white/5 py-2.5"
+            >
+              <p className="font-display text-4xl leading-none text-[#e8001c]">
+                {stat.value}
+              </p>
+              <p className="mt-1 text-xs font-medium tracking-wide text-[#888888] uppercase">
+                {stat.label}
+              </p>
+            </div>
+          ))}
+        </div>
+
         {exercise.coachNotes && (
-          <p className="mt-1 text-sm text-[#888888] italic">
+          <p className="text-sm text-[#888888] italic">
             &ldquo;{exercise.coachNotes}&rdquo;
           </p>
         )}
