@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react";
-import { ClipboardList, Dumbbell, LayoutDashboard, Users } from "lucide-react";
+import { ClipboardList, Dumbbell, LayoutDashboard, PlayCircle, Users } from "lucide-react";
 
 export type CoachNavItem = {
   href: string;
@@ -12,4 +12,5 @@ export const COACH_NAV_ITEMS: CoachNavItem[] = [
   { href: "/coach/clients", label: "Clientes", icon: Users },
   { href: "/coach/exercises", label: "Ejercicios", icon: Dumbbell },
   { href: "/coach/routines", label: "Rutinas", icon: ClipboardList },
+  { href: "/coach/videos", label: "Videos", icon: PlayCircle },
 ];

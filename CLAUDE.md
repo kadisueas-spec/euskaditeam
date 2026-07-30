@@ -599,6 +599,52 @@ momento, no una galería genérica.
       reemplazando el `NativeSelect` + input de peso suelto — mismos
       props (`warmupType`/`warmupFixedWeightKg`) y misma lógica de
       submit, solo cambió la presentación.
+52. Biblioteca de videos explicativos (ago-2026) — links de YouTube que el
+    coach carga para explicar conceptos (RIR, calentamiento, técnica) o
+    asignar material puntual a un cliente específico.
+    - Schema (migración `20260730_videos.sql`): `videos` (coach_id, title,
+      description, youtube_id, category, is_general), `video_assignments`
+      (muchos-a-muchos video↔cliente, solo tiene filas si `is_general =
+      false`), `video_views` (marca de "visto" por cliente — separada de
+      las asignaciones porque un video general no tiene fila de
+      asignación pero igual necesita rastrearse por cliente). Categorías
+      fijas en `lib/constants/videos.ts`: Conceptos, Calentamiento,
+      Movilidad, Técnica, Nutrición, Uso de la app.
+    - `lib/supabase/videos.ts` (solo lectura, mismo split que
+      exercises.ts/routines.ts) + `app/coach/videos/actions.ts`
+      (escritura): `resolveYoutubeId` reusa `extractYouTubeId`
+      (`lib/constants/youtube.ts`) igual que los ejercicios, pero acá el
+      link SIEMPRE es obligatorio (a diferencia del video demostrativo de
+      un ejercicio, que es opcional). Al guardar, `reconcileAssignments`
+      borra todas las filas de `video_assignments` del video y las
+      reemplaza por el set nuevo — más simple que diffear
+      inserts/updates/deletes a mano, aceptable a esta escala (pocos
+      clientes por video).
+    - Panel del coach (`/coach/videos`, mismo patrón que
+      `/coach/exercises`): lista con tabs de categoría y miniatura de
+      YouTube, `video-form.tsx` compartido entre crear/editar (toggle
+      General/Asignado — al elegir Asignado se muestra un checklist de
+      clientes, `getClientsForSelect` ya existente), `delete-video-button.tsx`
+      con confirmación (mismo patrón que `delete-routine-button.tsx`).
+    - Push SOLO cuando un cliente queda asignado por primera vez a un
+      video no general (texto fijo pedido: "Tu coach te dejó un video:
+      [título]", `lib/constants/push-copy.ts`) — nunca al guardar sin
+      cambios ni a los videos generales. `reconcileAssignments` devuelve
+      los client_id que NO estaban antes en la asignación, y solo a esos
+      se les manda `sendPushToClient`.
+    - Vista del cliente (`/client/videos`, enlazada desde una card
+      destacada en `/client/profile` con badge de no vistos — se optó por
+      el perfil en vez de un 7º ítem en `ClientBottomNav` para no
+      recargar la nav de 6 ítems en mobile): sección "Para vos" primero
+      con los asignados puntualmente, después agrupado por categoría con
+      los generales. Badge "Nuevo" por `video_views` faltante.
+      `/client/videos/[id]` reusa `ExerciseVideo` para el embed (el video
+      siempre tiene youtube_id, a diferencia de un ejercicio sin video
+      cargado) y marca "visto" con `MarkVideoSeenOnMount` — mismo patrón
+      que `MarkReadOnMount` de feedback (Server Action separado de la
+      lectura de la página, para poder `revalidatePath("/client",
+      "layout")` y que el badge del perfil se actualice al toque, sin
+      esperar un refresh completo).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

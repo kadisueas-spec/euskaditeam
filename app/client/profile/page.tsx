@@ -1,4 +1,5 @@
-import { LogOut } from "lucide-react";
+import Link from "next/link";
+import { ChevronRight, LogOut, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
@@ -8,6 +9,7 @@ import { PhotosConsentToggle } from "@/components/client/photos-consent-toggle";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getMySubscription } from "@/lib/supabase/subscriptions";
+import { getUnseenVideoCount } from "@/lib/supabase/videos";
 import { formatDate } from "@/lib/utils/format-date";
 import { logout } from "../actions";
 import { CancelSubscriptionButton } from "./cancel-subscription-button";
@@ -21,10 +23,11 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function ProfilePage() {
-  const [profile, client, subscription] = await Promise.all([
+  const [profile, client, subscription, unseenVideoCount] = await Promise.all([
     getCurrentProfile(),
     getCurrentClientRecord(),
     getMySubscription(),
+    getUnseenVideoCount(),
   ]);
 
   return (
@@ -35,6 +38,27 @@ export default async function ProfilePage() {
         </h1>
         <p className="text-sm text-[#888888]">{profile?.email}</p>
       </div>
+
+      <Link
+        href="/client/videos"
+        className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 active:bg-white/5"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e8001c]/15 text-[#e8001c]">
+          <PlayCircle className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium text-white">Aprendé</span>
+          <span className="block text-xs text-[#888888]">
+            Videos de tu coach sobre conceptos, técnica y más
+          </span>
+        </span>
+        {unseenVideoCount > 0 && (
+          <span className="flex min-w-[22px] shrink-0 items-center justify-center rounded-full bg-[#e8001c] px-1.5 py-0.5 text-xs font-bold text-white">
+            {unseenVideoCount > 9 ? "9+" : unseenVideoCount}
+          </span>
+        )}
+        <ChevronRight className="size-4 shrink-0 text-[#888888]" />
+      </Link>
 
       <Card className="border-[#1e1e1e] bg-[#111111]">
         <CardHeader>

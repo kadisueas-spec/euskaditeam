@@ -277,6 +277,50 @@ CREATE TABLE public.weekly_celebrations (
 
 
 --
+-- Name: videos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.videos (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    coach_id uuid NOT NULL,
+    title text NOT NULL,
+    description text,
+    youtube_id text NOT NULL,
+    category text NOT NULL,
+    is_general boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT videos_category_check CHECK ((category = ANY (ARRAY['concepts'::text, 'warmup'::text, 'mobility'::text, 'technique'::text, 'nutrition'::text, 'app_usage'::text])))
+);
+
+
+--
+-- Name: video_assignments; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.video_assignments (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    video_id uuid NOT NULL,
+    client_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT video_assignments_video_id_client_id_key UNIQUE (video_id, client_id)
+);
+
+
+--
+-- Name: video_views; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.video_views (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    video_id uuid NOT NULL,
+    client_id uuid NOT NULL,
+    viewed_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT video_views_video_id_client_id_key UNIQUE (video_id, client_id)
+);
+
+
+--
 -- Name: monthly_reviews; Type: TABLE; Schema: public; Owner: -
 --
 

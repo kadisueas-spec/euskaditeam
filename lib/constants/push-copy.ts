@@ -39,3 +39,12 @@ export const NEW_EVALUATION_PUSH_BODY =
 export const NEW_NUTRITION_PLAN_PUSH_TITLE = "Nuevo plan de alimentación";
 export const NEW_NUTRITION_PLAN_PUSH_BODY =
   "Tu coach subió tu plan de alimentación. Entrá a descargarlo.";
+
+// Video asignado puntualmente a un cliente -> cliente. Sin variantes,
+// texto fijo pedido tal cual ("Tu coach te dejó un video: [título]"). Los
+// videos GENERALES no notifican (ver assignVideoToClients en
+// app/coach/videos/actions.ts).
+export function newVideoAssignedPushTitle(videoTitle: string): string {
+  return `Tu coach te dejó un video: ${videoTitle}`;
+}
+export const NEW_VIDEO_ASSIGNED_PUSH_BODY = "Entrá a verlo cuando quieras.";
