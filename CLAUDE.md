@@ -573,6 +573,32 @@ momento, no una galería genérica.
       (`notifyCoachIfAdherenceCrossed80`, el push del 80% al coach). El
       dashboard del coach no calcula un % de adherencia propio (solo
       "sin entrenar 5+ días"), así que no había nada que tocar ahí.
+51. Rediseño del selector de calentamiento (ago-2026) — los nombres
+    describían el mecanismo interno ("Porcentaje con kilos calculados"
+    vs. "Porcentaje del máximo") en vez de la decisión del coach, y las
+    dos opciones de porcentaje no se distinguían de un vistazo.
+    - `components/coach/warmup-type-selector.tsx` (nuevo, compartido por
+      wizard y editor): lista vertical de 4 opciones tipo radio-card,
+      SIEMPRE con su descripción visible debajo del nombre (nada de
+      dropdown que esconde la diferencia) — "Sin calentamiento", "Guiado
+      — le muestro los kilos" (para la mayoría), "Autorregulado — sin
+      kilos" (para gente con experiencia), "Peso fijo — lo defino yo"
+      (para principiantes o casos puntuales, revela el campo de kg
+      dentro de la misma opción, solo si está seleccionada). Radio nativo
+      oculto (`sr-only`) + `<label htmlFor>` hermano (mismo patrón ya
+      usado en `monthly-goal-modal.tsx` para el 1-5 de motivación) — el
+      estado seleccionado se calcula en JS (`value === opt.value`), no
+      con `peer-checked` de Tailwind, porque el indicador visual (el
+      punto del radio) vive anidado dentro del label y `peer-checked`
+      solo alcanza hermanos directos, no descendientes de un hermano.
+    - Nota "Este es el primer ejercicio del día..." arriba del selector,
+      solo cuando `isFirstOfDay` (mismo criterio que ya decidía el
+      default) — en el resto de los ejercicios el selector existe igual
+      pero arranca en "Sin calentamiento" sin la nota.
+    - Wireado en `routine-wizard.tsx` y `routine-editor.tsx`
+      reemplazando el `NativeSelect` + input de peso suelto — mismos
+      props (`warmupType`/`warmupFixedWeightKg`) y misma lógica de
+      submit, solo cambió la presentación.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

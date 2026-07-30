@@ -11,17 +11,11 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
+import { WarmupTypeSelector } from "@/components/coach/warmup-type-selector";
 import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
 import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { minutesInputToSeconds } from "@/lib/utils/rest-time";
 import { createRoutine, type WarmupType } from "../actions";
-
-const WARMUP_LABEL: Record<WarmupType, string> = {
-  none: "Sin calentamiento",
-  percentage_with_kg: "Porcentaje con kilos calculados",
-  percentage_of_max: "Porcentaje del máximo",
-  fixed_weight: "Peso fijo",
-};
 
 type ExerciseRow = {
   key: string;
@@ -387,7 +381,7 @@ export function RoutineWizard({
                 {day.name}
               </h3>
               <div className="flex flex-col gap-3">
-                {day.exercises.map((ex) => (
+                {day.exercises.map((ex, exIndex) => (
                   <div
                     key={ex.key}
                     className="grid grid-cols-2 gap-2 rounded-2xl bg-white/5 p-3 sm:grid-cols-6"
@@ -512,39 +506,20 @@ export function RoutineWizard({
                         }
                       />
                     </div>
-                    <div className="col-span-2 sm:col-span-3">
-                      <Label className="text-xs">Calentamiento</Label>
-                      <NativeSelect
+                    <div className="col-span-2 sm:col-span-6">
+                      <WarmupTypeSelector
+                        groupId={ex.key}
                         value={ex.warmupType}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, {
-                            warmupType: e.target.value as WarmupType,
-                          })
+                        fixedWeightKg={ex.warmupFixedWeight}
+                        onChange={(warmupType) =>
+                          updateExercise(day.key, ex.key, { warmupType })
                         }
-                      >
-                        {(Object.keys(WARMUP_LABEL) as WarmupType[]).map((t) => (
-                          <option key={t} value={t}>
-                            {WARMUP_LABEL[t]}
-                          </option>
-                        ))}
-                      </NativeSelect>
+                        onFixedWeightChange={(warmupFixedWeight) =>
+                          updateExercise(day.key, ex.key, { warmupFixedWeight })
+                        }
+                        isFirstOfDay={exIndex === 0}
+                      />
                     </div>
-                    {ex.warmupType === "fixed_weight" && (
-                      <div className="col-span-2 sm:col-span-2">
-                        <Label className="text-xs">Peso del calentamiento (kg)</Label>
-                        <Input
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="20"
-                          value={ex.warmupFixedWeight}
-                          onChange={(e) =>
-                            updateExercise(day.key, ex.key, {
-                              warmupFixedWeight: sanitizeDecimalInput(e.target.value),
-                            })
-                          }
-                        />
-                      </div>
-                    )}
                     <div className="col-span-2 sm:col-span-5">
                       <Label className="text-xs">Notas</Label>
                       <Input
