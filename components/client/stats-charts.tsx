@@ -40,6 +40,9 @@ export function StatsCharts({
                 día{stats.dailyStreak === 1 ? "" : "s"}
               </span>
             </p>
+            <p className="mt-1 text-xs text-[#888888]">
+              Los días de descanso programados también suman: son parte del plan.
+            </p>
           </div>
         </FadeIn>
         <FadeIn delay={0.05}>
@@ -75,7 +78,7 @@ export function StatsCharts({
       </FadeIn>
 
       <FadeIn delay={0.15}>
-        <ExerciseProgressCharts series={sessionSeries} />
+        <ExerciseProgressCharts series={sessionSeries} showExplanations />
       </FadeIn>
     </div>
   );

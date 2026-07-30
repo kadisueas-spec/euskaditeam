@@ -15,6 +15,7 @@ import { ProgressPhotosSection } from "@/components/client/progress-photos-secti
 import {
   PERIMETER_LABELS,
   PERIMETER_TYPES,
+  PROTOCOL_LABELS,
   SKINFOLD_LABELS,
   type PerimeterType,
 } from "@/lib/anthropometrics/constants";
@@ -129,6 +130,11 @@ export function BodyTab({
               ? `${latestWithBodyFat.bodyFatPercentage.toFixed(1)}%`
               : "—"}
           </p>
+          {latestWithBodyFat && (
+            <p className="mt-1 text-xs text-[#888888]">
+              Medido con protocolo {PROTOCOL_LABELS[latestWithBodyFat.protocol]}
+            </p>
+          )}
         </div>
         <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
           <p className="text-xs text-[#888888]">Masa muscular</p>
@@ -148,19 +154,40 @@ export function BodyTab({
         </div>
       </div>
 
+      {latestWithBodyFat && (
+        <p className="-mt-3 text-xs text-[#888888]">
+          No es una balanza: es una medición con fórmula validada.
+        </p>
+      )}
+
       <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-        <EvolutionChart title="Peso corporal" unit="kg" points={weightPoints} />
+        <EvolutionChart
+          title="Peso corporal"
+          unit="kg"
+          points={weightPoints}
+          footnote="Tu peso en cada evaluación formal — mirá la tendencia entre varias, no un solo registro."
+        />
       </div>
 
       {bodyFatPoints.length > 0 && (
         <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-          <EvolutionChart title="% de grasa corporal" unit="%" points={bodyFatPoints} />
+          <EvolutionChart
+            title="% de grasa corporal"
+            unit="%"
+            points={bodyFatPoints}
+            footnote="Más confiable que el peso solo: te dice si lo que cambia es grasa o es músculo."
+          />
         </div>
       )}
 
       {muscleMassPoints.length > 0 && (
         <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
-          <EvolutionChart title="Masa muscular" unit="kg" points={muscleMassPoints} />
+          <EvolutionChart
+            title="Masa muscular"
+            unit="kg"
+            points={muscleMassPoints}
+            footnote="Cuánto músculo estás ganando o manteniendo con el entrenamiento."
+          />
         </div>
       )}
 
@@ -187,6 +214,7 @@ export function BodyTab({
             title={PERIMETER_LABELS[perimeterType]}
             unit="cm"
             points={perimeterPoints}
+            footnote="Los centímetros de esta zona — a veces cambian antes que el peso."
           />
         )}
       </div>

@@ -1,16 +1,25 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
+import type { TodaySummary } from "@/lib/supabase/client-home";
 
-// "Próximo entrenamiento" (jul-2026): card destacada arriba de la lista de
-// días en Mi Rutina — le dice al cliente exactamente qué le toca sin que
-// tenga que acordarse solo. suggestedDay null = ya completó todos los días
-// planificados de la semana (ver getWeekProgress en client-routine.ts).
+// "Próximo entrenamiento" (jul-2026, movida a la pantalla de inicio en
+// ago-2026): le dice al cliente exactamente qué le toca sin que tenga que
+// acordarse solo. Tres estados posibles, en este orden de prioridad:
+// 1) trainedToday: ya entrenó HOY — manda incluso si quedan otros días
+//    planificados sin completar esta semana (pudo haber adelantado el día
+//    de mañana). 2) suggestedDay null: completó TODOS los días de la
+//    semana (ver getWeekProgress en client-routine.ts). 3) suggestedDay:
+//    caso normal, el día que le toca.
 export function NextWorkoutCard({
+  trainedToday = false,
+  todaySummary = null,
   suggestedDay,
   completedCount,
   plannedCount,
 }: {
+  trainedToday?: boolean;
+  todaySummary?: TodaySummary | null;
   suggestedDay: MyRoutineDay | null;
   completedCount: number;
   plannedCount: number;
@@ -21,10 +30,24 @@ export function NextWorkoutCard({
   return (
     <div className="rounded-2xl border border-[#e8001c]/40 bg-[#111111] p-5">
       <p className="text-xs font-semibold tracking-widest text-[#e8001c] uppercase">
-        {suggestedDay ? "Tu próximo entrenamiento" : "Esta semana"}
+        {trainedToday ? "Hoy" : suggestedDay ? "Tu próximo entrenamiento" : "Esta semana"}
       </p>
 
-      {suggestedDay ? (
+      {trainedToday ? (
+        <>
+          <p className="mt-1 font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
+            Ya entrenaste hoy 🔥
+          </p>
+          {todaySummary && (
+            <p className="text-sm text-[#888888]">
+              {todaySummary.dayName ?? "Entrenamiento"} · {todaySummary.totalSets} series
+              {todaySummary.totalVolume > 0
+                ? ` · ${todaySummary.totalVolume.toLocaleString("es-AR")} kg movidos`
+                : ""}
+            </p>
+          )}
+        </>
+      ) : suggestedDay ? (
         <>
           <p className="mt-1 font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
             {suggestedDay.name}

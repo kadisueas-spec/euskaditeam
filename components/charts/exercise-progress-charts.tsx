@@ -57,18 +57,25 @@ function ChartTooltip({
   );
 }
 
+const METRIC_FOOTNOTE: Record<"maxWeight" | "avgWeight", string> = {
+  maxWeight: "Tu peso máximo por sesión. Es el indicador más directo de que estás progresando en fuerza.",
+  avgWeight: "El peso promedio de tus series — mide qué tan consistente sos dentro de la sesión.",
+};
+
 function SingleMetricChart({
   title,
   dataKey,
   unit,
   points,
   exerciseName,
+  showExplanation,
 }: {
   title: string;
   dataKey: "maxWeight" | "avgWeight";
   unit: string;
   points: ExerciseSessionSeries["points"];
   exerciseName: string;
+  showExplanation: boolean;
 }) {
   const latest = points[points.length - 1];
 
@@ -110,14 +117,23 @@ function SingleMetricChart({
           </ResponsiveContainer>
         </div>
       )}
+      {showExplanation && points.length >= 2 && (
+        <p className="text-xs text-[#888888]">{METRIC_FOOTNOTE[dataKey]}</p>
+      )}
     </div>
   );
 }
 
 export function ExerciseProgressCharts({
   series,
+  showExplanations = false,
 }: {
   series: ExerciseSessionSeries[];
+  // "La app explica lo que hace" (ago-2026) — opt-in porque este
+  // componente también lo usa el coach para su propio entrenamiento
+  // (app/coach/profile, client-metrics-tab.tsx), donde no hace falta
+  // explicarle a Luis qué mide su propia herramienta.
+  showExplanations?: boolean;
 }) {
   const [exerciseId, setExerciseId] = useState(series[0]?.exerciseId ?? "");
   const [rangeMode, setRangeMode] = useState<RangeMode>("total");
@@ -181,6 +197,7 @@ export function ExerciseProgressCharts({
           unit="kg"
           points={points}
           exerciseName={selected.exerciseName}
+          showExplanation={showExplanations}
         />
         <SingleMetricChart
           title="Peso promedio"
@@ -188,6 +205,7 @@ export function ExerciseProgressCharts({
           unit="kg"
           points={points}
           exerciseName={selected.exerciseName}
+          showExplanation={showExplanations}
         />
       </div>
     </div>

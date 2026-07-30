@@ -3,23 +3,12 @@ import { Check, ChevronDown, Dumbbell, Lightbulb, MessageSquare } from "lucide-r
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ClientGreeting } from "@/components/client/client-greeting";
 import { ExerciseVideo } from "@/components/client/exercise-video";
-import { NextWorkoutCard } from "@/components/client/next-workout-card";
-import { RoutineWelcomeBanner } from "@/components/client/routine-welcome-banner";
 import { FadeIn } from "@/components/motion/fade-in";
-import {
-  getMyActiveRoutine,
-  getWeekProgress,
-  isClientsFirstRoutine,
-} from "@/lib/supabase/client-routine";
+import { getMyActiveRoutine, getWeekProgress } from "@/lib/supabase/client-routine";
 import { getMyFeedback } from "@/lib/supabase/feedback";
-import { getClientStats } from "@/lib/supabase/stats";
-import { getCurrentProfile } from "@/lib/supabase/profiles";
-import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
 import { formatRestTime } from "@/lib/utils/format-rest";
-import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
 
 function repsLabel(min: number | null, max: number | null) {
   if (min == null && max == null) return null;
@@ -28,30 +17,14 @@ function repsLabel(min: number | null, max: number | null) {
 }
 
 export default async function MyRoutinePage() {
-  const [routine, feedback, stats, profile, client] = await Promise.all([
+  const [routine, feedback] = await Promise.all([
     getMyActiveRoutine(),
     getMyFeedback(),
-    getClientStats(),
-    getCurrentProfile(),
-    getCurrentClientRecord(),
   ]);
   const weekProgress = routine
     ? await getWeekProgress(routine.days)
     : { completedDayIds: [], suggestedDayId: null };
   const completedDaySet = new Set(weekProgress.completedDayIds);
-  const suggestedDay =
-    routine?.days.find((d) => d.id === weekProgress.suggestedDayId) ?? null;
-  const firstName = profile?.full_name?.split(" ")[0] ?? "";
-  const motivationalPhrase = randomMotivationalPhrase();
-
-  // Banner de bienvenida (ago-2026): solo se calcula si hace falta
-  // mostrarlo (routine existe y todavía no se marcó para esta rutina) —
-  // evita la consulta extra de isClientsFirstRoutine en el caso común de
-  // que ya se vio.
-  const showWelcomeBanner = !!routine && !routine.welcomeBannerShownAt && !!client;
-  const isFirstRoutine = showWelcomeBanner
-    ? await isClientsFirstRoutine(client.id, routine.id)
-    : false;
 
   const feedbackByExercise = new Map<string, typeof feedback>();
   for (const f of feedback) {
@@ -63,28 +36,16 @@ export default async function MyRoutinePage() {
 
   if (!routine) {
     return (
-      <div className="flex flex-col gap-4">
-        <FadeIn>
-          <ClientGreeting name={firstName} />
-        </FadeIn>
-        <EmptyState
-          icon={Dumbbell}
-          title="Tu coach está preparando algo para vos."
-          description="Pronto vas a tener tu rutina."
-        />
-      </div>
+      <EmptyState
+        icon={Dumbbell}
+        title="Tu coach está preparando algo para vos."
+        description="Pronto vas a tener tu rutina."
+      />
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <FadeIn>
-        <ClientGreeting name={firstName} />
-        <p className="mt-2 text-xl leading-snug font-medium text-[#f5f5f5] italic">
-          &ldquo;{motivationalPhrase}&rdquo;
-        </p>
-      </FadeIn>
-
       <div>
         <h1 className="font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
           {routine.name}
@@ -94,23 +55,6 @@ export default async function MyRoutinePage() {
           <p className="text-sm text-[#888888]">Objetivo: {routine.objective}</p>
         )}
       </div>
-
-      {stats.dailyStreak > 0 && (
-        <FadeIn>
-          <p className="rounded-full bg-white/5 px-4 py-2 text-center text-sm font-medium text-[#f5f5f5]">
-            Estás en racha hace {stats.dailyStreak} día
-            {stats.dailyStreak === 1 ? "" : "s"} 🔥
-          </p>
-        </FadeIn>
-      )}
-
-      <FadeIn>
-        <NextWorkoutCard
-          suggestedDay={suggestedDay}
-          completedCount={completedDaySet.size}
-          plannedCount={routine.days.length}
-        />
-      </FadeIn>
 
       {routine.days.map((day, dayIndex) => {
         const isCompleted = completedDaySet.has(day.id);
@@ -218,18 +162,6 @@ export default async function MyRoutinePage() {
         </FadeIn>
         );
       })}
-
-      {showWelcomeBanner && client && (
-        <RoutineWelcomeBanner
-          routineId={routine.id}
-          firstName={firstName}
-          sex={client.sex}
-          routineName={routine.name}
-          mesocicloNombre={routine.mesocicloNombre}
-          daysPerWeek={routine.days.length}
-          isFirstRoutine={isFirstRoutine}
-        />
-      )}
     </div>
   );
 }

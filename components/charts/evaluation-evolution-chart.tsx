@@ -47,11 +47,19 @@ export function EvolutionChart({
   unit,
   points,
   emptyMessage = "Hace falta más de una evaluación para ver la evolución.",
+  footnote,
 }: {
   title: string;
   unit: string;
   points: ChartPoint[];
   emptyMessage?: string;
+  // "La app explica lo que hace" (ago-2026): qué mide este gráfico
+  // puntual y por qué importa — opcional porque el componente es
+  // compartido con las vistas del coach (client-body-analysis.tsx,
+  // client-weight-chart.tsx), que no lo necesitan (el coach ya sabe qué
+  // hace su propia herramienta). Solo se muestra si hay curva real
+  // (points.length >= 2, mismo gate que el chart en sí).
+  footnote?: string;
 }) {
   const trend = trendOf(points);
 
@@ -99,6 +107,9 @@ export function EvolutionChart({
             </LineChart>
           </ResponsiveContainer>
         </div>
+      )}
+      {footnote && points.length >= 2 && (
+        <p className="text-xs text-[#888888]">{footnote}</p>
       )}
     </div>
   );

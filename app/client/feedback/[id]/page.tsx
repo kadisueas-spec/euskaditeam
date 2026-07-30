@@ -38,6 +38,8 @@ export default async function FeedbackDetailPage({
         <p className="text-base text-white">{feedback.message}</p>
       </div>
 
+      <p className="text-xs text-[#888888]">Tu coach revisó tus sesiones de esta semana.</p>
+
       {(feedback.workoutDate || feedback.exerciseName) && (
         <div className="flex flex-col gap-1 rounded-2xl bg-white/5 p-4 text-sm text-[#888888]">
           {feedback.workoutDate && <p>Sesión: {formatFriendlyDate(feedback.workoutDate)}</p>}

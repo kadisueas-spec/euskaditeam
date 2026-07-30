@@ -892,6 +892,11 @@ export type WorkoutSuggestion = {
   // avisar cuándo el dato no es fresco ("Tu última vez con este
   // ejercicio, hace X semanas").
   weeksAgo: number | null;
+  // Fecha real (workout_date) de la sesión de referencia — a diferencia
+  // de weeksAgo (un conteo), esto es lo que necesita la explicación "La
+  // app explica lo que hace" (ago-2026) para decir "Calculado desde tu
+  // récord del [fecha]". null junto con previousRecord null.
+  recordDate: string | null;
 };
 
 type SetLogRow = {
@@ -1042,6 +1047,7 @@ export async function getWorkoutSuggestions(
   for (const [routineExerciseId, row] of bestByExercise) {
     const weightRecord = row.weight_kg;
     const repsRecord = row.reps_completed;
+    const recordDate = row.workout_logs?.workout_date ?? null;
 
     if (weightRecord == null || repsRecord == null) {
       result[routineExerciseId] = {
@@ -1051,6 +1057,7 @@ export async function getWorkoutSuggestions(
         progressionCase: null,
         previousRecord: null,
         weeksAgo: row.weeksAgo,
+        recordDate: null,
       };
       continue;
     }
@@ -1066,6 +1073,7 @@ export async function getWorkoutSuggestions(
         progressionCase: null,
         previousRecord,
         weeksAgo: row.weeksAgo,
+        recordDate,
       };
       continue;
     }
@@ -1083,6 +1091,7 @@ export async function getWorkoutSuggestions(
         progressionCase: "weight_increase",
         previousRecord,
         weeksAgo: row.weeksAgo,
+        recordDate,
       };
     } else {
       result[routineExerciseId] = {
@@ -1092,6 +1101,7 @@ export async function getWorkoutSuggestions(
         progressionCase: "reps_increase",
         previousRecord,
         weeksAgo: row.weeksAgo,
+        recordDate,
       };
     }
   }

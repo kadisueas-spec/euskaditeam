@@ -27,5 +27,5 @@ export async function login(
   }
 
   const role = data.user.user_metadata?.role;
-  redirect(role === "coach" ? "/coach/dashboard" : "/client/my-routine");
+  redirect(role === "coach" ? "/coach/dashboard" : "/client/home");
 }

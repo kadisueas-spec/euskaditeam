@@ -59,6 +59,11 @@ export function WarmupBanner({
   // mostrar: Tipo B siempre, o Tipo A cuando el cliente nunca hizo el
   // ejercicio (sin dato de referencia).
   const showTanteoHint = !isFixed && rows.every((r) => r.kg == null);
+  // "La app explica lo que hace" (ago-2026): solo tiene sentido cuando
+  // REALMENTE hay un cálculo hecho sobre el peso objetivo (Tipo A con
+  // dato) — Tipo B es porcentaje que el cliente aplica solo, Tipo C es un
+  // peso fijo que cargó el coach a mano, ninguno de los dos "se calcula".
+  const showCalculatedNote = !isFixed && !showTanteoHint;
 
   return (
     <div
@@ -98,6 +103,12 @@ export function WarmupBanner({
               </div>
             ))}
           </div>
+
+          {showCalculatedNote && (
+            <p className="-mt-3 text-xs text-[#888888]">
+              Calculado sobre tu peso objetivo de hoy.
+            </p>
+          )}
 
           {showTanteoHint && (
             <p className="text-sm text-[#888888]">

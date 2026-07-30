@@ -267,6 +267,7 @@ export function WeightTab({ logs: initialLogs }: { logs: WeightLogEntry[] }) {
               unit="kg"
               points={chartPoints}
               emptyMessage="Seguí registrando tu peso para ver tu evolución."
+              footnote="Tu peso del día a día — varía por agua y comida, mirá la tendencia de varias semanas."
             />
           </div>
 

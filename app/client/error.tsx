@@ -9,5 +9,5 @@ export default function ClientError({
   error: Error & { digest?: string };
   reset: () => void;
 }) {
-  return <ErrorState error={error} reset={reset} homeHref="/client/my-routine" />;
+  return <ErrorState error={error} reset={reset} homeHref="/client/home" />;
 }

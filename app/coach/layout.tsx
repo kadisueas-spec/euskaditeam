@@ -16,7 +16,7 @@ export default async function CoachLayout({
   // Belt-and-suspenders: proxy.ts already enforces this optimistically via
   // user_metadata.role. This is the secure check against profiles.role.
   if (!profile) redirect("/login");
-  if (profile.role !== "coach") redirect("/client/my-routine");
+  if (profile.role !== "coach") redirect("/client/home");
 
   // h-dvh + único scroll interno en <main>, ver el comentario largo en
   // app/client/layout.tsx: evita que la nav (antes position:fixed) deje un

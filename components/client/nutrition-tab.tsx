@@ -41,14 +41,19 @@ export function NutritionClientTab({ plans }: { plans: NutritionPlan[] }) {
             <PlanVigencia plan={activePlan} />
           </div>
           {activePlan.downloadUrl && (
-            <a
-              href={activePlan.downloadUrl}
-              download={activePlan.fileName}
-              className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-[#e8001c] px-4 font-display text-lg tracking-widest text-white uppercase active:bg-[#b8001a]"
-            >
-              <Download className="size-5" />
-              Descargar PDF
-            </a>
+            <div className="flex flex-col gap-1.5">
+              <a
+                href={activePlan.downloadUrl}
+                download={activePlan.fileName}
+                className="flex min-h-[52px] w-full items-center justify-center gap-2 rounded-lg bg-[#e8001c] px-4 font-display text-lg tracking-widest text-white uppercase active:bg-[#b8001a]"
+              >
+                <Download className="size-5" />
+                Descargar PDF
+              </a>
+              <p className="text-center text-xs text-[#888888]">
+                Armado según tus objetivos y lo que te gusta comer.
+              </p>
+            </div>
           )}
         </div>
       )}

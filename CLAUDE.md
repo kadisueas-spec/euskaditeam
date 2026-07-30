@@ -645,6 +645,99 @@ momento, no una galería genérica.
       lectura de la página, para poder `revalidatePath("/client",
       "layout")` y que el badge del perfil se actualice al toque, sin
       esperar un refresh completo).
+53. Nueva pantalla de inicio del cliente (ago-2026) — reemplaza a Mi Rutina
+    como primera pantalla al abrir la app. Objetivo: que el cliente vea de
+    un vistazo qué le toca hoy y todo lo que incluye su plan (antes entraba
+    directo a una lista de días de rutina y nunca veía el conjunto).
+    - `lib/supabase/client-home.ts` (`getClientHomeData`): una sola
+      función que junta todo en paralelo (`Promise.all`) — rutina activa,
+      stats (racha/adherencia), última evaluación antropométrica, plan de
+      nutrición activo, fotos de progreso, videos, y dos consultas nuevas
+      (conteo total de entrenamientos completados, y si ya entrenó HOY con
+      su resumen de series/kilos). Nada de una query por tarjeta.
+    - `trainedToday` tiene prioridad sobre `suggestedDay` aunque queden
+      otros días planificados sin completar esta semana — un cliente pudo
+      adelantar el día de mañana hoy y de todos modos ya entrenó HOY.
+      `NextWorkoutCard` (`components/client/next-workout-card.tsx`) ganó
+      este tercer estado ("Ya entrenaste hoy 🔥" + resumen) además de los
+      dos que ya tenía (día sugerido / semana completa) — mismo
+      componente, movido de Mi Rutina a la pantalla de inicio.
+    - `components/client/plan-card.tsx` (nuevo): las 6 tarjetas del plan
+      (Mi Rutina, Nutrición, Mi Cuerpo, Fotos de Progreso, Videos, Mi
+      Progreso) SIEMPRE se muestran, tengan dato o no — la tarjeta vacía
+      invita ("Tu primera evaluación está por venir") en vez de decir "sin
+      datos", solo más tenue visualmente (borde/ícono/texto apagados, sin
+      el glow rojo). Es la diferencia entre un menú y un panel que
+      comunica el valor de la asesoría integral.
+    - El banner de bienvenida de rutina (`RoutineWelcomeBanner`) se movió
+      de `/client/my-routine` a esta pantalla — es el punto de entrada
+      real ahora, my-routine pasó a ser una pantalla secundaria (solo
+      nombre/objetivo/lista de días, sin saludo ni frase ni racha, todo
+      eso vive acá).
+    - Ruteo: `app/login/actions.ts`, `app/login/page.tsx` y
+      `app/coach/layout.tsx` (fallback si un cliente cae en rutas de
+      coach) ahora redirigen a `/client/home` en vez de
+      `/client/my-routine`; `app/client/error.tsx` también. El bottom nav
+      (`ClientBottomNav`/`CLIENT_NAV_ITEMS`) NO cambió — "Mi Rutina" sigue
+      ahí tal cual, solo cambió dónde aterriza el cliente al entrar (no
+      hay un ícono de "Inicio" nuevo, a propósito, para no sumar un 7º
+      ítem a una barra que ya tiene 6).
+54. "La app explica lo que hace" (ago-2026) — el cliente usaba funciones
+    sin saber que existían (un número sugerido, un % de grasa) sin saber
+    de dónde salían. Explicaciones breves, SOLO cuando algo sucede (nunca
+    avisos sueltos), atribuidas al coach y no a "la app", texto chico gris
+    que nunca compite con el dato — sin íconos de info ni tooltips.
+    - Sugerencia de peso/reps de la primera serie
+      (`app/client/log-workout/workout-logger.tsx`): `WorkoutSuggestion`
+      (actions.ts) ganó el campo `recordDate` (antes solo existía
+      `weeksAgo`, un conteo — hacía falta la fecha real de
+      `workout_logs.workout_date` de la sesión de referencia para poder
+      decir "Calculado desde tu récord del [fecha]"). Debajo de la
+      insignia ámbar ya existente (que sigue igual), una segunda línea
+      con el dato crudo + el porqué — solo con dato fresco
+      (`weeksAgo < 2`, para no apilarse con el aviso de "hace X semanas"
+      que ya se explica solo): "Llegaste al tope del rango la vez
+      pasada..." para `weight_increase`, "Con la fatiga cae el
+      rendimiento..." para `reps_increase`.
+    - Calentamiento (`components/client/warmup-banner.tsx`): "Calculado
+      sobre tu peso objetivo de hoy." — solo en Tipo A con dato real
+      (`percentage_with_kg` con kilos calculados); Tipo B es porcentaje
+      que el cliente aplica solo y Tipo C es un peso que cargó el coach a
+      mano, ninguno de los dos "se calcula".
+    - Evaluación antropométrica (`components/client/body-tab.tsx`): junto
+      al % de grasa, "Medido con protocolo {PROTOCOL_LABELS[protocol]}"
+      (reusa el label ya existente en `lib/anthropometrics/constants.ts`,
+      que ya incluye el nombre y la cantidad de pliegues — no hacía falta
+      recalcular nada aparte). Al pie de toda la sección: "No es una
+      balanza: es una medición con fórmula validada."
+    - Gráficos: `EvolutionChart` (`components/charts/evaluation-
+      evolution-chart.tsx`) y `ExerciseProgressCharts`/`SingleMetricChart`
+      (`components/charts/exercise-progress-charts.tsx`) ganaron un
+      footnote opcional (`footnote`/`showExplanations`) — opt-in porque
+      ambos componentes son COMPARTIDOS con las vistas del coach
+      (`client-body-analysis.tsx`, `client-weight-chart.tsx`,
+      `client-metrics-tab.tsx`, `app/coach/profile`), que no lo pasan (el
+      coach no necesita que le expliquen su propia herramienta). Solo se
+      muestra con curva real (`points.length >= 2`, mismo gate que el
+      chart). Cada gráfico tiene su propia frase (nunca la misma dos
+      veces en la misma pantalla de Mi Cuerpo): peso corporal, % grasa,
+      masa muscular, perímetro, peso del día a día (`weight-tab.tsx`),
+      peso máximo y peso promedio por ejercicio (`stats-charts.tsx`, con
+      `showExplanations`).
+    - Racha (`components/client/stats-charts.tsx`): junto a "Racha de
+      días 🔥", "Los días de descanso programados también suman: son
+      parte del plan." — no se agregó en la fila compacta de estado de
+      `/client/home` (Parte 1) para no romper el formato de una sola
+      línea que pedía esa pantalla.
+    - Plan de nutrición (`components/client/nutrition-tab.tsx`): debajo
+      del botón "Descargar PDF", "Armado según tus objetivos y lo que te
+      gusta comer." — siempre visible junto al botón (no literalmente "al
+      tocar descargar", ya que el formato pedido es visible siempre sin
+      tener que tocar nada).
+    - Feedback recibido (`app/client/feedback/[id]/page.tsx`): "Tu coach
+      revisó tus sesiones de esta semana." debajo del mensaje, una sola
+      vez en el detalle (no en la lista, para no repetirlo por cada
+      ítem).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

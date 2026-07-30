@@ -11,7 +11,7 @@ export default async function LoginPage() {
   // pedía login de nuevo en cada apertura aunque el token siguiera vigente.
   const authUser = await getAuthUser();
   if (authUser) {
-    redirect(authUser.role === "coach" ? "/coach/dashboard" : "/client/my-routine");
+    redirect(authUser.role === "coach" ? "/coach/dashboard" : "/client/home");
   }
 
   return (

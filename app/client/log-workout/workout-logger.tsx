@@ -16,6 +16,7 @@ import { WeeklyCelebration } from "@/components/client/weekly-celebration";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
 import { isNetworkError } from "@/lib/utils/is-network-error";
+import { formatFriendlyDate } from "@/lib/utils/format-date";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { clearStoredRestTimer, readStoredRestTimer } from "@/lib/utils/rest-timer-storage";
 import {
@@ -168,6 +169,13 @@ export function WorkoutLogger({
   // Bug jul-2026: cuántas semanas atrás es la referencia de la sugerencia
   // (1 = semana pasada, 2+ = un dato viejo que hay que aclarar).
   const [suggestionWeeksAgo, setSuggestionWeeksAgo] = useState<number | null>(null);
+  // "La app explica lo que hace" (ago-2026): récord crudo + fecha de la
+  // sesión de referencia, para la línea "Calculado desde tu récord del
+  // [fecha]: [X]kg × [Y] reps" debajo de los campos sugeridos.
+  const [suggestionRecord, setSuggestionRecord] = useState<
+    WorkoutSuggestion["previousRecord"]
+  >(null);
+  const [suggestionRecordDate, setSuggestionRecordDate] = useState<string | null>(null);
   // Sistema de celebración de récords (jul-2026): sessionRecords acumula
   // TODOS los récords de la sesión (para el resumen de Momento 2 al
   // finalizar); celebrationQueue es la cola de banners de Momento 1
@@ -395,6 +403,8 @@ export function WorkoutLogger({
     });
     setSuggestionCase(prev?.progressionCase ?? null);
     setSuggestionWeeksAgo(prev?.weeksAgo ?? null);
+    setSuggestionRecord(prev?.previousRecord ?? null);
+    setSuggestionRecordDate(prev?.recordDate ?? null);
     setError(null);
   }, [exercise?.id, nextSetNumber, suggestions]);
 
@@ -1069,19 +1079,35 @@ export function WorkoutLogger({
         </div>
       </div>
       {(suggested.weight || suggested.reps || suggested.rir) && (
-        <p className="-mt-2 flex items-center gap-1 text-xs text-amber-400">
-          <Check className="size-3" />
-          {suggestionWeeksAgo != null && suggestionWeeksAgo >= 2
-            ? // Bug jul-2026: dato de referencia no fresco (2+ semanas) — hay
-              // que avisar explícitamente para que no se lea como "esta
-              // semana", sea cual sea el progressionCase.
-              `Tu última vez con este ejercicio, hace ${suggestionWeeksAgo} semanas — podés editarlo`
-            : suggestionCase === "weight_increase"
-              ? "Subiste el peso esta semana 💪 podés editarlo"
-              : suggestionCase === "reps_increase"
-                ? "Una rep más que la semana pasada 🎯 podés editarlo"
-                : "Sugerido según tu última vez — podés editarlo"}
-        </p>
+        <div className="-mt-2 flex flex-col gap-0.5">
+          <p className="flex items-center gap-1 text-xs text-amber-400">
+            <Check className="size-3" />
+            {suggestionWeeksAgo != null && suggestionWeeksAgo >= 2
+              ? // Bug jul-2026: dato de referencia no fresco (2+ semanas) — hay
+                // que avisar explícitamente para que no se lea como "esta
+                // semana", sea cual sea el progressionCase.
+                `Tu última vez con este ejercicio, hace ${suggestionWeeksAgo} semanas — podés editarlo`
+              : suggestionCase === "weight_increase"
+                ? "Subiste el peso esta semana 💪 podés editarlo"
+                : suggestionCase === "reps_increase"
+                  ? "Una rep más que la semana pasada 🎯 podés editarlo"
+                  : "Sugerido según tu última vez — podés editarlo"}
+          </p>
+          {/* "La app explica lo que hace" (ago-2026): de dónde salió el
+              número y por qué — atribuido al coach, no a "la app". Solo
+              con dato fresco (no en el caso "hace X semanas", que ya se
+              explica solo) para no apilar dos explicaciones en la misma
+              pantalla. */}
+          {suggestionRecord && suggestionRecordDate && (suggestionWeeksAgo ?? 0) < 2 && (
+            <p className="text-xs text-[#888888]">
+              Calculado desde tu récord del {formatFriendlyDate(suggestionRecordDate)}:{" "}
+              {suggestionRecord.weight}kg × {suggestionRecord.reps} reps.{" "}
+              {suggestionCase === "weight_increase"
+                ? "Llegaste al tope del rango la vez pasada, así que hoy subís."
+                : "Con la fatiga cae el rendimiento: es esperable una rep menos al mismo esfuerzo."}
+            </p>
+          )}
+        </div>
       )}
 
       {error && <p className="text-sm text-destructive">{error}</p>}
