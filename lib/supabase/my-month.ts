@@ -6,6 +6,7 @@ import {
   type MonthlyGoal,
 } from "@/lib/supabase/monthly-goals";
 import { getClientStats } from "@/lib/supabase/stats";
+import { plannedDaysInRange } from "@/lib/utils/planned-days";
 
 export type MyMonthProgress = {
   goal: MonthlyGoal | null;
@@ -27,6 +28,8 @@ export function daysInMonth(date = new Date()) {
 
 type RoutineWithDayCountRow = {
   id: string;
+  starts_at: string | null;
+  created_at: string;
   routine_days: { count: number }[];
 };
 
@@ -54,7 +57,7 @@ export async function getMyMonthProgress(): Promise<MyMonthProgress | null> {
       .gte("workout_date", `${monthPrefix}-01`),
     supabase
       .from("routines")
-      .select("id, routine_days(count)")
+      .select("id, starts_at, created_at, routine_days(count)")
       .eq("client_id", client.id)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
@@ -70,8 +73,16 @@ export async function getMyMonthProgress(): Promise<MyMonthProgress | null> {
   const trainedDays = trainedDates.length;
 
   const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
-  const weeksInMonth = Math.ceil(totalDays / 7);
-  const plannedDays = plannedDaysPerWeek * weeksInMonth;
+  const monthEndDate = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), totalDays))
+    .toISOString()
+    .slice(0, 10);
+  const plannedDays = plannedDaysInRange({
+    rangeStart: `${monthPrefix}-01`,
+    rangeEnd: monthEndDate,
+    plannedPerWeek: plannedDaysPerWeek,
+    accessActivatedAt: client.accessActivatedAt,
+    routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
+  });
 
   return {
     goal,

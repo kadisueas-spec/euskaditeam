@@ -122,14 +122,33 @@ export async function activateClientAccess(
   if (!endDate) return { error: "Ingresa la fecha de vencimiento del acceso." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+
+  // Este mismo form también se usa para renovar a un cliente YA activo
+  // (extender vencimiento) — access_activated_at solo se pisa cuando
+  // realmente está activando el acceso (estaba inactivo/vencido/cancelado),
+  // nunca en una renovación, o cada mes se reiniciaría el conteo de días
+  // planificados del mes (ver lib/utils/planned-days.ts).
+  const { data: current } = await supabase
     .from("clients")
-    .update({
-      subscription_status: "active",
-      subscription_end_date: new Date(endDate).toISOString(),
-      payment_method: paymentMethod,
-    })
-    .eq("id", clientId);
+    .select("subscription_status")
+    .eq("id", clientId)
+    .maybeSingle();
+
+  const patch: {
+    subscription_status: string;
+    subscription_end_date: string;
+    payment_method: PaymentMethod;
+    access_activated_at?: string;
+  } = {
+    subscription_status: "active",
+    subscription_end_date: new Date(endDate).toISOString(),
+    payment_method: paymentMethod,
+  };
+  if (current && current.subscription_status !== "active") {
+    patch.access_activated_at = new Date().toISOString();
+  }
+
+  const { error } = await supabase.from("clients").update(patch).eq("id", clientId);
 
   if (error) {
     console.error("activateClientAccess error:", error);

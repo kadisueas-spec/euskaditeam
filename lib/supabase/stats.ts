@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { addWeeks, mondayKeyFor, previousMondayKey } from "@/lib/utils/week";
+import { plannedDaysInRange } from "@/lib/utils/planned-days";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -79,6 +80,8 @@ function computeStreaks(
 
 type RoutineWithDayCountRow = {
   id: string;
+  starts_at: string | null;
+  created_at: string;
   routine_days: { count: number }[];
 };
 
@@ -104,7 +107,7 @@ export async function getClientStats(): Promise<ClientStats> {
       .order("workout_date", { ascending: false }),
     supabase
       .from("routines")
-      .select("id, routine_days(count)")
+      .select("id, starts_at, created_at, routine_days(count)")
       .eq("client_id", client.id)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
@@ -123,8 +126,13 @@ export async function getClientStats(): Promise<ClientStats> {
   );
 
   const trainedThisMonth = distinctDatesDesc.filter((d) => d.startsWith(monthPrefix)).length;
-  const weeksElapsedThisMonth = Math.ceil(now.getUTCDate() / 7);
-  const plannedTotal = plannedDaysPerWeek * weeksElapsedThisMonth;
+  const plannedTotal = plannedDaysInRange({
+    rangeStart: `${monthPrefix}-01`,
+    rangeEnd: now.toISOString().slice(0, 10),
+    plannedPerWeek: plannedDaysPerWeek,
+    accessActivatedAt: client.accessActivatedAt,
+    routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
+  });
   const adherencePercent = plannedTotal > 0
     ? Math.min(100, Math.round((trainedThisMonth / plannedTotal) * 100))
     : 0;

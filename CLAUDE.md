@@ -538,6 +538,41 @@ momento, no una galería genérica.
       un gap de 0.28s), más perceptible que un tono único más largo. La
       vibración pasó de un pulso único (`[80, 60, 80]`, ~220ms) a un
       patrón de 3 pulsos repetidos (`[150, 100, 150, 100, 150]`, ~650ms).
+50. Bug de adherencia — activación a mitad de mes (ago-2026): los días
+    planificados del mes se contaban siempre desde el día 1, sin importar
+    cuándo el cliente activó su acceso ni cuándo se le asignó la rutina —
+    caso real: Ana Siani activó el 06/07 y el sistema mostraba 12/20
+    (60%) en vez de 12/16 (75%).
+    - `clients.access_activated_at` (nueva columna, migración
+      `20260729_access_activated_at.sql`) — se escribe SOLO en la
+      transición real a "active" (estaba inactivo/vencido/cancelado),
+      nunca en una renovación o en cada cobro recurrente de PayPal, o el
+      conteo se reiniciaría todos los meses. Dos puntos de escritura:
+      `activateClientAccess` (`app/coach/clients/[id]/actions.ts`, chequea
+      el status previo antes de pisar la fecha) y `updateClientStatus` del
+      webhook de PayPal (`lib/paypal/webhooks.ts`, mismo chequeo — cubre
+      tanto `BILLING.SUBSCRIPTION.ACTIVATED` como cada
+      `PAYMENT.SALE.COMPLETED`). Backfill de clientes ya activos al correr
+      la migración: `created_at` como mejor aproximación disponible (no
+      existía ningún registro histórico previo) — si Luis conoce la fecha
+      real de algún cliente puntual, se corrige a mano por SQL.
+    - `lib/utils/planned-days.ts` (`plannedDaysInRange`, nuevo, sin
+      dependencia de Supabase): arranca el conteo desde la fecha MÁS
+      TARDÍA entre inicio del rango pedido, `access_activated_at`, y la
+      asignación de la rutina activa (`routines.starts_at` si el coach lo
+      cargó, si no `created_at`) — mismo criterio para ambas fechas, así
+      una rutina asignada después de la activación tampoco cuenta días
+      previos a que existiera.
+    - Los 4 lugares que calculaban `plannedDaysPerWeek * semanas` a mano
+      ahora usan el helper: `lib/supabase/stats.ts` (`getClientStats`,
+      adherencia del dashboard del cliente y base de `month-summary.ts`),
+      `lib/supabase/my-month.ts` (ventana bloqueada "Mi Mes"),
+      `lib/supabase/month-summary.ts` (resumen de mes desbloqueado, más
+      `prevPlannedDays` del mes anterior con el mismo criterio), y
+      `app/client/log-workout/actions.ts`
+      (`notifyCoachIfAdherenceCrossed80`, el push del 80% al coach). El
+      dashboard del coach no calcula un % de adherencia propio (solo
+      "sin entrenar 5+ días"), así que no había nada que tocar ahí.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

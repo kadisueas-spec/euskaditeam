@@ -6,6 +6,7 @@ import { getClientStats } from "@/lib/supabase/stats";
 import { sendPushToCoach } from "@/lib/push/send-push";
 import { adherence80PushTitle } from "@/lib/constants/push-copy";
 import { validateSetInput } from "@/lib/utils/validate-set-input";
+import { plannedDaysInRange } from "@/lib/utils/planned-days";
 import { mondayKeyFor, previousMondayKey, addWeeks } from "@/lib/utils/week";
 import { EDIT_WINDOW_DAYS, daysAgo } from "@/lib/utils/edit-window";
 import {
@@ -618,18 +619,25 @@ async function notifyCoachIfAdherenceCrossed80({
   workoutDate,
   monthLogDates,
   plannedDaysPerWeek,
+  routineAssignedAt,
   now,
 }: {
   client: ClientRecord;
   workoutDate: string | undefined;
   monthLogDates: string[];
   plannedDaysPerWeek: number;
+  routineAssignedAt: string | null;
   now: Date;
 }): Promise<void> {
   if (!client.coachId || !workoutDate || plannedDaysPerWeek <= 0) return;
 
-  const weeksElapsedThisMonth = Math.ceil(now.getUTCDate() / 7);
-  const plannedTotal = plannedDaysPerWeek * weeksElapsedThisMonth;
+  const plannedTotal = plannedDaysInRange({
+    rangeStart: `${now.toISOString().slice(0, 7)}-01`,
+    rangeEnd: now.toISOString().slice(0, 10),
+    plannedPerWeek: plannedDaysPerWeek,
+    accessActivatedAt: client.accessActivatedAt,
+    routineAssignedAt,
+  });
   if (plannedTotal <= 0) return;
 
   const beforeDates = new Set(monthLogDates);
@@ -790,13 +798,18 @@ export async function finishWorkout(
         .gte("workout_date", `${monthPrefix}-01`),
       supabase
         .from("routines")
-        .select("id, routine_days(count)")
+        .select("id, starts_at, created_at, routine_days(count)")
         .eq("client_id", client.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
         .limit(1)
         .maybeSingle()
-        .returns<{ id: string; routine_days: { count: number }[] } | null>(),
+        .returns<{
+          id: string;
+          starts_at: string | null;
+          created_at: string;
+          routine_days: { count: number }[];
+        } | null>(),
       supabase
         .from("workout_set_logs")
         .select("weight_kg, reps_completed")
@@ -825,6 +838,7 @@ export async function finishWorkout(
     workoutDate: workoutLog?.workout_date,
     monthLogDates: (monthLogs ?? []).map((l) => l.workout_date),
     plannedDaysPerWeek: activeRoutine?.routine_days[0]?.count ?? 0,
+    routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
     now,
   }).catch((err) => console.error("finishWorkout adherence push error:", err));
 

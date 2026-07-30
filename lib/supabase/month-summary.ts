@@ -3,8 +3,8 @@ import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getClientStats } from "@/lib/supabase/stats";
 import { getMonthKey, getPreviousMonthKey, isMonthEndToday } from "@/lib/supabase/monthly-goals";
-import { daysInMonth } from "@/lib/supabase/my-month";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
+import { plannedDaysInRange } from "@/lib/utils/planned-days";
 import {
   bestSetByExercise,
   detectWeeklyRecord,
@@ -36,6 +36,10 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 function firstDayOfNextMonth(monthPrefix: string): string {
   const [y, m] = monthPrefix.split("-").map(Number);
   return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
+}
+
+function dayBeforeDate(dateStr: string): string {
+  return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() - DAY_MS).toISOString().slice(0, 10);
 }
 
 function percentDiff(current: number, previous: number): number | null {
@@ -263,7 +267,12 @@ type EvaluationRow = {
   body_measurements: { measurement_type: string; value: number }[];
 };
 
-type RoutineWithDayCountRow = { id: string; routine_days: { count: number }[] };
+type RoutineWithDayCountRow = {
+  id: string;
+  starts_at: string | null;
+  created_at: string;
+  routine_days: { count: number }[];
+};
 
 export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
   if (!isMonthEndToday()) return null;
@@ -308,7 +317,7 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
     getClientStats(),
     supabase
       .from("routines")
-      .select("id, routine_days(count)")
+      .select("id, starts_at, created_at, routine_days(count)")
       .eq("client_id", client.id)
       .eq("is_active", true)
       .order("created_at", { ascending: false })
@@ -394,10 +403,7 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
   ]);
 
   const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
-  const weeksInMonth = Math.ceil(daysInMonth(now) / 7);
-  const weeksInPrevMonth = Math.ceil(
-    daysInMonth(new Date(`${prevMonthStart}T00:00:00Z`)) / 7
-  );
+  const routineAssignedAt = activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null;
 
   // --- Números del mes ---
   const trainedDatesAllTime = Array.from(
@@ -426,9 +432,21 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
     )
   );
 
-  const plannedDays = plannedDaysPerWeek * weeksInMonth;
+  const plannedDays = plannedDaysInRange({
+    rangeStart: monthStart,
+    rangeEnd: dayBeforeDate(monthEndExclusive),
+    plannedPerWeek: plannedDaysPerWeek,
+    accessActivatedAt: client.accessActivatedAt,
+    routineAssignedAt,
+  });
   const adherencePercent = stats.adherencePercent;
-  const prevPlannedDays = plannedDaysPerWeek * weeksInPrevMonth;
+  const prevPlannedDays = plannedDaysInRange({
+    rangeStart: prevMonthStart,
+    rangeEnd: dayBeforeDate(monthStart),
+    plannedPerWeek: plannedDaysPerWeek,
+    accessActivatedAt: client.accessActivatedAt,
+    routineAssignedAt,
+  });
   const prevAdherencePercent =
     prevPlannedDays > 0 ? Math.min(100, Math.round((prevTrainedDays / prevPlannedDays) * 100)) : 0;
 

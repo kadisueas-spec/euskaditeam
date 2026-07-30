@@ -161,6 +161,7 @@ CREATE TABLE public.clients (
     rest_timer_enabled boolean DEFAULT true NOT NULL,
     rest_timer_sound_enabled boolean DEFAULT true NOT NULL,
     rest_timer_vibration_enabled boolean DEFAULT true NOT NULL,
+    access_activated_at timestamp with time zone,
     CONSTRAINT clients_payment_method_check CHECK ((payment_method = ANY (ARRAY['cash'::text, 'transfer'::text, 'paypal'::text]))),
     CONSTRAINT clients_subscription_status_check CHECK ((subscription_status = ANY (ARRAY['active'::text, 'inactive'::text, 'past_due'::text, 'canceled'::text, 'trialing'::text]))),
     CONSTRAINT clients_training_experience_check CHECK ((training_experience = ANY (ARRAY['beginner'::text, 'intermediate'::text, 'advanced'::text])))

@@ -103,15 +103,34 @@ async function updateSubscriptionRow(
   }
 }
 
+// PAYMENT.SALE.COMPLETED llega en CADA cobro exitoso, incluidos los
+// recurrentes mensuales de un cliente que ya venía activo — por eso
+// access_activated_at solo se pisa cuando el status previo NO era "active"
+// (primera activación o reactivación real tras una baja), nunca en un
+// cobro de renovación. Si se pisara siempre, el conteo de días
+// planificados del mes (lib/utils/planned-days.ts) se reiniciaría con cada
+// pago y la adherencia de un cliente viejo siempre daría ~100%.
 async function updateClientStatus(
   admin: ReturnType<typeof createAdminClient>,
   clientId: string,
   subscriptionStatus: string
 ): Promise<void> {
-  const { error } = await admin
-    .from("clients")
-    .update({ subscription_status: subscriptionStatus })
-    .eq("id", clientId);
+  const patch: { subscription_status: string; access_activated_at?: string } = {
+    subscription_status: subscriptionStatus,
+  };
+
+  if (subscriptionStatus === "active") {
+    const { data: current } = await admin
+      .from("clients")
+      .select("subscription_status")
+      .eq("id", clientId)
+      .maybeSingle();
+    if (current && current.subscription_status !== "active") {
+      patch.access_activated_at = new Date().toISOString();
+    }
+  }
+
+  const { error } = await admin.from("clients").update(patch).eq("id", clientId);
   if (error) {
     console.error("paypal webhook: error actualizando clients.subscription_status:", error);
   }
