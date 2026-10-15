@@ -41,6 +41,6 @@ export async function saveWeightLog(
     return { error: "No se pudo guardar el peso." };
   }
 
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
   return { success: true, id: data.id };
 }

@@ -15,22 +15,23 @@ import { saveWeightLog } from "@/app/client/progress/weight-actions";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import type { WeightLogEntry } from "@/lib/supabase/weight-logs";
 import { formatDate } from "@/lib/utils/format-date";
+import { paraguayNow, todayInParaguay } from "@/lib/utils/today";
 
 type Range = "week" | "month" | "all";
 const RANGE_LABEL: Record<Range, string> = { week: "Semana", month: "Mes", all: "Todo" };
 const RANGES: Range[] = ["week", "month", "all"];
 
-// Mismo criterio de "día" que ya usa getOrCreateInProgressWorkout (UTC,
-// consistente en toda la app) — así "hoy" no depende de la zona horaria
+// Mismo criterio de "día" que getOrCreateInProgressWorkout (hora de Paraguay,
+// lib/utils/today.ts) — así "hoy" no depende de la zona horaria
 // del navegador del cliente.
 function todayDateString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return todayInParaguay();
 }
 
 function filterByRange(logs: WeightLogEntry[], range: Range): WeightLogEntry[] {
   if (range === "all") return logs;
   const days = range === "week" ? 7 : 30;
-  const cutoff = new Date();
+  const cutoff = paraguayNow();
   cutoff.setUTCDate(cutoff.getUTCDate() - days);
   const cutoffStr = cutoff.toISOString().slice(0, 10);
   return logs.filter((l) => l.date >= cutoffStr);

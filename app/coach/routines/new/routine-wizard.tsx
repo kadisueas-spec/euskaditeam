@@ -16,6 +16,7 @@ import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
 import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { minutesInputToSeconds } from "@/lib/utils/rest-time";
 import { createRoutine, type WarmupType } from "../actions";
+import { todayInParaguay } from "@/lib/utils/today";
 
 type ExerciseRow = {
   key: string;
@@ -97,7 +98,7 @@ export function RoutineWizard({
   const [clientId, setClientId] = useState("");
   const [mesocicloNombre, setMesocicloNombre] = useState("");
   const [durationWeeks, setDurationWeeks] = useState("4");
-  const [startsAt, setStartsAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [startsAt, setStartsAt] = useState(() => todayInParaguay());
   const [days, setDays] = useState<DayRow[]>([]);
 
   function goToStep2() {

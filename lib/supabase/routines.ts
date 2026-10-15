@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { todayInParaguay } from "@/lib/utils/today";
 
 export type RoutineListItem = {
   id: string;
@@ -263,7 +264,7 @@ type ClientRoutineCheckRow = {
 // no le asignó el siguiente.
 export async function getNoActiveRoutineAlerts(): Promise<NoActiveRoutineAlert[]> {
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
 
   // is_active es un campo legacy que la app nunca escribe (el flujo real de
   // activar/desactivar acceso solo toca subscription_status, ver

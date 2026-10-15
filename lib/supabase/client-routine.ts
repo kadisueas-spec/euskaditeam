@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
+import { todayInParaguay } from "@/lib/utils/today";
 
 export type WarmupType =
   | "none"
@@ -176,7 +177,7 @@ export async function getWeekProgress(
   }
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
   const weekStart = mondayKeyFor(today);
   const weekEnd = addWeeks(weekStart, 1);
 
@@ -226,7 +227,7 @@ export async function getInProgressWorkoutDayId(): Promise<string | null> {
   if (!client) return null;
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
 
   const { data } = await supabase
     .from("workout_logs")
@@ -238,4 +239,34 @@ export async function getInProgressWorkoutDayId(): Promise<string | null> {
     .maybeSingle();
 
   return data?.routine_day_id ?? null;
+}
+
+export type ActiveWorkoutSession = { dayId: string; dayName: string | null };
+
+// Barra "Entrenamiento en curso" (oct-2026, active-workout-bar.tsx): a
+// diferencia de getInProgressWorkoutDayId, acá SÍ se filtra
+// is_completed = false — la barra solo tiene sentido mientras la sesión
+// sigue abierta, no para una ya finalizada hoy. Mismo criterio de "hoy"
+// que getOrCreateInProgressWorkout, así una sesión huérfana de otro día
+// (ver Fase 3, ítem 13.2) no deja la barra clavada para siempre.
+export async function getActiveWorkoutSession(): Promise<ActiveWorkoutSession | null> {
+  const client = await getCurrentClientRecord();
+  if (!client) return null;
+
+  const supabase = await createClient();
+  const today = todayInParaguay();
+
+  const { data } = await supabase
+    .from("workout_logs")
+    .select("routine_day_id, routine_days(name)")
+    .eq("client_id", client.id)
+    .eq("workout_date", today)
+    .eq("is_completed", false)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+    .returns<{ routine_day_id: string | null; routine_days: { name: string } | null } | null>();
+
+  if (!data?.routine_day_id) return null;
+  return { dayId: data.routine_day_id, dayName: data.routine_days?.name ?? null };
 }

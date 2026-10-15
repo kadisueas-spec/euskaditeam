@@ -16,6 +16,7 @@ import {
   type SessionRecord,
   type SetLogWithExerciseRow,
 } from "@/lib/utils/session-records";
+import { paraguayNow, todayInParaguay } from "@/lib/utils/today";
 
 export type LoggedSet = {
   id: string;
@@ -64,7 +65,7 @@ export async function getOrCreateInProgressWorkout(
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
 
   const { data: existing } = await supabase
     .from("workout_logs")
@@ -781,7 +782,10 @@ export async function finishWorkout(
 
   const supabase = await createClient();
   const now = new Date();
-  const monthPrefix = now.toISOString().slice(0, 7);
+  // now = instante real (finished_at); pyNow = calendario de Paraguay (mes
+  // en curso, push del 80%).
+  const pyNow = paraguayNow(now);
+  const monthPrefix = pyNow.toISOString().slice(0, 7);
 
   const [{ data: workoutLog }, { data: monthLogs }, { data: activeRoutine }, { data: sets }] =
     await Promise.all([
@@ -839,7 +843,7 @@ export async function finishWorkout(
     monthLogDates: (monthLogs ?? []).map((l) => l.workout_date),
     plannedDaysPerWeek: activeRoutine?.routine_days[0]?.count ?? 0,
     routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
-    now,
+    now: pyNow,
   }).catch((err) => console.error("finishWorkout adherence push error:", err));
 
   const totalVolume = (sets ?? []).reduce(
@@ -988,7 +992,7 @@ export async function getWorkoutSuggestions(
   if (routineExerciseIds.length === 0) return {};
 
   const supabase = await createClient();
-  const now = new Date();
+  const now = paraguayNow();
   const from = mondayWeeksAgo(now, MAX_SUGGESTION_WEEKS_BACK);
   const to = mondayWeeksAgo(now, 0); // lunes de esta semana, exclusivo más abajo (lte usaría el domingo pasado)
   const lastSunday = new Date(`${to}T00:00:00Z`);

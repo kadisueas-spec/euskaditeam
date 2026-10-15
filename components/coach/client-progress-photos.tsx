@@ -11,6 +11,7 @@ import { PhotoComparisonView } from "@/components/client/photo-comparison-view";
 import type { PhotoCategory, ProgressPhoto } from "@/lib/supabase/progress-photos";
 import type { EvaluationDetail } from "@/lib/supabase/anthropometrics";
 import { formatDate } from "@/lib/utils/format-date";
+import { todayInParaguay } from "@/lib/utils/today";
 
 const CATEGORY_LABEL: Record<PhotoCategory, string> = {
   front: "Frente",
@@ -69,7 +70,7 @@ export function ClientProgressPhotos({
       setPhotos((prev) => [
         {
           id: `pending-${crypto.randomUUID()}`,
-          takenAt: new Date().toISOString().slice(0, 10),
+          takenAt: todayInParaguay(),
           category: category || null,
           uploadedBy: "coach",
           photoUrl: URL.createObjectURL(compressed),

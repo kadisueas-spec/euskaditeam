@@ -13,6 +13,7 @@ import type {
   UpdateSetInput,
   WorkoutSummary,
 } from "@/app/client/log-workout/actions";
+import { todayInParaguay } from "@/lib/utils/today";
 
 // Espejo de app/client/log-workout/actions.ts para el entrenamiento propio
 // del coach — coach_id en vez de client_id. getWorkoutSuggestions NO se
@@ -37,7 +38,7 @@ export async function getOrCreateInProgressTrainingWorkout(
   if (!profile) return { error: "No se pudo identificar tu perfil." };
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
 
   const { data: existing } = await supabase
     .from("workout_logs")

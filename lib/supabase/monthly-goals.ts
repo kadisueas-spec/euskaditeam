@@ -1,19 +1,20 @@
 import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
+import { paraguayNow } from "@/lib/utils/today";
 
-export function getMonthKey(date = new Date()): string {
+export function getMonthKey(date = paraguayNow()): string {
   const year = date.getUTCFullYear();
   const month = String(date.getUTCMonth() + 1).padStart(2, "0");
   return `${year}-${month}-01`;
 }
 
-export function getPreviousMonthKey(date = new Date()): string {
+export function getPreviousMonthKey(date = paraguayNow()): string {
   const prev = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() - 1, 1));
   return getMonthKey(prev);
 }
 
-export function isMonthEndToday(date = new Date()): boolean {
+export function isMonthEndToday(date = paraguayNow()): boolean {
   const totalDays = new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)
   ).getUTCDate();

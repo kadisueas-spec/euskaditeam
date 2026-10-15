@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import type { MyRoutine, MyRoutineDay, WarmupType } from "@/lib/supabase/client-routine";
+import { todayInParaguay } from "@/lib/utils/today";
 
 // Espejo de client-routine.ts para el entrenamiento propio del coach —
 // mismas formas de datos (MyRoutine/MyRoutineDay), pero filtrando por
@@ -114,7 +115,7 @@ export async function getInProgressTrainingDayId(): Promise<string | null> {
   if (!profile) return null;
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
 
   const { data } = await supabase
     .from("workout_logs")

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ChevronRight, LogOut, PlayCircle } from "lucide-react";
+import { ChevronRight, LogOut, MessageSquare, PlayCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChangePasswordForm } from "@/components/auth/change-password-form";
@@ -10,6 +10,7 @@ import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getMySubscription } from "@/lib/supabase/subscriptions";
 import { getUnseenVideoCount } from "@/lib/supabase/videos";
+import { getUnreadFeedbackCount } from "@/lib/supabase/feedback";
 import { formatDate } from "@/lib/utils/format-date";
 import { logout } from "../actions";
 import { CancelSubscriptionButton } from "./cancel-subscription-button";
@@ -23,12 +24,14 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 export default async function ProfilePage() {
-  const [profile, client, subscription, unseenVideoCount] = await Promise.all([
-    getCurrentProfile(),
-    getCurrentClientRecord(),
-    getMySubscription(),
-    getUnseenVideoCount(),
-  ]);
+  const [profile, client, subscription, unseenVideoCount, unreadFeedbackCount] =
+    await Promise.all([
+      getCurrentProfile(),
+      getCurrentClientRecord(),
+      getMySubscription(),
+      getUnseenVideoCount(),
+      getUnreadFeedbackCount(),
+    ]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -38,6 +41,29 @@ export default async function ProfilePage() {
         </h1>
         <p className="text-sm text-[#888888]">{profile?.email}</p>
       </div>
+
+      {/* Feedback salió de la nav (oct-2026) — vive acá junto a Videos, con
+          el mismo badge de no leídos que antes tenía el ícono de la nav. */}
+      <Link
+        href="/client/feedback"
+        className="flex min-h-[44px] items-center gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 active:bg-white/5"
+      >
+        <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-[#e8001c]/15 text-[#e8001c]">
+          <MessageSquare className="size-5" />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-medium text-white">Feedback</span>
+          <span className="block text-xs text-[#888888]">
+            Correcciones y comentarios de tu coach
+          </span>
+        </span>
+        {unreadFeedbackCount > 0 && (
+          <span className="flex min-w-[22px] shrink-0 items-center justify-center rounded-full bg-[#e8001c] px-1.5 py-0.5 text-xs font-bold text-white">
+            {unreadFeedbackCount > 9 ? "9+" : unreadFeedbackCount}
+          </span>
+        )}
+        <ChevronRight className="size-4 shrink-0 text-[#888888]" />
+      </Link>
 
       <Link
         href="/client/videos"

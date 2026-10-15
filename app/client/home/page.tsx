@@ -12,11 +12,15 @@ import { PlanCard } from "@/components/client/plan-card";
 import { RoutineWelcomeBanner } from "@/components/client/routine-welcome-banner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getClientHomeData } from "@/lib/supabase/client-home";
+import { getActiveWorkoutSession } from "@/lib/supabase/client-routine";
 import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
 
 export default async function ClientHomePage() {
-  const data = await getClientHomeData();
+  const [data, activeWorkout] = await Promise.all([
+    getClientHomeData(),
+    getActiveWorkoutSession(),
+  ]);
   const motivationalPhrase = randomMotivationalPhrase();
 
   if (!data) return null;
@@ -36,6 +40,7 @@ export default async function ClientHomePage() {
       {data.hasRoutine && (
         <FadeIn>
           <NextWorkoutCard
+            activeWorkout={activeWorkout}
             trainedToday={data.trainedToday}
             todaySummary={data.todaySummary}
             suggestedDay={data.suggestedDay}
@@ -83,7 +88,7 @@ export default async function ClientHomePage() {
           hasData={!!data.routineCard}
         />
         <PlanCard
-          href="/client/progress?tab=nutricion"
+          href="/client/body?tab=nutricion"
           icon={Salad}
           label="Nutrición"
           detail={
@@ -94,7 +99,7 @@ export default async function ClientHomePage() {
           hasData={!!data.nutritionCard}
         />
         <PlanCard
-          href="/client/progress?tab=cuerpo"
+          href="/client/body?tab=cuerpo"
           icon={Ruler}
           label="Mi Cuerpo"
           detail={
@@ -107,7 +112,7 @@ export default async function ClientHomePage() {
           hasData={!!data.bodyCard}
         />
         <PlanCard
-          href="/client/progress?tab=cuerpo"
+          href="/client/body?tab=cuerpo"
           icon={Camera}
           label="Fotos de Progreso"
           detail={

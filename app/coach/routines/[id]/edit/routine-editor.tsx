@@ -16,6 +16,7 @@ import type { ExerciseOption, RoutineDetail, WarmupType } from "@/lib/supabase/r
 import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { minutesInputToSeconds, secondsToMinutesInput } from "@/lib/utils/rest-time";
 import { updateRoutine } from "../../actions";
+import { todayInParaguay } from "@/lib/utils/today";
 
 type ExerciseRow = {
   key: string;
@@ -111,7 +112,7 @@ export function RoutineEditor({
     routine.durationWeeks != null ? String(routine.durationWeeks) : "4"
   );
   const [startsAt, setStartsAt] = useState(
-    routine.startsAt ?? new Date().toISOString().slice(0, 10)
+    routine.startsAt ?? todayInParaguay()
   );
   const [days, setDays] = useState<DayRow[]>(() =>
     daysFromRoutine(routine, exercises)

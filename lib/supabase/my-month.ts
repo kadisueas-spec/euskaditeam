@@ -7,6 +7,7 @@ import {
 } from "@/lib/supabase/monthly-goals";
 import { getClientStats } from "@/lib/supabase/stats";
 import { plannedDaysInRange } from "@/lib/utils/planned-days";
+import { paraguayNow } from "@/lib/utils/today";
 
 export type MyMonthProgress = {
   goal: MonthlyGoal | null;
@@ -20,7 +21,7 @@ export type MyMonthProgress = {
   daysUntilUnlock: number;
 };
 
-export function daysInMonth(date = new Date()) {
+export function daysInMonth(date = paraguayNow()) {
   return new Date(
     Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)
   ).getUTCDate();
@@ -43,7 +44,7 @@ export async function getMyMonthProgress(): Promise<MyMonthProgress | null> {
   if (!client) return null;
 
   const supabase = await createClient();
-  const now = new Date();
+  const now = paraguayNow();
   const totalDays = daysInMonth(now);
   const isUnlocked = isMonthEndToday(now);
   const monthPrefix = now.toISOString().slice(0, 7);

@@ -24,6 +24,7 @@ import {
   type MonthHighlightInput,
 } from "@/lib/utils/month-highlight";
 import type { PerimeterType } from "@/lib/anthropometrics/constants";
+import { paraguayNow } from "@/lib/utils/today";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -281,7 +282,7 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
   if (!client) return null;
 
   const supabase = await createClient();
-  const now = new Date();
+  const now = paraguayNow();
   const monthKey = getMonthKey(now);
   const monthPrefix = monthKey.slice(0, 7);
   const monthStart = `${monthPrefix}-01`;

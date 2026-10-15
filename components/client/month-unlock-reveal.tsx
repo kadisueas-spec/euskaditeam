@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { Lock, LockOpen } from "lucide-react";
 import { MonthRecap } from "./month-recap";
 import type { MyMonthSummary } from "@/lib/supabase/month-summary";
+import { todayInParaguay } from "@/lib/utils/today";
 
 function monthStorageKey() {
-  return `mimes-unlock-seen-${new Date().toISOString().slice(0, 7)}`;
+  return `mimes-unlock-seen-${todayInParaguay().slice(0, 7)}`;
 }
 
 // Bloque 2 (jul-2026): la primera vez que el cliente ve el mes desbloqueado

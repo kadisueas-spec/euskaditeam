@@ -186,7 +186,7 @@ export async function createEvaluation(
   sendPushToClient(input.clientId, {
     title: NEW_EVALUATION_PUSH_TITLE,
     body: NEW_EVALUATION_PUSH_BODY,
-    url: "/client/progress?tab=cuerpo",
+    url: "/client/body?tab=cuerpo",
   }).catch((error) => {
     console.error("createEvaluation push error:", error);
   });

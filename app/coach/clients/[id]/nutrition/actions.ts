@@ -98,12 +98,12 @@ export async function uploadNutritionPlan(
   }
 
   revalidatePath(`/coach/clients/${clientId}`);
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
 
   sendPushToClient(clientId, {
     title: NEW_NUTRITION_PLAN_PUSH_TITLE,
     body: NEW_NUTRITION_PLAN_PUSH_BODY,
-    url: "/client/progress?tab=nutricion",
+    url: "/client/body?tab=nutricion",
   }).catch((error) => {
     console.error("uploadNutritionPlan push error:", error);
   });
@@ -143,6 +143,6 @@ export async function deleteNutritionPlan(
   await supabase.storage.from("nutrition-plans").remove([plan.file_path]);
 
   revalidatePath(`/coach/clients/${clientId}`);
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
   return { success: true };
 }

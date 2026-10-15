@@ -3,6 +3,7 @@ import { MonthUnlockReveal } from "@/components/client/month-unlock-reveal";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getMyMonthProgress } from "@/lib/supabase/my-month";
 import { getMyMonthSummary } from "@/lib/supabase/month-summary";
+import { todayInParaguay } from "@/lib/utils/today";
 
 const WEEKDAY_LABELS = ["L", "M", "M", "J", "V", "S", "D"];
 
@@ -61,7 +62,7 @@ export default async function MyMonthPage() {
     plannedDays > 0
       ? Math.min(100, Math.round((trainedDays / plannedDays) * 100))
       : 0;
-  const monthPrefix = new Date().toISOString().slice(0, 7);
+  const monthPrefix = todayInParaguay().slice(0, 7);
   const trainedSet = new Set(trainedDates);
   const leadingBlanks = mondayIndexOfFirstDay(monthPrefix);
   const trailingBlanks =

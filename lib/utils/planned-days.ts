@@ -1,7 +1,12 @@
+import { paraguayDateOf } from "@/lib/utils/today";
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-function toDateOnly(iso: string): string {
-  return iso.slice(0, 10);
+// access_activated_at y routines.created_at son timestamptz: una activación
+// a las 22hs de Paraguay ya es "mañana" en UTC — se toma la fecha de
+// Paraguay (routines.starts_at es DATE y pasa sin cambios).
+function toDateOnly(value: string): string {
+  return paraguayDateOf(value);
 }
 
 // Días planificados de entrenamiento en un rango de fechas, arrancando NO

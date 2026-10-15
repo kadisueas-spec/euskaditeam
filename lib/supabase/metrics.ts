@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
+import { paraguayNow } from "@/lib/utils/today";
 
 // Fase 9 — Métricas Avanzadas de Entrenamiento. Todo se calcula agregando
 // workout_set_logs (peso/reps/RIR por serie) + exercises.muscle_group, no
@@ -352,7 +353,7 @@ export async function getClientMetrics(
   clientId: string,
   range: MetricsRange = "week"
 ): Promise<ClientMetrics> {
-  const now = new Date();
+  const now = paraguayNow();
   const buckets = buildBuckets(range, now);
   const rows = await fetchRawSets(clientId, buckets[0].startMs);
   return computeMetrics(rows, range, now);

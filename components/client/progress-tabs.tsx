@@ -5,76 +5,62 @@ import { useState } from "react";
 // Mismo patrón que ClientDetailTabs (coach) — paneles que recién se montan
 // la primera vez que se visitan, para que los charts de Recharts midan
 // bien desde el arranque (ver comentario largo en client-detail-tabs.tsx).
-type Tab = "entrenamiento" | "cuerpo" | "peso" | "nutricion";
-
-const TAB_LABELS: Record<Tab, string> = {
-  entrenamiento: "Entrenamiento",
-  cuerpo: "Mi Cuerpo",
-  peso: "Mi Peso",
-  nutricion: "Nutrición",
+//
+// Genérico desde oct-2026: antes tenía las 4 pestañas de Progreso fijas;
+// al separar Mi Cuerpo como sección propia de la nav, la usan las dos
+// pantallas con su propio set de pestañas.
+export type ProgressTab = {
+  key: string;
+  label: string;
+  content: React.ReactNode;
 };
 
-const VALID_TABS: Tab[] = ["entrenamiento", "cuerpo", "peso", "nutricion"];
-
 export function ProgressTabs({
-  entrenamiento,
-  cuerpo,
-  peso,
-  nutricion,
+  tabs,
   initialTab,
 }: {
-  entrenamiento: React.ReactNode;
-  cuerpo: React.ReactNode;
-  peso: React.ReactNode;
-  nutricion: React.ReactNode;
+  tabs: ProgressTab[];
   // Deep link desde una push notification (ej. "Nueva evaluación
-  // disponible" -> ?tab=cuerpo) — sin esto, el link siempre abría en
-  // Entrenamiento y el cliente tenía que tocar de nuevo para ver lo que
+  // disponible" -> ?tab=cuerpo) — sin esto, el link siempre abría en la
+  // primera pestaña y el cliente tenía que tocar de nuevo para ver lo que
   // la notificación anunciaba.
   initialTab?: string;
 }) {
-  const startTab: Tab = VALID_TABS.includes(initialTab as Tab)
-    ? (initialTab as Tab)
-    : "entrenamiento";
-  const [tab, setTab] = useState<Tab>(startTab);
-  const [visited, setVisited] = useState<Record<Tab, boolean>>({
-    entrenamiento: startTab === "entrenamiento",
-    cuerpo: startTab === "cuerpo",
-    peso: startTab === "peso",
-    nutricion: startTab === "nutricion",
-  });
+  const startTab = tabs.some((t) => t.key === initialTab) ? initialTab! : tabs[0].key;
+  const [tab, setTab] = useState(startTab);
+  const [visited, setVisited] = useState<Record<string, boolean>>({ [startTab]: true });
 
-  function selectTab(next: Tab) {
+  function selectTab(next: string) {
     setVisited((v) => ({ ...v, [next]: true }));
     setTab(next);
   }
 
-  const panels: Record<Tab, React.ReactNode> = { entrenamiento, cuerpo, peso, nutricion };
-
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex gap-2 text-sm">
-        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => selectTab(t)}
-            className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
-              tab === t
-                ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
-                : "bg-white/5 text-[#888888]"
-            }`}
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
-      </div>
+      {tabs.length > 1 && (
+        <div className="flex gap-2 text-sm">
+          {tabs.map((t) => (
+            <button
+              key={t.key}
+              type="button"
+              onClick={() => selectTab(t.key)}
+              className={`min-h-[44px] min-w-[44px] flex-1 cursor-pointer touch-manipulation rounded-full text-center font-display tracking-widest uppercase transition-colors ${
+                tab === t.key
+                  ? "bg-[#e8001c] text-white shadow-[0_0_12px_rgba(232,0,28,0.4)]"
+                  : "bg-white/5 text-[#888888]"
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
-      {(Object.keys(TAB_LABELS) as Tab[]).map(
+      {tabs.map(
         (t) =>
-          visited[t] && (
-            <div key={t} className={tab === t ? "flex flex-col gap-6" : "hidden"}>
-              {panels[t]}
+          visited[t.key] && (
+            <div key={t.key} className={tab === t.key ? "flex flex-col gap-6" : "hidden"}>
+              {t.content}
             </div>
           )
       )}

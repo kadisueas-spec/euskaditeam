@@ -61,6 +61,6 @@ export async function setPhotosPublicUseAuthorization(
   }
 
   revalidatePath("/client/profile");
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
   return { success: true };
 }

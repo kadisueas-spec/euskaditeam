@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { buttonVariants } from "@/components/ui/button";
-import type { MyRoutineDay } from "@/lib/supabase/client-routine";
+import type { ActiveWorkoutSession, MyRoutineDay } from "@/lib/supabase/client-routine";
 import type { TodaySummary } from "@/lib/supabase/client-home";
 
 // "Próximo entrenamiento" (jul-2026, movida a la pantalla de inicio en
@@ -17,7 +17,12 @@ export function NextWorkoutCard({
   suggestedDay,
   completedCount,
   plannedCount,
+  activeWorkout = null,
 }: {
+  // Oct-2026: Entrenar salió de la nav y esta tarjeta pasó a ser LA
+  // entrada a entrenar — con una sesión abierta hoy, manda sobre los otros
+  // tres estados y ofrece retomarla.
+  activeWorkout?: ActiveWorkoutSession | null;
   trainedToday?: boolean;
   todaySummary?: TodaySummary | null;
   suggestedDay: MyRoutineDay | null;
@@ -30,10 +35,31 @@ export function NextWorkoutCard({
   return (
     <div className="rounded-2xl border border-[#e8001c]/40 bg-[#111111] p-5">
       <p className="text-xs font-semibold tracking-widest text-[#e8001c] uppercase">
-        {trainedToday ? "Hoy" : suggestedDay ? "Tu próximo entrenamiento" : "Esta semana"}
+        {activeWorkout
+          ? "En curso"
+          : trainedToday
+            ? "Hoy"
+            : suggestedDay
+              ? "Tu próximo entrenamiento"
+              : "Esta semana"}
       </p>
 
-      {trainedToday ? (
+      {activeWorkout ? (
+        <>
+          <p className="mt-1 font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
+            {activeWorkout.dayName ?? "Tu sesión de hoy"}
+          </p>
+          <p className="text-sm text-[#888888]">Dejaste la sesión abierta, retomala donde quedaste.</p>
+          <Link
+            href={`/client/log-workout?day=${activeWorkout.dayId}`}
+            className={buttonVariants({
+              className: "mt-4 min-h-[52px] w-full text-base",
+            })}
+          >
+            Continuar entrenamiento
+          </Link>
+        </>
+      ) : trainedToday ? (
         <>
           <p className="mt-1 font-display text-3xl tracking-wide text-[#f5f5f5] uppercase">
             Ya entrenaste hoy 🔥

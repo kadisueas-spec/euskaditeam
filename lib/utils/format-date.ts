@@ -1,3 +1,5 @@
+import { paraguayDateOf, todayInParaguay } from "@/lib/utils/today";
+
 export function formatDate(value: string) {
   // timeZone: "UTC" evita que una fecha guardada como medianoche UTC
   // (ej. "2026-08-15") se muestre como el día anterior en servidores
@@ -20,19 +22,13 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // UTC en los dos casos, no por el timestamp crudo, para no desfasarse un
 // día en servidores con zona horaria negativa (misma convención que
 // mondayKeyFor/getClientStats).
+//
+// Oct-2026: "hoy" y el día de un timestamptz se calculan en hora de
+// Paraguay (lib/utils/today.ts) — en UTC, a partir de las 21hs lo de hoy
+// ya se mostraba como "Ayer".
 export function formatFriendlyDate(value: string): string {
-  const target = new Date(value);
-  const targetDayMs = Date.UTC(
-    target.getUTCFullYear(),
-    target.getUTCMonth(),
-    target.getUTCDate()
-  );
-  const now = new Date();
-  const todayDayMs = Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate()
-  );
+  const targetDayMs = new Date(`${paraguayDateOf(value)}T00:00:00Z`).getTime();
+  const todayDayMs = new Date(`${todayInParaguay()}T00:00:00Z`).getTime();
   const diffDays = Math.round((todayDayMs - targetDayMs) / DAY_MS);
 
   if (diffDays === 0) return "Hoy";

@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { addWeeks, mondayKeyFor, previousMondayKey } from "@/lib/utils/week";
 import { plannedDaysInRange } from "@/lib/utils/planned-days";
+import { paraguayNow } from "@/lib/utils/today";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -96,7 +97,7 @@ export async function getClientStats(): Promise<ClientStats> {
   }
 
   const supabase = await createClient();
-  const now = new Date();
+  const now = paraguayNow();
   const monthPrefix = now.toISOString().slice(0, 7);
 
   const [{ data: allLogs }, { data: activeRoutine }] = await Promise.all([

@@ -27,6 +27,7 @@ import {
 } from "@/lib/anthropometrics/constants";
 import type { SkinfoldType } from "@/lib/anthropometrics/formulas";
 import { formatDate } from "@/lib/utils/format-date";
+import { paraguayNow } from "@/lib/utils/today";
 
 const SKINFOLD_TYPES = Object.keys(SKINFOLD_LABELS) as SkinfoldType[];
 
@@ -43,7 +44,7 @@ function daysSinceEvaluation(dateStr: string): number {
     target.getUTCMonth(),
     target.getUTCDate()
   );
-  const now = new Date();
+  const now = paraguayNow();
   const todayDayMs = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
   return Math.round((todayDayMs - targetDayMs) / (24 * 60 * 60 * 1000));
 }

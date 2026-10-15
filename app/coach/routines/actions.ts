@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { NEW_ROUTINE_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
+import { todayInParaguay } from "@/lib/utils/today";
 
 export type WarmupType =
   | "none"
@@ -69,7 +70,7 @@ export async function createRoutine(
   if (!user) return { error: "No autenticado." };
 
   const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
-  const startsAt = input.startsAt || new Date().toISOString().slice(0, 10);
+  const startsAt = input.startsAt || todayInParaguay();
 
   // Sistema de mesociclos (jul-2026): archivar la rutina activa actual del
   // cliente ANTES de insertar la nueva — obligatorio, no solo prolijo,
@@ -80,7 +81,7 @@ export async function createRoutine(
   // era solo la fecha planeada de fin del mesociclo).
   const { error: archiveError } = await supabase
     .from("routines")
-    .update({ is_active: false, ends_at: new Date().toISOString().slice(0, 10) })
+    .update({ is_active: false, ends_at: todayInParaguay() })
     .eq("client_id", input.clientId)
     .eq("is_active", true);
 
@@ -191,7 +192,7 @@ export async function updateRoutine(
   if (!user) return { error: "No autenticado." };
 
   const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
-  const startsAt = input.startsAt || new Date().toISOString().slice(0, 10);
+  const startsAt = input.startsAt || todayInParaguay();
 
   // Sistema de mesociclos (jul-2026): a diferencia de createRoutine, ACÁ no
   // se recalcula ends_at a partir de duration_weeks/starts_at en cada

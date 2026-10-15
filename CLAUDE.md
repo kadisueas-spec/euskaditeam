@@ -681,7 +681,8 @@ momento, no una galería genérica.
       (`ClientBottomNav`/`CLIENT_NAV_ITEMS`) NO cambió — "Mi Rutina" sigue
       ahí tal cual, solo cambió dónde aterriza el cliente al entrar (no
       hay un ícono de "Inicio" nuevo, a propósito, para no sumar un 7º
-      ítem a una barra que ya tiene 6).
+      ítem a una barra que ya tiene 6). **Reemplazado en oct-2026 por el
+      ítem 56** (nav de 5 con Inicio).
 54. "La app explica lo que hace" (ago-2026) — el cliente usaba funciones
     sin saber que existían (un número sugerido, un % de grasa) sin saber
     de dónde salían. Explicaciones breves, SOLO cuando algo sucede (nunca
@@ -738,6 +739,54 @@ momento, no una galería genérica.
       revisó tus sesiones de esta semana." debajo del mensaje, una sola
       vez en el detalle (no en la lista, para no repetirlo por cada
       ítem).
+55. Hora de Paraguay (oct-2026) — "hoy" se calculaba en UTC
+    (`new Date().toISOString().slice(0, 10)` / `getUTC*`), así que desde
+    las 21hs de Paraguay ya era "mañana": entrenamientos guardados con la
+    fecha del día siguiente, y adherencia/rachas/mes/objetivo mensual
+    cambiando de día 3 horas antes.
+    - `lib/utils/today.ts`: `todayInParaguay()`, `paraguayNow()` (Date
+      corrido -3h — sus campos UTC dan la hora de pared de Paraguay, así
+      la lógica existente con `getUTC*` no se reescribió, solo cambia de
+      dónde sale el "ahora"; NUNCA usarlo como instante real para guardar
+      un timestamptz), `paraguayDateOf()` (fecha de Paraguay de un
+      timestamptz; un DATE puro pasa sin cambios) y
+      `startOfParaguayDayMs()`. **Offset fijo UTC-3, no
+      `America/Asuncion`**: Paraguay abolió el horario de verano en
+      oct-2024, y un Node/ICU con tzdata anterior a 2024b aplicaría UTC-4
+      de marzo a octubre. Cualquier cálculo nuevo de "hoy"/semana/mes
+      tiene que pasar por este helper.
+    - Vencimiento de acceso (`lib/constants/access.ts`): el acceso se
+      corta a las 00:00 de Paraguay del día elegido (antes, 21hs del día
+      anterior) — mismo criterio que `daily-checks`, que ese día lo pasa
+      a `inactive`.
+    - Edge Functions sin cambios a propósito: corren a las 10am PYT,
+      cuando fecha UTC y fecha de Paraguay coinciden.
+    - Datos viejos: corrección por SQL en el SQL Editor (7 sesiones y 2
+      pesos cargados entre 21:00 y 23:59 con fecha corrida). 5 sesiones quedaron sin
+      corregir porque chocan con `workout_logs_client_day_date_key`
+      (ya existe otra sesión del mismo día de rutina en la fecha
+      correcta) — pendientes de revisión manual: `cb00c397`, `f2f91709`,
+      `6fbd16ab` (Ana Siani), `0f8277c4` (Raquel González), `6c3cde89`
+      (Sebastián Candia).
+56. Bottom nav del cliente de 5 ítems (oct-2026): Inicio · Rutina · Mi
+    Cuerpo · Progreso · Perfil (`client-nav-items.ts`, con `matches` para
+    resaltar la sección "dueña" de rutas que salieron de la nav).
+    - Entrenar salió de la nav: se entra desde `NextWorkoutCard` en
+      Inicio (que con una sesión abierta pasa a "Continuar
+      entrenamiento") o desde un día en Rutina. Barra fija "Entrenamiento
+      en curso" (`components/client/active-workout-bar.tsx`) arriba de la
+      nav en cualquier pantalla menos Entrenar, con
+      `getActiveWorkoutSession` (`is_completed = false` de hoy). El layout
+      no se re-renderiza al navegar, así que la barra vuelve a pedir el
+      dato con una server action en cada cambio de ruta.
+    - Mi Cuerpo es pantalla propia (`/client/body`: Medidas, Peso,
+      Nutrición — antes pestañas de Progreso). `ProgressTabs` pasó a ser
+      genérico (`tabs: {key,label,content}[]`). Progreso quedó con el
+      historial + botones Estadísticas y Mi Mes. Links viejos
+      `/client/progress?tab=cuerpo|peso|nutricion` redirigen a
+      `/client/body?tab=...` (push ya enviados).
+    - Mi Mes pasó a Progreso; Feedback a una tarjeta en Perfil (el badge
+      de no leídos ahora va sobre el ícono de Perfil).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

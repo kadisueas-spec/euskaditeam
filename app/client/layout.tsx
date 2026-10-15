@@ -2,7 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { Lock, MessageSquare } from "lucide-react";
 import { redirect } from "next/navigation";
+import { ActiveWorkoutBar } from "@/components/client/active-workout-bar";
 import { ClientBottomNav } from "@/components/client/client-bottom-nav";
+import { getActiveWorkoutSession } from "@/lib/supabase/client-routine";
 import { MonthlyGoalModal } from "@/components/client/monthly-goal-modal";
 import { OfflineBanner } from "@/components/client/offline-banner";
 import { SyncBanner } from "@/components/client/sync-banner";
@@ -63,9 +65,10 @@ export default async function ClientLayout({
 
   // Ídem: goal y unreadFeedbackCount no dependen entre sí (ambos reusan el
   // clientRecord ya cacheado arriba, no requieren una nueva validación).
-  const [monthlyGoal, unreadFeedbackCount] = await Promise.all([
+  const [monthlyGoal, unreadFeedbackCount, activeWorkout] = await Promise.all([
     getCurrentMonthGoal(),
     getUnreadFeedbackCount(),
+    getActiveWorkoutSession(),
   ]);
   if (!monthlyGoal) {
     // Full-screen takeover: no other client route is reachable until the
@@ -118,6 +121,7 @@ export default async function ClientLayout({
         <PageTransition>{children}</PageTransition>
       </main>
       <PushPermissionPrompt />
+      <ActiveWorkoutBar initial={activeWorkout} />
       <ClientBottomNav unreadFeedbackCount={unreadFeedbackCount} />
     </div>
   );

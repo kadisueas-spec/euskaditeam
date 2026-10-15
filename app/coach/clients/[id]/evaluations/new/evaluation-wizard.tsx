@@ -27,6 +27,7 @@ import {
 } from "@/lib/anthropometrics/constants";
 import type { ClientBodyInfo } from "@/lib/supabase/anthropometrics";
 import { createEvaluation } from "../actions";
+import { todayInParaguay } from "@/lib/utils/today";
 
 function requiredSkinfoldsFor(protocol: Protocol, sex: Sex): SkinfoldType[] {
   const req = PROTOCOL_REQUIRED_SKINFOLDS[protocol];
@@ -52,7 +53,7 @@ export function EvaluationWizard({
   const [pending, startTransition] = useTransition();
 
   const [evaluationDate, setEvaluationDate] = useState(() =>
-    new Date().toISOString().slice(0, 10)
+    todayInParaguay()
   );
   const [weightKg, setWeightKg] = useState("");
   const [heightCm, setHeightCm] = useState(

@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { getMonthKey } from "@/lib/supabase/monthly-goals";
+import {
+  getActiveWorkoutSession,
+  type ActiveWorkoutSession,
+} from "@/lib/supabase/client-routine";
 
 export async function logout() {
   const supabase = await createClient();
@@ -110,4 +114,13 @@ export async function hasPushSubscription(): Promise<boolean> {
     .eq("client_id", client.id);
 
   return (count ?? 0) > 0;
+}
+
+// La barra "Entrenamiento en curso" vive en el layout, que NO se vuelve a
+// renderizar en el servidor al navegar entre páginas del cliente — el dato
+// que le pasa el layout queda viejo en cuanto el cliente arranca o termina
+// una sesión. La barra lo vuelve a pedir con esta acción en cada cambio de
+// ruta (ver active-workout-bar.tsx).
+export async function fetchActiveWorkoutSession(): Promise<ActiveWorkoutSession | null> {
+  return getActiveWorkoutSession();
 }

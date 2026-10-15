@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import type { PhotoCategory } from "@/lib/supabase/progress-photos";
+import { todayInParaguay } from "@/lib/utils/today";
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB — ya viene comprimida del cliente
 const VALID_CATEGORIES: PhotoCategory[] = ["front", "side", "back"];
@@ -62,7 +63,7 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
 
   const { error: insertError } = await supabase.from("progress_photos").insert({
     client_id: client.id,
-    taken_at: new Date().toISOString().slice(0, 10),
+    taken_at: todayInParaguay(),
     category,
     storage_path: storagePath,
     uploaded_by: "client",
@@ -73,7 +74,7 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
     return { error: "No se pudo guardar la foto." };
   }
 
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
   return { success: true };
 }
 
@@ -104,7 +105,7 @@ export async function deleteProgressPhoto(photoId: string): Promise<DeletePhotoR
 
   await supabase.storage.from("progress-photos").remove([photo.storage_path]);
 
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
   return { success: true };
 }
 
@@ -120,5 +121,5 @@ export async function dismissProgressPhotoReminder(): Promise<void> {
     .update({ progress_photo_reminder_dismissed_at: new Date().toISOString() })
     .eq("id", client.id);
 
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
 }

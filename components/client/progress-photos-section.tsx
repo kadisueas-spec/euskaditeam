@@ -16,6 +16,7 @@ import { formatDate } from "@/lib/utils/format-date";
 import { PhotoComparisonView } from "./photo-comparison-view";
 import { PhotoViewer } from "./photo-viewer";
 import { PhotosConsentModal } from "./photos-consent-modal";
+import { todayInParaguay } from "@/lib/utils/today";
 
 const CATEGORY_LABEL: Record<PhotoCategory, string> = {
   front: "Frente",
@@ -80,7 +81,7 @@ export function ProgressPhotosSection({
       setPhotos((prev) => [
         {
           id: `pending-${crypto.randomUUID()}`,
-          takenAt: new Date().toISOString().slice(0, 10),
+          takenAt: todayInParaguay(),
           category: category || null,
           uploadedBy: "client",
           photoUrl: URL.createObjectURL(compressed),

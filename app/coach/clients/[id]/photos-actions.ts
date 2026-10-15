@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import type { PhotoCategory } from "@/lib/supabase/progress-photos";
+import { todayInParaguay } from "@/lib/utils/today";
 
 const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB — ya viene comprimida del cliente
 const VALID_CATEGORIES: PhotoCategory[] = ["front", "side", "back"];
@@ -72,7 +73,7 @@ export async function uploadClientProgressPhoto(
 
   const { error: insertError } = await supabase.from("progress_photos").insert({
     client_id: clientId,
-    taken_at: new Date().toISOString().slice(0, 10),
+    taken_at: todayInParaguay(),
     category,
     storage_path: storagePath,
     uploaded_by: "coach",
@@ -84,6 +85,6 @@ export async function uploadClientProgressPhoto(
   }
 
   revalidatePath(`/coach/clients/${clientId}`);
-  revalidatePath("/client/progress");
+  revalidatePath("/client/body");
   return { success: true };
 }

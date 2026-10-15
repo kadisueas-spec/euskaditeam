@@ -12,6 +12,7 @@ import { getMyBodyEvaluations } from "@/lib/supabase/anthropometrics";
 import { getMyNutritionPlans } from "@/lib/supabase/nutrition";
 import { getMyProgressPhotos } from "@/lib/supabase/progress-photos";
 import { getMyVideos } from "@/lib/supabase/videos";
+import { todayInParaguay } from "@/lib/utils/today";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -70,7 +71,7 @@ export async function getClientHomeData(): Promise<ClientHomeData | null> {
   if (!client) return null;
 
   const supabase = await createClient();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = todayInParaguay();
 
   const [
     profile,

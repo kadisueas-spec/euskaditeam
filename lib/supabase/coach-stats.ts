@@ -6,6 +6,7 @@ import {
   type ExerciseSessionSeries,
   type RawSetRow,
 } from "@/lib/supabase/metrics";
+import { paraguayNow } from "@/lib/utils/today";
 
 // Espejo de stats.ts + metrics.ts (getExerciseSessionSeries) para el
 // entrenamiento propio del coach — mismo cálculo, coach_id en vez de
@@ -81,7 +82,7 @@ export async function getCoachTrainingStats(): Promise<CoachTrainingStats> {
   }
 
   const supabase = await createClient();
-  const now = new Date();
+  const now = paraguayNow();
   const monthPrefix = now.toISOString().slice(0, 7);
 
   const [{ data: allLogs }, { data: activeRoutine }] = await Promise.all([
