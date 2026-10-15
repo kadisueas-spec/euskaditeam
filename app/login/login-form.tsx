@@ -7,7 +7,7 @@ import { AuthInput } from "@/components/auth/auth-input";
 import { Spinner } from "@/components/ui/spinner";
 import { login, type LoginState } from "./actions";
 
-export function LoginForm() {
+export function LoginForm({ notice = null }: { notice?: string | null }) {
   const [state, action, pending] = useActionState<LoginState, FormData>(
     login,
     undefined
@@ -22,6 +22,12 @@ export function LoginForm() {
         </h2>
         <p className="mt-1 text-sm text-[#888888]">¿Listo para entrenar?</p>
       </div>
+
+      {notice && !state?.error && (
+        <p className="rounded-xl border border-[#1e1e1e] bg-white/5 px-4 py-3 text-sm text-[#f5f5f5]">
+          {notice}
+        </p>
+      )}
 
       <div className="flex flex-col gap-3">
         <AuthInput

@@ -911,6 +911,36 @@ momento, no una galería genérica.
       (confirmación inline "¿Descartar lo cargado y salir?").
       `draftClosedRef` evita que un guardado pendiente del debounce lo
       vuelva a escribir después.
+62. Emails de Auth por dominio propio + recuperación de contraseña
+    (oct-2026). El código NO manda emails por su cuenta (no hay SDK de
+    Resend ni `RESEND_FROM_EMAIL` en uso): todos los emails son de
+    Supabase Auth, enviados por Custom SMTP de Resend configurado en el
+    Dashboard (Authentication → Emails → SMTP Settings: host
+    `smtp.resend.com`, puerto 465, usuario `resend`, password = API key,
+    remitente `@euskaditeam.app`).
+    - Login (`app/login/actions.ts`): `email_not_confirmed` → "Confirmá tu
+      email antes de entrar..." en vez del genérico. Avisos por
+      `?notice=reset|confirmed|link` (`LOGIN_NOTICES` en
+      `app/login/page.tsx`).
+    - `/forgot-password`: pide el email y llama `resetPasswordForEmail`
+      con `redirectTo` = `/auth/confirm?next=/reset-password`. Responde
+      siempre "te mandamos el email" (no revela qué cuentas existen);
+      solo distingue el rate limit.
+    - `/auth/confirm` (route handler): acepta `token_hash`+`type`
+      (`verifyOtp`) o `code` (`exchangeCodeForSession`, PKCE); `next`
+      solo rutas internas. Si falla → `/forgot-password?expired=1` (o
+      `/login?notice=link`).
+    - `/reset-password`: con la sesión que dejó `/auth/confirm`,
+      `updateUser({ password })` sin pedir la actual; después `signOut` y
+      `/login?notice=reset` (el link suele abrirse en el navegador, no en
+      la PWA).
+    - **Plantilla de email recomendada** (Dashboard → Authentication →
+      Emails → Reset Password): `{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password`.
+      Con la plantilla por defecto (`{{ .ConfirmationURL }}`, flujo PKCE)
+      solo funciona si el link se abre en el mismo navegador que lo pidió —
+      en iPhone la PWA y Safari no comparten cookies. Ídem "Confirm
+      signup" (opcional): `...?token_hash={{ .TokenHash }}&type=email&next=/login?notice=confirmed`.
+      Redirect URLs del Dashboard tienen que incluir `<dominio>/auth/confirm`.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
@@ -981,8 +1011,10 @@ ver Fase 5.)
   automáticamente por tener otro prefijo de nombre — no rompe nada (el
   routing lo maneja 100% el SW nuevo), solo ocupa algo de storage hasta que
   el navegador lo libera solo.
-- Configurar SMTP propio (Resend) para superar el límite de 2 emails/hora
-  del plan gratuito de Supabase Auth (magic links, confirmaciones, etc.).
+- SMTP propio (Resend, dominio euskaditeam.app verificado oct-2026): el
+  código ya está listo (ítem 62); falta confirmar en el Dashboard de
+  Supabase el Custom SMTP, las plantillas de email con `token_hash` y
+  activar "Confirm email".
 
 ## Identidad de marca (referencia rápida)
 
