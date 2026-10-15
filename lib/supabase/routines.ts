@@ -33,6 +33,8 @@ export async function getRoutinesList(): Promise<RoutineListItem[]> {
       `id, name, is_active, created_at,
        clients ( profiles!clients_user_id_fkey ( full_name, email ) )`
     )
+    // Plantillas (oct-2026): tienen su propia pestaña, ver routine-templates.ts.
+    .eq("is_template", false)
     .order("created_at", { ascending: false })
     .returns<RoutineListRow[]>();
 
@@ -134,6 +136,7 @@ export type RoutineDetail = {
   clientId: string | null;
   clientName: string | null;
   isActive: boolean;
+  isTemplate: boolean;
   mesocicloNombre: string | null;
   durationWeeks: number | null;
   startsAt: string | null;
@@ -147,6 +150,7 @@ type RoutineDetailRow = {
   description: string | null;
   objective: string | null;
   is_active: boolean;
+  is_template: boolean;
   client_id: string | null;
   mesociclo_nombre: string | null;
   duration_weeks: number | null;
@@ -188,7 +192,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
   const { data: routine } = await supabase
     .from("routines")
     .select(
-      `id, name, description, objective, is_active, client_id,
+      `id, name, description, objective, is_active, is_template, client_id,
        mesociclo_nombre, duration_weeks, starts_at, ends_at,
        clients ( profiles!clients_user_id_fkey ( full_name, email ) ),
        routine_days (
@@ -222,6 +226,7 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
       routine.clients?.profiles?.email ??
       null,
     isActive: routine.is_active,
+    isTemplate: routine.is_template,
     mesocicloNombre: routine.mesociclo_nombre,
     durationWeeks: routine.duration_weeks,
     startsAt: routine.starts_at,

@@ -19,10 +19,14 @@ export default async function EditRoutinePage({
     <div className="flex max-w-3xl flex-col gap-6">
       <div>
         <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
-          Editar rutina
+          {routine.isTemplate ? "Editar plantilla" : "Editar rutina"}
         </h1>
         <div className="mt-1.5 mb-1 h-0.5 w-10 bg-[#e8001c]" />
-        <p className="text-sm text-[#888888]">{routine.clientName ?? "Sin cliente"}</p>
+        <p className="text-sm text-[#888888]">
+          {routine.isTemplate
+            ? "Los cambios no afectan a las rutinas ya creadas desde esta plantilla."
+            : (routine.clientName ?? "Sin cliente")}
+        </p>
       </div>
       <RoutineEditor routine={routine} exercises={exercises} />
     </div>

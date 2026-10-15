@@ -787,6 +787,57 @@ momento, no una galería genérica.
       `/client/body?tab=...` (push ya enviados).
     - Mi Mes pasó a Progreso; Feedback a una tarjeta en Perfil (el badge
       de no leídos ahora va sobre el ícono de Perfil).
+57. Ficha del cliente reorganizada (oct-2026) — el Resumen de
+    `/coach/clients/[id]` era un scroll larguísimo: para dejar feedback o
+    hacer el cierre de mes había que pasar por Acceso/PayPal.
+    - Orden nuevo, abiertos: Últimos entrenamientos → Dejar feedback →
+      Rutina activa. Colapsados abajo (`components/coach/collapsible-card.tsx`,
+      `<details>` nativo con un resumen siempre visible en el título):
+      Feedback dejado (cantidad), Cierre de mes (Completado/Sin hacer),
+      Datos y notas, Acceso y pagos (estado · método · vencimiento) —
+      "Eliminar cliente" vive adentro de Acceso y pagos.
+    - Línea de estado bajo el nombre: badge de acceso, vencimiento y rutina
+      activa, sin abrir nada.
+    - Cierre de mes: el último día del mes y si falta hacerlo
+      (`isMonthEndToday` + `review.completedAt`), sube primero y abierto —
+      mismo criterio que la alerta del dashboard.
+    - Rutina activa ganó `RoutineQuickActions`: "Nueva rutina"
+      (`/coach/routines/new?client=<id>`), "Copiar a otro cliente"
+      (`?from=<routineId>&client=<destino>` — el wizard precarga todo con
+      `daysFromSource`, solo LEE la rutina de origen, saltea ejercicios
+      borrados de la biblioteca y avisa cuántos) y "Guardar como plantilla"
+      (`copyRoutineAsTemplate` en `app/coach/routines/template-actions.ts`,
+      ver ítem 58).
+    - `lib/supabase/routine-tree.ts` (`insertRoutineDays`): inserción de
+      días + ejercicios compartida por `createRoutine` y las plantillas.
+58. Plantillas de rutinas (oct-2026, migración
+    `20261015_routine_templates.sql`): una plantilla es una fila más de
+    `routines` con `is_template = true` — mismo árbol de
+    `routine_days`/`routine_exercises` y mismo RLS ("Coach manages
+    routines" ya filtra por `coach_id`; las policies del cliente filtran
+    por `client_id`, NULL en una plantilla). Hace falta la columna aparte
+    porque `client_id NULL` ya lo usan las rutinas de Mi Entrenamiento del
+    coach. CHECK `routines_template_shape`: una plantilla no tiene
+    cliente, ni `starts_at`/`ends_at`, y nunca es activa — por eso queda
+    afuera sola de `daily-checks` (sin redeploy), de Mi Entrenamiento y de
+    `routines_one_active_per_client`. Una plantilla no depende de ningún
+    cliente: sobrevive al borrado en cascada de la eliminación del día +5.
+    - Lectura: `lib/supabase/routine-templates.ts` (`getTemplatesList`).
+      `getRoutinesList` filtra `is_template = false`.
+    - `/coach/routines?tab=plantillas`: nombre, días, ejercicios,
+      objetivo; Usar / Editar / Eliminar (`template-list-item.tsx`).
+    - Crear: botón "Guardar como plantilla" en el paso 3 del wizard
+      (`createTemplate`, cliente y mesociclo pasan a ser obligatorios
+      recién al asignar) o desde la Rutina activa de un cliente
+      (`copyRoutineAsTemplate`, ítem 57). Ambas borran la plantilla
+      parcial si falla la inserción de días.
+    - Usar: paso 0 del wizard ("Desde cero" o una plantilla) cuando hay
+      plantillas y no se llegó con `?from=`; elegir navega a `?from=<id>`
+      (el wizard lleva `key={from}` para remontarse con el estado nuevo).
+      La plantilla solo se lee — la rutina se crea con `createRoutine`.
+    - Editar/renombrar: el mismo `RoutineEditor`; con `isTemplate` oculta
+      mesociclo y fecha de inicio, y `updateRoutine` no los valida ni
+      escribe (el CHECK rechazaría `starts_at`).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

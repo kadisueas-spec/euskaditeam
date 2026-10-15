@@ -179,7 +179,8 @@ export function RoutineEditor({
 
   function handleSubmit() {
     if (!name.trim()) return setError("El nombre es obligatorio.");
-    if (!mesocicloNombre.trim()) return setError("El nombre del mesociclo es obligatorio.");
+    if (!routine.isTemplate && !mesocicloNombre.trim())
+      return setError("El nombre del mesociclo es obligatorio.");
     if (days.length === 0) return setError("Agrega al menos un día.");
     if (days.some((d) => !d.name.trim()))
       return setError("Todos los días necesitan un nombre.");
@@ -268,18 +269,24 @@ export function RoutineEditor({
             placeholder="Ej: Hipertrofia, fuerza, pérdida de grasa"
           />
         </div>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="routine-mesociclo">Nombre del mesociclo</Label>
-          <Input
-            id="routine-mesociclo"
-            value={mesocicloNombre}
-            onChange={(e) => setMesocicloNombre(e.target.value)}
-            placeholder="Ej: Mesociclo 1 - Hipertrofia"
-          />
-        </div>
+        {/* Plantillas (oct-2026): sin mesociclo ni fecha de inicio — eso se
+            define al usarla para un cliente. La duración queda como sugerencia. */}
+        {!routine.isTemplate && (
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="routine-mesociclo">Nombre del mesociclo</Label>
+            <Input
+              id="routine-mesociclo"
+              value={mesocicloNombre}
+              onChange={(e) => setMesocicloNombre(e.target.value)}
+              placeholder="Ej: Mesociclo 1 - Hipertrofia"
+            />
+          </div>
+        )}
         <div className="grid grid-cols-2 gap-3">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="routine-duration">Duración (semanas)</Label>
+            <Label htmlFor="routine-duration">
+              {routine.isTemplate ? "Duración sugerida (semanas)" : "Duración (semanas)"}
+            </Label>
             <Input
               id="routine-duration"
               type="number"
@@ -288,15 +295,17 @@ export function RoutineEditor({
               onChange={(e) => setDurationWeeks(e.target.value)}
             />
           </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="routine-starts-at">Fecha de inicio</Label>
-            <Input
-              id="routine-starts-at"
-              type="date"
-              value={startsAt}
-              onChange={(e) => setStartsAt(e.target.value)}
-            />
-          </div>
+          {!routine.isTemplate && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="routine-starts-at">Fecha de inicio</Label>
+              <Input
+                id="routine-starts-at"
+                type="date"
+                value={startsAt}
+                onChange={(e) => setStartsAt(e.target.value)}
+              />
+            </div>
+          )}
         </div>
       </FadeIn>
 

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Pencil } from "lucide-react";
+import { CopyPlus, Pencil } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -41,9 +41,13 @@ export default async function RoutineDetailPage({
           <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">
             {routine.name}
           </h1>
-          <Badge variant={routine.isActive ? "default" : "secondary"}>
-            {routine.isActive ? "Activa" : "Archivada"}
-          </Badge>
+          {routine.isTemplate ? (
+            <Badge variant="secondary">Plantilla</Badge>
+          ) : (
+            <Badge variant={routine.isActive ? "default" : "secondary"}>
+              {routine.isActive ? "Activa" : "Archivada"}
+            </Badge>
+          )}
           <Link
             href={`/coach/routines/${routine.id}/edit`}
             className={buttonVariants({ variant: "outline", size: "sm", className: "ml-auto" })}
@@ -52,9 +56,23 @@ export default async function RoutineDetailPage({
           </Link>
         </div>
         <div className="mt-1.5 mb-1 h-0.5 w-10 bg-[#e8001c]" />
-        <p className="text-sm text-[#888888]">
-          {routine.clientName ?? "Sin cliente"}
-        </p>
+        {routine.isTemplate ? (
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <p className="text-sm text-[#888888]">
+              Plantilla — {routine.durationWeeks ?? 4} semanas sugeridas
+            </p>
+            <Link
+              href={`/coach/routines/new?from=${routine.id}`}
+              className={buttonVariants({ size: "sm" })}
+            >
+              <CopyPlus className="size-4" /> Usar plantilla
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm text-[#888888]">
+            {routine.clientName ?? "Sin cliente"}
+          </p>
+        )}
         {routine.objective && (
           <p className="mt-1 text-sm text-[#888888]">
             Objetivo: {routine.objective}
@@ -127,7 +145,11 @@ export default async function RoutineDetailPage({
       ))}
 
       <FadeIn delay={Math.min(routine.days.length * 0.06, 0.4) + 0.1}>
-        <DeleteRoutineButton routineId={routine.id} isActive={routine.isActive} />
+        <DeleteRoutineButton
+          routineId={routine.id}
+          isActive={routine.isActive}
+          isTemplate={routine.isTemplate}
+        />
       </FadeIn>
     </div>
   );

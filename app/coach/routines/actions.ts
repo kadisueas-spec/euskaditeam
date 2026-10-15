@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { NEW_ROUTINE_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
 import { todayInParaguay } from "@/lib/utils/today";
+import { insertRoutineDays } from "@/lib/supabase/routine-tree";
 
 export type WarmupType =
   | "none"
@@ -111,47 +112,10 @@ export async function createRoutine(
     return { error: "No se pudo crear la rutina." };
   }
 
-  for (let i = 0; i < input.days.length; i++) {
-    const day = input.days[i];
-    const { data: dayRow, error: dayError } = await supabase
-      .from("routine_days")
-      .insert({
-        routine_id: routine.id,
-        day_number: i + 1,
-        name: day.name.trim() || `Día ${i + 1}`,
-      })
-      .select("id")
-      .single();
+  const daysError = await insertRoutineDays(supabase, routine.id, input.days);
+  if (daysError) return { error: daysError };
 
-    if (dayError || !dayRow) {
-      console.error("createRoutine day insert error:", dayError);
-      return { error: `No se pudo guardar el día ${i + 1}.` };
-    }
-
-    if (day.exercises.length === 0) continue;
-
-    const { error: exercisesError } = await supabase.from("routine_exercises").insert(
-      day.exercises.map((ex, index) => ({
-        day_id: dayRow.id,
-        exercise_id: ex.exerciseId,
-        order_index: index + 1,
-        sets: ex.sets,
-        reps_min: ex.repsMin,
-        reps_max: ex.repsMax,
-        rir_target: ex.rir,
-        rest_seconds: ex.restSeconds,
-        coach_notes: ex.notes,
-        weight_increment: ex.weightIncrement,
-        warmup_type: ex.warmupType,
-        warmup_fixed_weight_kg: ex.warmupFixedWeightKg,
-      }))
-    );
-
-    if (exercisesError) {
-      console.error("createRoutine exercises insert error:", exercisesError);
-      return { error: `No se pudieron guardar los ejercicios del día ${i + 1}.` };
-    }
-  }
+  revalidatePath(`/coach/clients/${input.clientId}`);
 
   sendPushToClient(input.clientId, {
     title: pickPushCopy(NEW_ROUTINE_PUSH_TITLES),
@@ -182,7 +146,6 @@ export async function updateRoutine(
   input: UpdateRoutineInput
 ): Promise<UpdateRoutineResult> {
   if (!input.name.trim()) return { error: "El nombre es obligatorio." };
-  if (!input.mesocicloNombre.trim()) return { error: "El nombre del mesociclo es obligatorio." };
   if (input.days.length === 0) return { error: "Agrega al menos un día." };
 
   const supabase = await createClient();
@@ -190,6 +153,21 @@ export async function updateRoutine(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "No autenticado." };
+
+  // Plantillas (oct-2026): el mismo editor edita plantillas. Una plantilla
+  // no lleva mesociclo ni fecha de inicio (el CHECK routines_template_shape
+  // rechaza starts_at no nulo), así que esos campos ni se validan ni se
+  // escriben.
+  const { data: current } = await supabase
+    .from("routines")
+    .select("is_template")
+    .eq("id", routineId)
+    .eq("coach_id", user.id)
+    .maybeSingle();
+  const isTemplate = current?.is_template === true;
+
+  if (!isTemplate && !input.mesocicloNombre.trim())
+    return { error: "El nombre del mesociclo es obligatorio." };
 
   const durationWeeks = input.durationWeeks > 0 ? input.durationWeeks : 4;
   const startsAt = input.startsAt || todayInParaguay();
@@ -207,9 +185,10 @@ export async function updateRoutine(
       name: input.name.trim(),
       description: input.description.trim() || null,
       objective: input.objective.trim() || null,
-      mesociclo_nombre: input.mesocicloNombre.trim(),
       duration_weeks: durationWeeks,
-      starts_at: startsAt,
+      ...(isTemplate
+        ? {}
+        : { mesociclo_nombre: input.mesocicloNombre.trim(), starts_at: startsAt }),
     })
     .eq("id", routineId)
     .eq("coach_id", user.id)
@@ -338,6 +317,7 @@ export async function updateRoutine(
   }
 
   revalidatePath(`/coach/routines/${routineId}`);
+  revalidatePath("/coach/routines");
   revalidatePath("/client/my-routine");
 
   if (updatedRoutine.client_id) {

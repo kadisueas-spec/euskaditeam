@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, TriangleAlert } from "lucide-react";
+import { BookmarkCheck, BookmarkPlus, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,10 +12,12 @@ import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
 import { WarmupTypeSelector } from "@/components/coach/warmup-type-selector";
-import type { ClientOption, ExerciseOption } from "@/lib/supabase/routines";
+import type { ClientOption, ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
 import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
-import { minutesInputToSeconds } from "@/lib/utils/rest-time";
-import { createRoutine, type WarmupType } from "../actions";
+import { minutesInputToSeconds, secondsToMinutesInput } from "@/lib/utils/rest-time";
+import { createRoutine, type RoutineDayInput, type WarmupType } from "../actions";
+import { createTemplate } from "../template-actions";
+import type { TemplateListItem } from "@/lib/supabase/routine-templates";
 import { todayInParaguay } from "@/lib/utils/today";
 
 type ExerciseRow = {
@@ -68,15 +70,64 @@ function newDayRow(index: number): DayRow {
   return { key: crypto.randomUUID(), name: `Día ${index}`, exercises: [] };
 }
 
+// Copiar rutina / plantillas (oct-2026): carga los días y ejercicios de una
+// rutina existente en el estado del wizard — solo se LEE la rutina de
+// origen, al crear se inserta una fila nueva con createRoutine, así que
+// cualquier cambio acá no la toca. Ejercicios borrados de la biblioteca
+// (exercise_id null por ON DELETE SET NULL) se saltean y se cuentan para
+// avisarle al coach.
+function daysFromSource(
+  source: RoutineDetail,
+  exercises: ExerciseOption[]
+): { days: DayRow[]; skipped: number } {
+  let skipped = 0;
+  const days = source.days.map((d) => ({
+    key: crypto.randomUUID(),
+    name: d.name,
+    exercises: d.exercises
+      .filter((ex) => {
+        const exists = !!ex.exerciseId && exercises.some((opt) => opt.id === ex.exerciseId);
+        if (!exists) skipped++;
+        return exists;
+      })
+      .map((ex) => ({
+        key: crypto.randomUUID(),
+        exerciseId: ex.exerciseId,
+        muscleGroup: exercises.find((opt) => opt.id === ex.exerciseId)?.muscleGroup ?? "",
+        sets: String(ex.sets),
+        repsMin: ex.repsMin != null ? String(ex.repsMin) : "",
+        repsMax: ex.repsMax != null ? String(ex.repsMax) : "",
+        rir: ex.rirTarget != null ? String(ex.rirTarget) : "",
+        restSeconds: secondsToMinutesInput(ex.restSeconds),
+        notes: ex.notes ?? "",
+        weightIncrement: String(ex.weightIncrement),
+        warmupType: ex.warmupType,
+        warmupFixedWeight:
+          ex.warmupFixedWeightKg != null ? String(ex.warmupFixedWeightKg) : "",
+      })),
+  }));
+  return { days, skipped };
+}
+
 export function RoutineWizard({
   clients,
   exercises,
+  initialClientId = "",
+  source = null,
+  templates = [],
 }: {
   clients: ClientOption[];
   exercises: ExerciseOption[];
+  initialClientId?: string;
+  source?: RoutineDetail | null;
+  templates?: TemplateListItem[];
 }) {
   const router = useRouter();
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  // Plantillas (oct-2026): paso 0 "¿Desde cero o desde una plantilla?" —
+  // solo si hay plantillas y no se llegó ya con una rutina de origen.
+  const [step, setStep] = useState<0 | 1 | 2 | 3>(
+    !source && templates.length > 0 ? 0 : 1
+  );
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   // Sistema de mesociclos (jul-2026): si el cliente elegido ya tiene una
@@ -92,19 +143,36 @@ export function RoutineWizard({
     new Set(exercises.map((e) => e.muscleGroup).filter((g): g is string => !!g))
   ).sort((a, b) => a.localeCompare(b));
 
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [objective, setObjective] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [mesocicloNombre, setMesocicloNombre] = useState("");
-  const [durationWeeks, setDurationWeeks] = useState("4");
+  const [initialFromSource] = useState(() =>
+    source ? daysFromSource(source, exercises) : { days: [], skipped: 0 }
+  );
+  // Al usar una plantilla creada con "Guardar como plantilla" se saca el
+  // sufijo que le agrega copyRoutineAsTemplate.
+  const [name, setName] = useState(
+    source ? (source.isTemplate ? source.name.replace(/ \(plantilla\)$/, "") : source.name) : ""
+  );
+  const [description, setDescription] = useState(source?.description ?? "");
+  const [objective, setObjective] = useState(source?.objective ?? "");
+  const [clientId, setClientId] = useState(
+    clients.some((c) => c.id === initialClientId) ? initialClientId : ""
+  );
+  const [mesocicloNombre, setMesocicloNombre] = useState(source?.mesocicloNombre ?? "");
+  const [durationWeeks, setDurationWeeks] = useState(
+    source?.durationWeeks ? String(source.durationWeeks) : "4"
+  );
   const [startsAt, setStartsAt] = useState(() => todayInParaguay());
-  const [days, setDays] = useState<DayRow[]>([]);
+  const [days, setDays] = useState<DayRow[]>(initialFromSource.days);
 
+  function pickTemplate(templateId: string) {
+    router.push(
+      `/coach/routines/new?from=${templateId}${clientId ? `&client=${clientId}` : ""}`
+    );
+  }
+
+  // Cliente y mesociclo se exigen recién al asignar (handleSubmit): para
+  // "Guardar como plantilla" no hacen falta.
   function goToStep2() {
     if (!name.trim()) return setError("El nombre es obligatorio.");
-    if (!mesocicloNombre.trim()) return setError("El nombre del mesociclo es obligatorio.");
-    if (!clientId) return setError("Selecciona un cliente.");
     setError(null);
     setDays((prev) => (prev.length === 0 ? [newDayRow(1)] : prev));
     setStep(2);
@@ -171,19 +239,69 @@ export function RoutineWizard({
     );
   }
 
-  function handleSubmit() {
+  function exercisesAreValid(): boolean {
     for (const day of days) {
       for (const ex of day.exercises) {
         if (!ex.exerciseId) {
           setError(`Elige un ejercicio en "${day.name}".`);
-          return;
+          return false;
         }
         if (!ex.sets) {
           setError(`Falta "series" en un ejercicio de "${day.name}".`);
-          return;
+          return false;
         }
       }
     }
+    return true;
+  }
+
+  function daysPayload(): RoutineDayInput[] {
+    return days.map((d) => ({
+      name: d.name,
+      exercises: d.exercises.map((e) => ({
+        exerciseId: e.exerciseId,
+        sets: Number(e.sets),
+        repsMin: e.repsMin ? Number(e.repsMin) : null,
+        repsMax: e.repsMax ? Number(e.repsMax) : null,
+        rir: e.rir ? Number(e.rir) : null,
+        restSeconds: minutesInputToSeconds(e.restSeconds),
+        notes: e.notes || null,
+        weightIncrement: Number(e.weightIncrement) || 2.5,
+        warmupType: e.warmupType,
+        warmupFixedWeightKg:
+          e.warmupType === "fixed_weight" && e.warmupFixedWeight
+            ? Number(e.warmupFixedWeight)
+            : null,
+      })),
+    }));
+  }
+
+  function handleSaveTemplate() {
+    if (!exercisesAreValid()) return;
+    setError(null);
+    setConfirmingArchive(false);
+    startTransition(async () => {
+      const result = await createTemplate({
+        name,
+        description,
+        objective,
+        durationWeeks: Number(durationWeeks) || 4,
+        days: daysPayload(),
+      });
+      if ("error" in result) {
+        setError(result.error);
+        return;
+      }
+      router.push(`/coach/routines/${result.id}`);
+    });
+  }
+
+  function handleSubmit() {
+    if (!exercisesAreValid()) return;
+    if (!clientId)
+      return setError('Elegí un cliente en el Paso 1, o usá "Guardar como plantilla".');
+    if (!mesocicloNombre.trim())
+      return setError("Completá el nombre del mesociclo en el Paso 1.");
     setError(null);
 
     // El cliente elegido ya tiene una rutina activa -> createRoutine la va
@@ -204,24 +322,7 @@ export function RoutineWizard({
         mesocicloNombre,
         durationWeeks: Number(durationWeeks) || 4,
         startsAt,
-        days: days.map((d) => ({
-          name: d.name,
-          exercises: d.exercises.map((e) => ({
-            exerciseId: e.exerciseId,
-            sets: Number(e.sets),
-            repsMin: e.repsMin ? Number(e.repsMin) : null,
-            repsMax: e.repsMax ? Number(e.repsMax) : null,
-            rir: e.rir ? Number(e.rir) : null,
-            restSeconds: minutesInputToSeconds(e.restSeconds),
-            notes: e.notes || null,
-            weightIncrement: Number(e.weightIncrement) || 2.5,
-            warmupType: e.warmupType,
-            warmupFixedWeightKg:
-              e.warmupType === "fixed_weight" && e.warmupFixedWeight
-                ? Number(e.warmupFixedWeight)
-                : null,
-          })),
-        })),
+        days: daysPayload(),
       });
 
       if ("error" in result) {
@@ -235,6 +336,45 @@ export function RoutineWizard({
 
   return (
     <div className="flex flex-col gap-6">
+      {step === 0 && (
+        <FadeIn className="flex flex-col gap-3">
+          <p className="text-sm text-[#888888]">¿Cómo querés empezar?</p>
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            className="flex min-h-[56px] items-center gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 text-left transition-colors hover:border-[#e8001c] active:scale-[0.99]"
+          >
+            <Plus className="size-5 shrink-0 text-[#e8001c]" />
+            <span className="font-medium text-white">Desde cero</span>
+          </button>
+          <p className="mt-2 text-xs font-semibold tracking-wide text-[#888888] uppercase">
+            Partir de una plantilla
+          </p>
+          <ul className="flex flex-col gap-2">
+            {templates.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => pickTemplate(t.id)}
+                  className="flex min-h-[56px] w-full items-center gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 text-left transition-colors hover:border-[#e8001c] active:scale-[0.99]"
+                >
+                  <BookmarkCheck className="size-5 shrink-0 text-[#888888]" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium text-white">{t.name}</span>
+                    <span className="block text-xs text-[#888888]">
+                      {t.dayCount} {t.dayCount === 1 ? "día" : "días"} · {t.exerciseCount}{" "}
+                      {t.exerciseCount === 1 ? "ejercicio" : "ejercicios"}
+                      {t.objective ? ` · ${t.objective}` : ""}
+                    </span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </FadeIn>
+      )}
+
+      {step !== 0 && (
       <div className="flex gap-2 text-sm">
         {[1, 2, 3].map((s) => (
           <span
@@ -249,6 +389,26 @@ export function RoutineWizard({
           </span>
         ))}
       </div>
+      )}
+
+      {source && (
+        <div className="flex flex-col gap-1 rounded-2xl border border-[#1e1e1e] bg-white/5 p-3 text-sm">
+          <p className="text-[#f5f5f5]">
+            {source.isTemplate ? "Usando la plantilla " : "Copiando "}
+            <span className="font-medium">{source.name}</span>
+            {source.clientName ? ` de ${source.clientName}` : ""} — los cambios no
+            modifican {source.isTemplate ? "la plantilla" : "la rutina original"}.
+          </p>
+          {initialFromSource.skipped > 0 && (
+            <p className="flex items-center gap-2 text-amber-400">
+              <TriangleAlert className="size-4 shrink-0" />
+              {initialFromSource.skipped === 1
+                ? "1 ejercicio ya no existe en tu biblioteca y no se copió."
+                : `${initialFromSource.skipped} ejercicios ya no existen en tu biblioteca y no se copiaron.`}
+            </p>
+          )}
+        </div>
+      )}
 
       {step === 1 && (
         <FadeIn className="flex flex-col gap-4">
@@ -279,15 +439,18 @@ export function RoutineWizard({
             />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="routine-client">Cliente</Label>
+            <Label htmlFor="routine-client">
+              Cliente{" "}
+              <span className="font-normal text-[#888888]">
+                (no hace falta si la guardás como plantilla)
+              </span>
+            </Label>
             <NativeSelect
               id="routine-client"
               value={clientId}
               onChange={(e) => setClientId(e.target.value)}
             >
-              <option value="" disabled>
-                Selecciona un cliente
-              </option>
+              <option value="">Sin cliente</option>
               {clients.map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.name}
@@ -582,13 +745,21 @@ export function RoutineWizard({
               </div>
             </div>
           ) : (
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-3">
               <Button variant="outline" onClick={() => setStep(2)} disabled={pending}>
                 Atrás
               </Button>
+              <Button variant="outline" onClick={handleSaveTemplate} disabled={pending}>
+                <BookmarkPlus className="size-4" />
+                Guardar como plantilla
+              </Button>
               <Button onClick={handleSubmit} disabled={pending}>
                 {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
-                {pending ? "Creando..." : "Crear rutina"}
+                {pending
+                  ? "Guardando..."
+                  : clientId
+                    ? `Asignar a ${clients.find((c) => c.id === clientId)?.name ?? "cliente"}`
+                    : "Crear rutina"}
               </Button>
             </div>
           )}

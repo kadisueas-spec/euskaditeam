@@ -14,13 +14,19 @@ const CONFIRM_TEXT =
 const ACTIVE_CLIENT_WARNING =
   "Esta rutina está actualmente asignada a un cliente activo.";
 
+export const TEMPLATE_CONFIRM_TEXT =
+  "Esta acción eliminará la plantilla. Las rutinas que ya creaste a partir de ella no se tocan. ¿Confirmás?";
+
 export function DeleteRoutineButton({
   routineId,
   isActive,
+  isTemplate = false,
 }: {
   routineId: string;
   isActive: boolean;
+  isTemplate?: boolean;
 }) {
+  const noun = isTemplate ? "plantilla" : "rutina";
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -36,12 +42,15 @@ export function DeleteRoutineButton({
         return;
       }
       setDeleted(true);
-      setTimeout(() => router.push("/coach/routines"), 1200);
+      setTimeout(
+        () => router.push(isTemplate ? "/coach/routines?tab=plantillas" : "/coach/routines"),
+        1200
+      );
     });
   }
 
   if (deleted) {
-    return <Toast type="success" message="Rutina eliminada correctamente" />;
+    return <Toast type="success" message={isTemplate ? "Plantilla eliminada correctamente" : "Rutina eliminada correctamente"} />;
   }
 
   if (confirming) {
@@ -53,7 +62,7 @@ export function DeleteRoutineButton({
             {ACTIVE_CLIENT_WARNING}
           </p>
         )}
-        <p className="text-sm text-white">{CONFIRM_TEXT}</p>
+        <p className="text-sm text-white">{isTemplate ? TEMPLATE_CONFIRM_TEXT : CONFIRM_TEXT}</p>
         {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-3">
           <Button
@@ -70,7 +79,7 @@ export function DeleteRoutineButton({
             disabled={pending}
           >
             {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
-            {pending ? "Eliminando..." : "Eliminar rutina"}
+            {pending ? "Eliminando..." : `Eliminar ${noun}`}
           </Button>
         </div>
       </div>
@@ -84,7 +93,7 @@ export function DeleteRoutineButton({
       onClick={() => setConfirming(true)}
     >
       <TriangleAlert className="size-4" />
-      Eliminar rutina
+      Eliminar {noun}
       <Trash2 className="size-4" />
     </Button>
   );

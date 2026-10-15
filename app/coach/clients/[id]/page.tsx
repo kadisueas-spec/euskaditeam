@@ -10,14 +10,17 @@ import { ClientDetailTabs } from "@/components/coach/client-detail-tabs";
 import { ClientMetricsTab } from "@/components/coach/client-metrics-tab";
 import { RecentLogsList } from "@/components/coach/recent-logs-list";
 import { ExtendMesocicloButton } from "@/components/coach/extend-mesociclo-button";
+import { CollapsibleCard } from "@/components/coach/collapsible-card";
+import { RoutineQuickActions } from "@/components/coach/routine-quick-actions";
 import { getClientDetail } from "@/lib/supabase/clients";
-import { getRoutineHistoryForClient } from "@/lib/supabase/routines";
+import { getClientsForSelect, getRoutineHistoryForClient } from "@/lib/supabase/routines";
 import {
   getClientRoutineExercisesForSelect,
   getFeedbackForClient,
   getRecentSessionsForSelect,
 } from "@/lib/supabase/feedback";
 import { getMonthlyReviewFormData } from "@/lib/supabase/monthly-review";
+import { isMonthEndToday } from "@/lib/supabase/monthly-goals";
 import {
   getClientMetrics,
   getExerciseSessionSeries,
@@ -84,6 +87,7 @@ export default async function ClientDetailPage({
     subscription,
     routineHistory,
     progressPhotos,
+    allClients,
   ] = await Promise.all([
     getFeedbackForClient(id),
     getRecentSessionsForSelect(id),
@@ -100,6 +104,7 @@ export default async function ClientDetailPage({
     getClientSubscription(id),
     getRoutineHistoryForClient(id),
     getProgressPhotosForClient(id),
+    getClientsForSelect(),
   ]);
 
   const metricsByRange: Record<MetricsRange, ClientMetrics> = {
@@ -107,6 +112,39 @@ export default async function ClientDetailPage({
     month: metricsMonth,
     block: metricsBlock,
   };
+
+  const accessBadge =
+    ACCESS_BADGE[getAccessDisplayStatus(client.subscriptionStatus, client.subscriptionEndDate)];
+  const paymentLabel = client.paymentMethod
+    ? (PAYMENT_METHOD_LABEL[client.paymentMethod as PaymentMethod] ?? client.paymentMethod)
+    : null;
+  const accessSummary = [
+    accessBadge.label,
+    paymentLabel,
+    client.subscriptionEndDate ? `vence ${formatDate(client.subscriptionEndDate)}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  // Cierre de mes: el último día del mes, si todavía no está hecho, sube
+  // arriba de todo y abierto — mismo criterio que la alerta del dashboard
+  // (getMonthEndAlerts). El resto del mes queda colapsado abajo.
+  const monthlyReviewDone = !!monthlyReviewData.review?.completedAt;
+  const monthlyReviewUrgent = isMonthEndToday() && !monthlyReviewDone;
+
+  const activeRoutine = routineHistory.active;
+  const otherClients = allClients.filter((c) => c.id !== id);
+
+  const monthlyReviewCard = (
+    <Card className="border-[#1e1e1e] bg-[#111111]">
+      <CardHeader>
+        <CardTitle className="text-base text-white">Cierre de mes</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <MonthlyReviewForm clientId={id} data={monthlyReviewData} />
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="flex max-w-2xl flex-col gap-6">
@@ -116,6 +154,19 @@ export default async function ClientDetailPage({
         </h1>
         <div className="mt-1.5 mb-1 h-0.5 w-10 bg-[#e8001c]" />
         <p className="text-sm text-[#888888]">{client.email}</p>
+        {/* Línea de estado: acceso y rutina sin abrir ninguna sección. */}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-[#888888]">
+          <Badge variant="default" className={accessBadge.className}>
+            {accessBadge.label}
+          </Badge>
+          {client.subscriptionEndDate && (
+            <span>vence {formatDate(client.subscriptionEndDate)}</span>
+          )}
+          <span aria-hidden>·</span>
+          <span className="truncate">
+            {activeRoutine ? `Rutina: ${activeRoutine.name}` : "Sin rutina activa"}
+          </span>
+        </div>
       </div>
 
       <ClientDetailTabs
@@ -138,234 +189,200 @@ export default async function ClientDetailPage({
         nutricion={<NutritionTab clientId={id} plans={nutritionPlans} />}
         resumen={
           <>
-      <FadeIn delay={0}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <CardTitle className="text-base text-white">Datos</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-2 text-sm text-[#888888]">
-            <p>
-              Fecha de nacimiento:{" "}
-              {client.birthDate ? formatDate(client.birthDate) : "-"}
-            </p>
-            <p>Peso: {client.weightKg ? `${client.weightKg} kg` : "-"}</p>
-            <p>Altura: {client.heightCm ? `${client.heightCm} cm` : "-"}</p>
-            <p>Objetivo: {client.goal ?? "-"}</p>
-            <p>Experiencia: {client.trainingExperience ?? "-"}</p>
-          </CardContent>
-        </Card>
-      </FadeIn>
-
-      <FadeIn delay={0.05}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-base text-white">Acceso</CardTitle>
-              {(() => {
-                const status = getAccessDisplayStatus(
-                  client.subscriptionStatus,
-                  client.subscriptionEndDate
-                );
-                const badge = ACCESS_BADGE[status];
-                return (
-                  <Badge variant="default" className={badge.className}>
-                    {badge.label}
-                  </Badge>
-                );
-              })()}
-            </div>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-3">
-            <p className="text-sm text-[#888888]">
-              {client.paymentMethod
-                ? `Método actual: ${PAYMENT_METHOD_LABEL[client.paymentMethod as PaymentMethod] ?? client.paymentMethod}`
-                : "Todavía no se registró un pago."}
-              {client.subscriptionEndDate &&
-                ` · Vence: ${formatDate(client.subscriptionEndDate)}`}
-            </p>
-            <AccessForm
-              clientId={id}
-              currentPaymentMethod={client.paymentMethod}
-              currentEndDate={client.subscriptionEndDate}
-              isCurrentlyActive={client.subscriptionStatus === "active"}
-              subscription={subscription}
-            />
-          </CardContent>
-        </Card>
-      </FadeIn>
-
-      {client.notesCoach && (
-        <FadeIn delay={0.1}>
-          <Card className="border-[#1e1e1e] bg-[#111111]">
-            <CardHeader>
-              <CardTitle className="text-base text-white">Notas</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[#888888]">
-              {client.notesCoach}
-            </CardContent>
-          </Card>
-        </FadeIn>
-      )}
-
-      <FadeIn delay={0.15}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <CardTitle className="text-base text-white">Rutina activa</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-col gap-4">
-            {!routineHistory.active ? (
-              <EmptyState
-                icon={ClipboardList}
-                title="Este cliente todavía no tiene una rutina."
-                description="Es hora de armarle una."
-                className="py-4"
-              />
-            ) : (
-              <>
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    {routineHistory.active.mesocicloNombre && (
-                      <p className="text-xs tracking-wide text-[#888888] uppercase">
-                        {routineHistory.active.mesocicloNombre}
-                      </p>
-                    )}
-                    <Link
-                      href={`/coach/routines/${routineHistory.active.id}`}
-                      className="text-sm font-medium text-white hover:underline"
-                    >
-                      {routineHistory.active.name}
-                    </Link>
-                    <p className="text-xs text-[#888888]">
-                      {routineHistory.active.startsAt
-                        ? formatDate(routineHistory.active.startsAt)
-                        : "?"}{" "}
-                      →{" "}
-                      {routineHistory.active.endsAt
-                        ? formatDate(routineHistory.active.endsAt)
-                        : "Sin fecha de fin"}
-                    </p>
-                  </div>
-                  <Badge variant="default">Activa</Badge>
+            {monthlyReviewUrgent && (
+              <FadeIn delay={0}>
+                <div className="rounded-xl ring-1 ring-[#e8001c]/40">
+                  {monthlyReviewCard}
                 </div>
-                <ExtendMesocicloButton
-                  routineId={routineHistory.active.id}
-                  currentEndsAt={routineHistory.active.endsAt}
-                />
-              </>
+              </FadeIn>
             )}
 
-            {routineHistory.archived.length > 0 && (
-              <details className="group">
-                <summary className="flex cursor-pointer items-center gap-2 text-sm text-[#888888] select-none hover:text-white">
-                  <History className="size-4" />
-                  Historial de rutinas ({routineHistory.archived.length})
-                </summary>
-                <ul className="mt-3 flex flex-col gap-3">
-                  {routineHistory.archived.map((r) => (
-                    <li
-                      key={r.id}
-                      className="rounded-xl border border-[#1e1e1e] p-3 text-sm"
-                    >
-                      {r.mesocicloNombre && (
-                        <p className="text-xs tracking-wide text-[#888888] uppercase">
-                          {r.mesocicloNombre}
-                        </p>
-                      )}
-                      <Link
-                        href={`/coach/routines/${r.id}`}
-                        className="font-medium text-white hover:underline"
-                      >
-                        {r.name}
-                      </Link>
-                      <p className="mt-1 text-xs text-[#888888]">
-                        {r.startsAt ? formatDate(r.startsAt) : "?"} →{" "}
-                        {r.endsAt ? formatDate(r.endsAt) : "?"}
-                      </p>
-                      <p className="text-xs text-[#888888]">
-                        {r.completedSessionsCount}{" "}
-                        {r.completedSessionsCount === 1
-                          ? "sesión completada"
-                          : "sesiones completadas"}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </details>
-            )}
-          </CardContent>
-        </Card>
-      </FadeIn>
+            <FadeIn delay={0.05}>
+              <Card className="border-[#1e1e1e] bg-[#111111]">
+                <CardHeader>
+                  <CardTitle className="text-base text-white">
+                    Últimos entrenamientos
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {client.recentLogs.length === 0 ? (
+                    <EmptyState
+                      icon={History}
+                      title="Todavía no registró ningún entrenamiento."
+                      className="py-4"
+                    />
+                  ) : (
+                    <RecentLogsList clientId={id} logs={client.recentLogs} />
+                  )}
+                </CardContent>
+              </Card>
+            </FadeIn>
 
-      <FadeIn delay={0.2}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <CardTitle className="text-base text-white">
-              Últimos entrenamientos
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {client.recentLogs.length === 0 ? (
-              <EmptyState
-                icon={History}
-                title="Todavía no registró ningún entrenamiento."
-                className="py-4"
-              />
-            ) : (
-              <RecentLogsList clientId={id} logs={client.recentLogs} />
-            )}
-          </CardContent>
-        </Card>
-      </FadeIn>
+            <FadeIn delay={0.1}>
+              <Card className="border-[#1e1e1e] bg-[#111111]">
+                <CardHeader>
+                  <CardTitle className="text-base text-white">Dejar feedback</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <FeedbackForm
+                    clientId={id}
+                    sessions={sessions}
+                    exercises={exercises}
+                    defaultSessionId={defaultSessionId}
+                  />
+                </CardContent>
+              </Card>
+            </FadeIn>
 
-      <FadeIn delay={0.25}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <CardTitle className="text-base text-white">
-              Dejar feedback
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FeedbackForm
-              clientId={id}
-              sessions={sessions}
-              exercises={exercises}
-              defaultSessionId={defaultSessionId}
-            />
-          </CardContent>
-        </Card>
-      </FadeIn>
+            <FadeIn delay={0.15}>
+              <Card className="border-[#1e1e1e] bg-[#111111]">
+                <CardHeader>
+                  <CardTitle className="text-base text-white">Rutina activa</CardTitle>
+                </CardHeader>
+                <CardContent className="flex flex-col gap-4">
+                  {!activeRoutine ? (
+                    <EmptyState
+                      icon={ClipboardList}
+                      title="Este cliente todavía no tiene una rutina."
+                      description="Es hora de armarle una."
+                      className="py-4"
+                    />
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          {activeRoutine.mesocicloNombre && (
+                            <p className="text-xs tracking-wide text-[#888888] uppercase">
+                              {activeRoutine.mesocicloNombre}
+                            </p>
+                          )}
+                          <Link
+                            href={`/coach/routines/${activeRoutine.id}`}
+                            className="text-sm font-medium text-white hover:underline"
+                          >
+                            {activeRoutine.name}
+                          </Link>
+                          <p className="text-xs text-[#888888]">
+                            {activeRoutine.startsAt ? formatDate(activeRoutine.startsAt) : "?"}{" "}
+                            →{" "}
+                            {activeRoutine.endsAt
+                              ? formatDate(activeRoutine.endsAt)
+                              : "Sin fecha de fin"}
+                          </p>
+                        </div>
+                        <Badge variant="default">Activa</Badge>
+                      </div>
+                      <ExtendMesocicloButton
+                        routineId={activeRoutine.id}
+                        currentEndsAt={activeRoutine.endsAt}
+                      />
+                    </>
+                  )}
 
-      <FadeIn delay={0.3}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <CardTitle className="text-base text-white">
-              Feedback dejado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <FeedbackList items={feedback} />
-          </CardContent>
-        </Card>
-      </FadeIn>
+                  <RoutineQuickActions
+                    clientId={id}
+                    routineId={activeRoutine?.id ?? null}
+                    otherClients={otherClients}
+                  />
 
-      <FadeIn delay={0.35}>
-        <Card className="border-[#1e1e1e] bg-[#111111]">
-          <CardHeader>
-            <CardTitle className="text-base text-white">
-              Cierre de mes
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <MonthlyReviewForm clientId={id} data={monthlyReviewData} />
-          </CardContent>
-        </Card>
-      </FadeIn>
+                  {routineHistory.archived.length > 0 && (
+                    <details className="group">
+                      <summary className="flex cursor-pointer items-center gap-2 text-sm text-[#888888] select-none hover:text-white">
+                        <History className="size-4" />
+                        Historial de rutinas ({routineHistory.archived.length})
+                      </summary>
+                      <ul className="mt-3 flex flex-col gap-3">
+                        {routineHistory.archived.map((r) => (
+                          <li
+                            key={r.id}
+                            className="rounded-xl border border-[#1e1e1e] p-3 text-sm"
+                          >
+                            {r.mesocicloNombre && (
+                              <p className="text-xs tracking-wide text-[#888888] uppercase">
+                                {r.mesocicloNombre}
+                              </p>
+                            )}
+                            <Link
+                              href={`/coach/routines/${r.id}`}
+                              className="font-medium text-white hover:underline"
+                            >
+                              {r.name}
+                            </Link>
+                            <p className="mt-1 text-xs text-[#888888]">
+                              {r.startsAt ? formatDate(r.startsAt) : "?"} →{" "}
+                              {r.endsAt ? formatDate(r.endsAt) : "?"}
+                            </p>
+                            <p className="text-xs text-[#888888]">
+                              {r.completedSessionsCount}{" "}
+                              {r.completedSessionsCount === 1
+                                ? "sesión completada"
+                                : "sesiones completadas"}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </details>
+                  )}
+                </CardContent>
+              </Card>
+            </FadeIn>
 
-      {client.subscriptionStatus === "inactive" && (
-        <FadeIn delay={0.4}>
-          <DeleteClientButton clientId={id} />
-        </FadeIn>
-      )}
+            <FadeIn delay={0.2} className="flex flex-col gap-3">
+              <CollapsibleCard title="Feedback dejado" summary={`${feedback.length}`}>
+                <FeedbackList items={feedback} />
+              </CollapsibleCard>
+
+              {!monthlyReviewUrgent && (
+                <CollapsibleCard
+                  title="Cierre de mes"
+                  summary={monthlyReviewDone ? "Completado" : "Sin hacer"}
+                >
+                  <MonthlyReviewForm clientId={id} data={monthlyReviewData} />
+                </CollapsibleCard>
+              )}
+
+              <CollapsibleCard title="Datos y notas" summary={client.goal ?? undefined}>
+                <div className="flex flex-col gap-2 text-sm text-[#888888]">
+                  <p>
+                    Fecha de nacimiento:{" "}
+                    {client.birthDate ? formatDate(client.birthDate) : "-"}
+                  </p>
+                  <p>Peso: {client.weightKg ? `${client.weightKg} kg` : "-"}</p>
+                  <p>Altura: {client.heightCm ? `${client.heightCm} cm` : "-"}</p>
+                  <p>Objetivo: {client.goal ?? "-"}</p>
+                  <p>Experiencia: {client.trainingExperience ?? "-"}</p>
+                  {client.notesCoach && (
+                    <p className="mt-2 border-t border-[#1e1e1e] pt-3 whitespace-pre-line text-[#f5f5f5]">
+                      {client.notesCoach}
+                    </p>
+                  )}
+                </div>
+              </CollapsibleCard>
+
+              <CollapsibleCard title="Acceso y pagos" summary={accessSummary}>
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-[#888888]">
+                    {paymentLabel
+                      ? `Método actual: ${paymentLabel}`
+                      : "Todavía no se registró un pago."}
+                    {client.subscriptionEndDate &&
+                      ` · Vence: ${formatDate(client.subscriptionEndDate)}`}
+                  </p>
+                  <AccessForm
+                    clientId={id}
+                    currentPaymentMethod={client.paymentMethod}
+                    currentEndDate={client.subscriptionEndDate}
+                    isCurrentlyActive={client.subscriptionStatus === "active"}
+                    subscription={subscription}
+                  />
+                  {client.subscriptionStatus === "inactive" && (
+                    <div className="mt-2 border-t border-[#1e1e1e] pt-4">
+                      <DeleteClientButton clientId={id} />
+                    </div>
+                  )}
+                </div>
+              </CollapsibleCard>
+            </FadeIn>
           </>
         }
       />

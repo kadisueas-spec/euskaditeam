@@ -1,11 +1,26 @@
-import { getClientsForSelect, getExercisesForSelect } from "@/lib/supabase/routines";
+import {
+  getClientsForSelect,
+  getExercisesForSelect,
+  getRoutineDetail,
+} from "@/lib/supabase/routines";
+import { getTemplatesList } from "@/lib/supabase/routine-templates";
 import { FadeIn } from "@/components/motion/fade-in";
 import { RoutineWizard } from "./routine-wizard";
 
-export default async function NewRoutinePage() {
-  const [clients, exercises] = await Promise.all([
+// ?client=<id> preselecciona el cliente (botón "Nueva rutina" de la ficha);
+// ?from=<routineId> precarga una rutina existente para copiarla (botón
+// "Copiar a otro cliente") — ver RoutineWizard.
+export default async function NewRoutinePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ client?: string; from?: string }>;
+}) {
+  const { client: initialClientId, from } = await searchParams;
+  const [clients, exercises, source, templates] = await Promise.all([
     getClientsForSelect(),
     getExercisesForSelect(),
+    from ? getRoutineDetail(from) : Promise.resolve(null),
+    getTemplatesList(),
   ]);
 
   return (
@@ -16,7 +31,16 @@ export default async function NewRoutinePage() {
         </h1>
         <div className="mt-1.5 h-0.5 w-10 bg-[#e8001c]" />
       </div>
-      <RoutineWizard clients={clients} exercises={exercises} />
+      {/* key: elegir una plantilla en el paso 0 navega a ?from= — sin
+          remontar, el wizard conservaría el estado inicial vacío. */}
+      <RoutineWizard
+        key={from ?? "new"}
+        templates={templates}
+        clients={clients}
+        exercises={exercises}
+        initialClientId={initialClientId}
+        source={source}
+      />
     </FadeIn>
   );
 }
