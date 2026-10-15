@@ -23,6 +23,7 @@ export type MyRoutineExercise = {
   coachNotes: string | null;
   warmupType: WarmupType;
   warmupFixedWeightKg: number | null;
+  weightIncrement: number;
 };
 
 export type MyRoutineDay = {
@@ -65,6 +66,7 @@ type MyActiveRoutineRow = {
       coach_notes: string | null;
       warmup_type: string;
       warmup_fixed_weight_kg: number | null;
+      weight_increment: number;
       exercises: { name: string; video_url: string | null } | null;
     }[];
   }[];
@@ -87,7 +89,7 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
          id, name, day_number,
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
-           rir_target, rest_seconds, coach_notes, warmup_type, warmup_fixed_weight_kg,
+           rir_target, rest_seconds, coach_notes, warmup_type, warmup_fixed_weight_kg, weight_increment,
            exercises ( name, video_url )
          )
        )`
@@ -131,6 +133,7 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
           coachNotes: re.coach_notes,
           warmupType: re.warmup_type as WarmupType,
           warmupFixedWeightKg: re.warmup_fixed_weight_kg,
+          weightIncrement: Number(re.weight_increment) || 2.5,
         })),
     })),
   };

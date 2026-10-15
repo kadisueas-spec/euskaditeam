@@ -838,6 +838,31 @@ momento, no una galería genérica.
     - Editar/renombrar: el mismo `RoutineEditor`; con `isTemplate` oculta
       mesociclo y fecha de inicio, y `updateRoutine` no los valida ni
       escribe (el CHECK rechazaría `starts_at`).
+59. Progresión serie a serie (oct-2026): de la serie 2 en adelante, la
+    sugerencia sale de la última serie completada de ESTA sesión, no de la
+    semana pasada (la serie 1 sigue con `getWorkoutSuggestions`).
+    - `lib/utils/set-progression.ts` (`suggestNextSet`, función pura, sin
+      Supabase — corre en el teléfono, funciona offline). Con P = peso,
+      R = reps de la serie anterior: R > máx → mismo peso, reps = máx;
+      R en rango y R−1 ≥ mín → mismo peso, R−1; R−1 < mín o R < mín →
+      P − `weight_increment`, reps = máx. RIR sugerido = `rir_target`
+      (vacío si no hay). Si la sesión anterior tuvo menos series que hoy,
+      las extra salen igual de la última serie de hoy (sin caso aparte).
+    - Redondeo hacia abajo a 2,5 kg solo en los casos que bajan el peso
+      (en "mismo peso" P queda tal cual) y solo si el incremento es
+      múltiplo de 2,5 — si no (mancuernas de a 1 kg), al múltiplo del
+      propio incremento (22 − 1 = 21, no 20).
+    - Sin peso para bajar (peso corporal, o P − incremento ≤ 0): mismo
+      peso, mismas reps, "Mantené la técnica, hacé las que puedas". Un
+      solo extremo del rango cargado vale como mín y máx; sin rango,
+      repite la serie anterior sin texto de caso.
+    - `workout-logger.tsx`: mismo efecto que la sugerencia de la serie 1,
+      recalcula también si cambia la última serie (`lastSetKey`). Mismo
+      recuadro ámbar; texto "Según tu serie anterior: P kg × R reps" +
+      explicación del caso en gris (`SET_PROGRESSION_TEXT`), en cada serie.
+    - `weight_increment` ahora llega al logger (`MyRoutineExercise.
+      weightIncrement`, en `client-routine.ts` y `coach-training.ts` — el
+      entrenamiento propio del coach reusa el mismo logger).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

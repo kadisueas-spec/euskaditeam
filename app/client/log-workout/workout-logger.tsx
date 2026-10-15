@@ -20,6 +20,11 @@ import { formatFriendlyDate } from "@/lib/utils/format-date";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { clearStoredRestTimer, readStoredRestTimer } from "@/lib/utils/rest-timer-storage";
 import {
+  SET_PROGRESSION_TEXT,
+  suggestNextSet,
+  type SetProgressionCase,
+} from "@/lib/utils/set-progression";
+import {
   detectWeeklyRecord,
   recordSummaryLine,
   recordSummaryMessage,
@@ -176,6 +181,13 @@ export function WorkoutLogger({
     WorkoutSuggestion["previousRecord"]
   >(null);
   const [suggestionRecordDate, setSuggestionRecordDate] = useState<string | null>(null);
+  // Progresión serie a serie (oct-2026): caso aplicado a la serie actual
+  // (2 en adelante) y la serie de la que salió, para el texto explicativo.
+  const [setProgression, setSetProgression] = useState<{
+    progressionCase: SetProgressionCase;
+    fromWeight: number | null;
+    fromReps: number;
+  } | null>(null);
   // Sistema de celebración de récords (jul-2026): sessionRecords acumula
   // TODOS los récords de la sesión (para el resumen de Momento 2 al
   // finalizar); celebrationQueue es la cola de banners de Momento 1
@@ -387,8 +399,47 @@ export function WorkoutLogger({
   // reacciona a cambios de ejercicio/serie y nunca a que lleguen los
   // datos). "index === 0" del pedido original equivale a nextSetNumber===1
   // acá (todavía no hay ninguna serie cargada para este ejercicio).
+  //
+  // Progresión serie a serie (oct-2026): de la serie 2 en adelante la
+  // sugerencia sale de la última serie completada de ESTA sesión
+  // (suggestNextSet, lib/utils/set-progression.ts), no de la semana pasada.
+  // Depende de lastSet además de nextSetNumber: si el cliente edita la
+  // última serie, la sugerencia de la siguiente se recalcula.
+  const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : null;
+  const lastSetKey = lastSet ? `${lastSet.weight}|${lastSet.reps}` : "";
   useEffect(() => {
     if (!exercise) return;
+
+    if (nextSetNumber > 1 && lastSet) {
+      const lastWeight = parseDecimalInput(lastSet.weight);
+      const lastReps = Number(lastSet.reps);
+      const next = suggestNextSet({
+        weight: lastWeight,
+        reps: lastReps,
+        repsMin: exercise.repsMin,
+        repsMax: exercise.repsMax,
+        rirTarget: exercise.rirTarget,
+        weightIncrement: exercise.weightIncrement,
+      });
+      setWeight(next?.weight != null ? String(next.weight) : "");
+      setReps(next ? String(next.reps) : "");
+      setRir(next?.rir != null ? String(next.rir) : "");
+      setSuggested({
+        weight: next?.weight != null,
+        reps: next != null,
+        rir: next?.rir != null,
+      });
+      setSetProgression(
+        next ? { progressionCase: next.progressionCase, fromWeight: lastWeight, fromReps: lastReps } : null
+      );
+      setSuggestionCase(null);
+      setSuggestionWeeksAgo(null);
+      setSuggestionRecord(null);
+      setSuggestionRecordDate(null);
+      setError(null);
+      return;
+    }
+
     const prev = nextSetNumber === 1 ? suggestions[exercise.id] : undefined;
     const nextWeight = prev?.weight != null ? String(prev.weight) : "";
     const nextReps = prev?.reps != null ? String(prev.reps) : "";
@@ -401,12 +452,16 @@ export function WorkoutLogger({
       reps: prev?.reps != null,
       rir: prev?.rir != null,
     });
+    setSetProgression(null);
     setSuggestionCase(prev?.progressionCase ?? null);
     setSuggestionWeeksAgo(prev?.weeksAgo ?? null);
     setSuggestionRecord(prev?.previousRecord ?? null);
     setSuggestionRecordDate(prev?.recordDate ?? null);
     setError(null);
-  }, [exercise?.id, nextSetNumber, suggestions]);
+    // lastSet se lee a través de lastSetKey (el objeto cambia de identidad
+    // en cada render del estado optimista, el contenido no).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [exercise?.id, nextSetNumber, suggestions, lastSetKey]);
 
   function goNext() {
     if (isLastExercise) {
@@ -1082,7 +1137,13 @@ export function WorkoutLogger({
         <div className="-mt-2 flex flex-col gap-0.5">
           <p className="flex items-center gap-1 text-xs text-amber-400">
             <Check className="size-3" />
-            {suggestionWeeksAgo != null && suggestionWeeksAgo >= 2
+            {setProgression
+              ? `Según tu serie anterior: ${
+                  setProgression.fromWeight != null && setProgression.fromWeight > 0
+                    ? `${setProgression.fromWeight} kg × `
+                    : ""
+                }${setProgression.fromReps} reps — podés editarlo`
+              : suggestionWeeksAgo != null && suggestionWeeksAgo >= 2
               ? // Bug jul-2026: dato de referencia no fresco (2+ semanas) — hay
                 // que avisar explícitamente para que no se lea como "esta
                 // semana", sea cual sea el progressionCase.
@@ -1098,6 +1159,11 @@ export function WorkoutLogger({
               con dato fresco (no en el caso "hace X semanas", que ya se
               explica solo) para no apilar dos explicaciones en la misma
               pantalla. */}
+          {setProgression && SET_PROGRESSION_TEXT[setProgression.progressionCase] && (
+            <p className="text-xs text-[#888888]">
+              {SET_PROGRESSION_TEXT[setProgression.progressionCase]}
+            </p>
+          )}
           {suggestionRecord && suggestionRecordDate && (suggestionWeeksAgo ?? 0) < 2 && (
             <p className="text-xs text-[#888888]">
               Calculado desde tu récord del {formatFriendlyDate(suggestionRecordDate)}:{" "}
