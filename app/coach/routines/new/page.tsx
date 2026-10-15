@@ -3,7 +3,9 @@ import {
   getExercisesForSelect,
   getRoutineDetail,
 } from "@/lib/supabase/routines";
+import { redirect } from "next/navigation";
 import { getTemplatesList } from "@/lib/supabase/routine-templates";
+import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { FadeIn } from "@/components/motion/fade-in";
 import { RoutineWizard } from "./routine-wizard";
 
@@ -16,12 +18,14 @@ export default async function NewRoutinePage({
   searchParams: Promise<{ client?: string; from?: string }>;
 }) {
   const { client: initialClientId, from } = await searchParams;
-  const [clients, exercises, source, templates] = await Promise.all([
+  const [clients, exercises, source, templates, profile] = await Promise.all([
     getClientsForSelect(),
     getExercisesForSelect(),
     from ? getRoutineDetail(from) : Promise.resolve(null),
     getTemplatesList(),
+    getCurrentProfile(),
   ]);
+  if (!profile) redirect("/login");
 
   return (
     <FadeIn className="flex max-w-3xl flex-col gap-6">
@@ -35,6 +39,7 @@ export default async function NewRoutinePage({
           remontar, el wizard conservaría el estado inicial vacío. */}
       <RoutineWizard
         key={from ?? "new"}
+        coachId={profile.id}
         templates={templates}
         clients={clients}
         exercises={exercises}

@@ -894,6 +894,23 @@ momento, no una galería genérica.
     - Nota en `/client/profile` (`rest-timer-settings.tsx`): "En iPhone: el
       sonido solo funciona con la app abierta. Activá las notificaciones
       para recibir el aviso cuando termina el descanso."
+61. Autoguardado del creador de rutinas (oct-2026) — sin schema, solo
+    localStorage (`lib/utils/routine-draft-storage.ts`, key
+    `routine-wizard-draft:<coachId>`, un borrador por coach).
+    - `routine-wizard.tsx`: guarda todo el estado editable (paso actual,
+      paso 1, días y ejercicios con su configuración completa) con
+      debounce de 400 ms en cada cambio. Un wizard vacío (o con un solo
+      día vacío) no cuenta como borrador (`draftHasContent`).
+    - Al abrir: si hay borrador, aviso "Tenés un borrador sin terminar.
+      ¿Continuarlo?" con Continuar / Descartar. Mientras el aviso está a
+      la vista NO se autoguarda (no pisa el borrador con el wizard nuevo).
+      El borrador se lee en un efecto después de hidratar (localStorage no
+      existe en el render del servidor).
+    - Se borra al guardar con éxito (asignar o "Guardar como plantilla"),
+      al tocar Descartar, o con el botón "Cancelar" del wizard
+      (confirmación inline "¿Descartar lo cargado y salir?").
+      `draftClosedRef` evita que un guardado pendiente del debounce lo
+      vuelva a escribir después.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

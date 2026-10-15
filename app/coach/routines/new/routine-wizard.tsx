@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { BookmarkCheck, BookmarkPlus, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,11 @@ import { createRoutine, type RoutineDayInput, type WarmupType } from "../actions
 import { createTemplate } from "../template-actions";
 import type { TemplateListItem } from "@/lib/supabase/routine-templates";
 import { todayInParaguay } from "@/lib/utils/today";
+import {
+  clearRoutineDraft,
+  readRoutineDraft,
+  writeRoutineDraft,
+} from "@/lib/utils/routine-draft-storage";
 
 type ExerciseRow = {
   key: string;
@@ -109,13 +114,56 @@ function daysFromSource(
   return { days, skipped };
 }
 
+// Autoguardado (oct-2026): todo el estado editable del wizard — paso 1,
+// días y ejercicios con su configuración completa (DayRow ya la tiene).
+// `version` para poder descartar borradores de un formato viejo si algún
+// día cambia la forma de DayRow.
+type WizardDraft = {
+  version: 1;
+  savedAt: number;
+  step: 1 | 2 | 3;
+  name: string;
+  description: string;
+  objective: string;
+  clientId: string;
+  mesocicloNombre: string;
+  durationWeeks: string;
+  startsAt: string;
+  days: DayRow[];
+};
+
+function parseDraft(value: unknown): WizardDraft | null {
+  if (!value || typeof value !== "object") return null;
+  const d = value as Partial<WizardDraft>;
+  if (d.version !== 1 || !Array.isArray(d.days) || typeof d.name !== "string") return null;
+  return d as WizardDraft;
+}
+
+// Un wizard recién abierto (vacío, o con un día vacío) no cuenta como
+// borrador — si no, abrir y cerrar "Nueva rutina" dejaría un aviso de
+// borrador sin nada adentro.
+function draftHasContent(d: Omit<WizardDraft, "version" | "savedAt" | "step">): boolean {
+  return (
+    d.name.trim() !== "" ||
+    d.description.trim() !== "" ||
+    d.objective.trim() !== "" ||
+    d.mesocicloNombre.trim() !== "" ||
+    d.days.length > 1 ||
+    d.days.some((day) => day.exercises.length > 0)
+  );
+}
+
+const DRAFT_SAVE_DEBOUNCE_MS = 400;
+
 export function RoutineWizard({
+  coachId,
   clients,
   exercises,
   initialClientId = "",
   source = null,
   templates = [],
 }: {
+  coachId: string;
   clients: ClientOption[];
   exercises: ExerciseOption[];
   initialClientId?: string;
@@ -162,6 +210,99 @@ export function RoutineWizard({
   );
   const [startsAt, setStartsAt] = useState(() => todayInParaguay());
   const [days, setDays] = useState<DayRow[]>(initialFromSource.days);
+
+  // Autoguardado (oct-2026). `draftOffer` = borrador encontrado al abrir,
+  // esperando "Continuar"/"Descartar" — mientras el aviso está a la vista
+  // NO se autoguarda, para no pisar ese borrador con el wizard nuevo.
+  // `draftChecked` evita autoguardar antes de haber mirado si había uno.
+  const [draftOffer, setDraftOffer] = useState<WizardDraft | null>(null);
+  const [draftChecked, setDraftChecked] = useState(false);
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
+  // Una vez guardada la rutina (o cancelado el wizard) ya no se autoguarda,
+  // aunque quede un guardado pendiente del debounce.
+  const draftClosedRef = useRef(false);
+
+  useEffect(() => {
+    // localStorage solo existe en el navegador: se lee después de hidratar
+    // (leerlo en el primer render rompería la hidratación del HTML del
+    // servidor). setState acá es justamente sincronizar con ese sistema
+    // externo.
+    const draft = parseDraft(readRoutineDraft(coachId));
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (draft && draftHasContent(draft)) setDraftOffer(draft);
+    setDraftChecked(true);
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [coachId]);
+
+  useEffect(() => {
+    if (!draftChecked || draftOffer || draftClosedRef.current) return;
+    const snapshot = {
+      name,
+      description,
+      objective,
+      clientId,
+      mesocicloNombre,
+      durationWeeks,
+      startsAt,
+      days,
+    };
+    if (!draftHasContent(snapshot)) return;
+    const timer = setTimeout(() => {
+      if (draftClosedRef.current) return;
+      writeRoutineDraft(coachId, {
+        ...snapshot,
+        version: 1,
+        savedAt: Date.now(),
+        step: step === 0 ? 1 : step,
+      } satisfies WizardDraft);
+    }, DRAFT_SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    coachId,
+    draftChecked,
+    draftOffer,
+    step,
+    name,
+    description,
+    objective,
+    clientId,
+    mesocicloNombre,
+    durationWeeks,
+    startsAt,
+    days,
+  ]);
+
+  function continueDraft() {
+    if (!draftOffer) return;
+    setName(draftOffer.name);
+    setDescription(draftOffer.description);
+    setObjective(draftOffer.objective);
+    setClientId(clients.some((c) => c.id === draftOffer.clientId) ? draftOffer.clientId : "");
+    setMesocicloNombre(draftOffer.mesocicloNombre);
+    setDurationWeeks(draftOffer.durationWeeks);
+    setStartsAt(draftOffer.startsAt || todayInParaguay());
+    setDays(draftOffer.days);
+    setStep(draftOffer.step);
+    setConfirmingArchive(false);
+    setError(null);
+    setDraftOffer(null);
+  }
+
+  function discardDraft() {
+    clearRoutineDraft(coachId);
+    setDraftOffer(null);
+  }
+
+  // Cerrar el borrador para siempre: al guardar con éxito o al cancelar.
+  function closeDraft() {
+    draftClosedRef.current = true;
+    clearRoutineDraft(coachId);
+  }
+
+  function cancelWizard() {
+    closeDraft();
+    router.push("/coach/routines");
+  }
 
   function pickTemplate(templateId: string) {
     router.push(
@@ -292,6 +433,7 @@ export function RoutineWizard({
         setError(result.error);
         return;
       }
+      closeDraft();
       router.push(`/coach/routines/${result.id}`);
     });
   }
@@ -330,12 +472,64 @@ export function RoutineWizard({
         return;
       }
 
+      closeDraft();
       router.push(`/coach/routines/${result.id}`);
     });
   }
 
   return (
     <div className="flex flex-col gap-6">
+      {draftOffer && (
+        <div className="flex flex-col gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/5 p-4 sm:flex-row sm:items-center">
+          <p className="flex-1 text-sm text-[#f5f5f5]">
+            Tenés un borrador sin terminar
+            {draftOffer.name.trim() ? (
+              <>
+                {" "}
+                (<span className="font-medium">{draftOffer.name.trim()}</span>)
+              </>
+            ) : null}
+            . ¿Continuarlo?
+          </p>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" className="h-10" onClick={discardDraft}>
+              Descartar
+            </Button>
+            <Button size="sm" className="h-10" onClick={continueDraft}>
+              Continuar
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex justify-end">
+        {confirmingCancel ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <span className="text-[#888888]">¿Descartar lo cargado y salir?</span>
+            <Button variant="outline" size="sm" onClick={() => setConfirmingCancel(false)}>
+              Seguir editando
+            </Button>
+            <Button
+              size="sm"
+              className="bg-[#e8001c] hover:bg-[#b8001a]"
+              onClick={cancelWizard}
+            >
+              Descartar y salir
+            </Button>
+          </div>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-[#888888]"
+            onClick={() => setConfirmingCancel(true)}
+            disabled={pending}
+          >
+            Cancelar
+          </Button>
+        )}
+      </div>
+
       {step === 0 && (
         <FadeIn className="flex flex-col gap-3">
           <p className="text-sm text-[#888888]">¿Cómo querés empezar?</p>
