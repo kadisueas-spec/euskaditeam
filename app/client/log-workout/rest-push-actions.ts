@@ -13,17 +13,18 @@ import { REST_END_PUSH } from "@/lib/constants/push-copy";
 // (Web Push no tiene envío programado). Por eso: al arrancar el
 // temporizador se guarda un token en clients.rest_timer_push_token y una
 // tarea en segundo plano (after()) espera hasta endsAt y manda la push
-// solo si el token sigue siendo el mismo. Ajustar el tiempo, saltear,
-// completar otra serie o ver el 0:00 con la app abierta cambia o borra el
-// token, y la tarea vieja se descarta sola al despertar.
+// solo si el token sigue siendo el mismo. Se manda SIEMPRE al llegar a
+// 0:00, con la app abierta o no: ajustar el tiempo o completar otra serie
+// reprograma con un token nuevo (la tarea vieja se descarta sola al
+// despertar), y "Saltear" lo borra — única forma de cancelarla.
 //
 // Tope: la función serverless vive como máximo maxDuration (300s, ver
 // page.tsx) — descansos más largos que REST_PUSH_MAX_DELAY_MS no se avisan
 // por push (el temporizador en pantalla sigue funcionando igual).
 const REST_PUSH_MAX_DELAY_MS = 280_000;
-// Margen para que el "cancelar" del cliente (si vio el 0:00 con la app
-// abierta) llegue antes de que el servidor decida mandar.
-const REST_PUSH_GRACE_MS = 1_500;
+// Margen chico para que un "Saltear" tocado justo en el último segundo
+// llegue antes de que el servidor decida mandar.
+const REST_PUSH_GRACE_MS = 500;
 
 export async function scheduleRestEndPush(
   token: string,
@@ -31,7 +32,10 @@ export async function scheduleRestEndPush(
   url: string
 ): Promise<void> {
   const delay = endsAt - Date.now();
-  if (delay <= 0 || delay > REST_PUSH_MAX_DELAY_MS) {
+  // Ya pasó el 0:00 (ej. volvió a la pantalla después): no se toca el
+  // token, por si la push de ese descanso todavía está por salir.
+  if (delay <= 0) return;
+  if (delay > REST_PUSH_MAX_DELAY_MS) {
     await cancelRestEndPush();
     return;
   }

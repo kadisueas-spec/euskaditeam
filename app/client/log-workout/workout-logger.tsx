@@ -492,7 +492,6 @@ export function WorkoutLogger({
   // primera serie del ejercicio siguiente.
   function clearRestTimer() {
     if (workoutLogId) clearStoredRestTimer(workoutLogId);
-    if (restTimer) cancelRestPush();
     setRestTimer(null);
   }
 
@@ -509,16 +508,12 @@ export function WorkoutLogger({
       .catch(() => {});
   }
 
+  // La push sale SIEMPRE al llegar a 0:00 (app abierta o no, aunque el
+  // cliente haya cambiado de ejercicio o terminado el entrenamiento) — la
+  // única excepción es "Saltear" el descanso a mano.
   function cancelRestPush() {
     actions.cancelRestEndPush?.().catch(() => {});
   }
-
-  // Al terminar el entrenamiento (resumen/celebración) el temporizador deja
-  // de mostrarse — la push pendiente ya no tiene sentido.
-  useEffect(() => {
-    if (phase !== "logging") cancelRestPush();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase]);
 
   async function handleCompleteSet() {
     if (!weight && !reps) {
@@ -975,7 +970,7 @@ export function WorkoutLogger({
           audioCtxRef={audioCtxRef}
           onHide={clearRestTimer}
           onEndsAtChange={scheduleRestPush}
-          onZeroWhileVisible={cancelRestPush}
+          onSkip={cancelRestPush}
         />
       )}
       <div className="flex items-center justify-between">

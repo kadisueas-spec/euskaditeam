@@ -878,12 +878,13 @@ momento, no una galería genérica.
       bloqueada: Web Push no tiene envío programado, así que
       `scheduleRestEndPush` (`app/client/log-workout/rest-push-actions.ts`)
       guarda un token en `clients.rest_timer_push_token` y espera dentro
-      de `after()` hasta el fin del descanso (+1,5 s de margen); manda la
+      de `after()` hasta el fin del descanso (+0,5 s de margen); manda la
       push solo si el token sigue siendo el suyo (lo consume en el mismo
       UPDATE). Se reprograma con token nuevo al arrancar, al volver a la
-      pantalla y con −15s/+15s; se cancela al saltear, cambiar de
-      ejercicio, terminar el entrenamiento o ver el 0:00 con la app
-      abierta (`document.visibilityState === "visible"`). Solo si
+      pantalla y con −15s/+15s (y una serie nueva reemplaza el descanso
+      anterior). Se manda SIEMPRE al llegar a 0:00 — con la app abierta,
+      tras cambiar de ejercicio o terminar el entrenamiento también; la
+      única forma de cancelarla es "Saltear" (`onSkip`). Solo si
       `Notification.permission === "granted"`. Tope: descansos de más de
       280 s no se avisan por push (`maxDuration = 300` en
       `app/client/log-workout/page.tsx`). `tag: "rest-timer"` + `renotify`

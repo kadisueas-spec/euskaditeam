@@ -88,7 +88,7 @@ export function RestTimerBar({
   audioCtxRef,
   onHide,
   onEndsAtChange,
-  onZeroWhileVisible,
+  onSkip,
 }: {
   workoutLogId: string;
   routineExerciseId: string;
@@ -100,10 +100,10 @@ export function RestTimerBar({
   onHide: () => void;
   // Push de fin de descanso (oct-2026): se avisa cada vez que cambia la
   // hora de fin (al arrancar, al volver a la pantalla y con −15s/+15s) para
-  // reprogramar el aviso, y al llegar a 0:00 con la app abierta para
-  // cancelarlo (ya sonó el timbre, no hace falta la push).
+  // reprogramar el aviso. La push sale SIEMPRE al llegar a 0:00, con la app
+  // abierta o no — la única forma de cancelarla es "Saltear" (onSkip).
   onEndsAtChange?: (endsAt: number) => void;
-  onZeroWhileVisible?: () => void;
+  onSkip?: () => void;
 }) {
   // Al montar: si hay un temporizador guardado de la MISMA instancia (el
   // cliente navegó afuera y volvió, o cerró la app y volvió a entrar),
@@ -151,8 +151,6 @@ export function RestTimerBar({
     if (zeroFiredRef.current) return;
     zeroFiredRef.current = true;
 
-    if (document.visibilityState === "visible") onZeroWhileVisible?.();
-
     // navigator.vibrate NO existe en Safari iOS — llamar sin chequear
     // rompió esta misma pantalla antes (ver comentario en workout-logger),
     // por eso el optional chaining acá también.
@@ -168,7 +166,7 @@ export function RestTimerBar({
         console.error("rest timer ring error:", err);
       }
     }
-  }, [remaining, soundEnabled, vibrationEnabled, audioCtxRef, onZeroWhileVisible]);
+  }, [remaining, soundEnabled, vibrationEnabled, audioCtxRef]);
 
   function adjust(deltaSeconds: number) {
     setEndsAt((prev) => {
@@ -180,6 +178,7 @@ export function RestTimerBar({
 
   function skip() {
     clearStoredRestTimer(workoutLogId);
+    onSkip?.();
     onHide();
   }
 
