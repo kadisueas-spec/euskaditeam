@@ -48,6 +48,7 @@ import {
   type WorkoutSuggestion,
   type WorkoutSummary,
 } from "./actions";
+import { cancelRestEndPush, scheduleRestEndPush } from "./rest-push-actions";
 
 // Inyectable por props (jul-2026): el coach reusa este mismo componente
 // para su propio entrenamiento (ver app/coach/my-training), con acciones
@@ -68,6 +69,10 @@ export type WorkoutLoggerActions = {
     patch: UpdateSetInput
   ) => Promise<{ success: true } | { error: string }>;
   finishWorkout: (input: FinishWorkoutInput) => Promise<FinishWorkoutResult>;
+  // Push de fin de descanso (oct-2026) — opcionales: el entrenamiento
+  // propio del coach no las pasa (no tiene fila en clients para el token).
+  scheduleRestEndPush?: (token: string, endsAt: number, url: string) => Promise<void>;
+  cancelRestEndPush?: () => Promise<void>;
 };
 
 const DEFAULT_ACTIONS: WorkoutLoggerActions = {
@@ -76,6 +81,8 @@ const DEFAULT_ACTIONS: WorkoutLoggerActions = {
   addSet: defaultAddSet,
   updateSet: defaultUpdateSet,
   finishWorkout: defaultFinishWorkout,
+  scheduleRestEndPush,
+  cancelRestEndPush,
 };
 
 type CommittedSet = {
@@ -485,8 +492,33 @@ export function WorkoutLogger({
   // primera serie del ejercicio siguiente.
   function clearRestTimer() {
     if (workoutLogId) clearStoredRestTimer(workoutLogId);
+    if (restTimer) cancelRestPush();
     setRestTimer(null);
   }
+
+  // Push de fin de descanso (oct-2026): solo si el cliente ya dio permiso
+  // de notificaciones (sin permiso no hay a quién mandarla). Token nuevo en
+  // cada reprogramación — la tarea vieja del servidor se descarta sola.
+  // Errores de red ignorados: la push es un extra, el temporizador en
+  // pantalla sigue funcionando offline.
+  function scheduleRestPush(endsAt: number) {
+    if (!actions.scheduleRestEndPush) return;
+    if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    actions
+      .scheduleRestEndPush(crypto.randomUUID(), endsAt, `/client/log-workout?day=${day.id}`)
+      .catch(() => {});
+  }
+
+  function cancelRestPush() {
+    actions.cancelRestEndPush?.().catch(() => {});
+  }
+
+  // Al terminar el entrenamiento (resumen/celebración) el temporizador deja
+  // de mostrarse — la push pendiente ya no tiene sentido.
+  useEffect(() => {
+    if (phase !== "logging") cancelRestPush();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [phase]);
 
   async function handleCompleteSet() {
     if (!weight && !reps) {
@@ -930,7 +962,22 @@ export function WorkoutLogger({
   }
 
   return (
-    <div className={`flex flex-col gap-4 ${restTimer ? "pb-24" : ""}`}>
+    <div className="flex flex-col gap-4">
+      {phase === "logging" && restTimer && workoutLogId && (
+        <RestTimerBar
+          key={restTimer.instanceId}
+          workoutLogId={workoutLogId}
+          routineExerciseId={restTimer.routineExerciseId}
+          restSeconds={restTimer.restSeconds}
+          instanceId={restTimer.instanceId}
+          soundEnabled={restTimerPrefs.sound}
+          vibrationEnabled={restTimerPrefs.vibration}
+          audioCtxRef={audioCtxRef}
+          onHide={clearRestTimer}
+          onEndsAtChange={scheduleRestPush}
+          onZeroWhileVisible={cancelRestPush}
+        />
+      )}
       <div className="flex items-center justify-between">
         <p className="text-sm text-[#888888]">
           Ejercicio {exerciseIndex + 1} de {day.exercises.length}
@@ -1210,19 +1257,6 @@ export function WorkoutLogger({
         </Button>
       </div>
       {recordBanner}
-      {phase === "logging" && restTimer && workoutLogId && (
-        <RestTimerBar
-          key={restTimer.instanceId}
-          workoutLogId={workoutLogId}
-          routineExerciseId={restTimer.routineExerciseId}
-          restSeconds={restTimer.restSeconds}
-          instanceId={restTimer.instanceId}
-          soundEnabled={restTimerPrefs.sound}
-          vibrationEnabled={restTimerPrefs.vibration}
-          audioCtxRef={audioCtxRef}
-          onHide={clearRestTimer}
-        />
-      )}
       {showWarmupBanner && (
         <WarmupBanner
           exerciseName={exercise.exerciseName}

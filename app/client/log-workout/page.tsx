@@ -7,6 +7,12 @@ import {
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { WorkoutLogger } from "./workout-logger";
 
+// Push de fin de descanso (oct-2026): scheduleRestEndPush espera hasta el
+// final del descanso dentro de after() — la función serverless tiene que
+// poder vivir lo que dura el descanso más largo que se avisa (ver
+// REST_PUSH_MAX_DELAY_MS en rest-push-actions.ts).
+export const maxDuration = 300;
+
 export default async function LogWorkoutPage({
   searchParams,
 }: {

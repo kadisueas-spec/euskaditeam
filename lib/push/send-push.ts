@@ -11,6 +11,8 @@ export type PushPayload = {
   title: string;
   body: string;
   url?: string;
+  // Notificaciones con el mismo tag se reemplazan en vez de apilarse.
+  tag?: string;
 };
 
 type Subscription = { id: string; endpoint: string; p256dh: string; auth: string };

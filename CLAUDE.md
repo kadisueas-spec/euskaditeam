@@ -863,6 +863,36 @@ momento, no una galería genérica.
     - `weight_increment` ahora llega al logger (`MyRoutineExercise.
       weightIncrement`, en `client-routine.ts` y `coach-training.ts` — el
       entrenamiento propio del coach reusa el mismo logger).
+60. Temporizador de descanso v2 (oct-2026, migración
+    `20261016_rest_timer_push_token.sql`):
+    - Posición: la barra fija abajo tapaba "Anterior"/"Siguiente
+      ejercicio". Ahora es `sticky top-0` arriba de todo en el logger
+      (`rest-timer-bar.tsx`): ocupa lugar propio en el flujo, nunca tapa un
+      botón y sigue visible al scrollear.
+    - Sonido: timbre tipo teléfono de ~2,4 s (dos "rrring" de 1,1 s,
+      ondas cuadradas 1000 + 1200 Hz con trino de 20 Hz, ganancia máxima a
+      través de un `DynamicsCompressor`). En iOS el audio de una PWA se
+      suspende en segundo plano — limitación del sistema, no se resuelve
+      desde la app.
+    - Push "⏱ Terminó el descanso" (`REST_END_PUSH`), para la pantalla
+      bloqueada: Web Push no tiene envío programado, así que
+      `scheduleRestEndPush` (`app/client/log-workout/rest-push-actions.ts`)
+      guarda un token en `clients.rest_timer_push_token` y espera dentro
+      de `after()` hasta el fin del descanso (+1,5 s de margen); manda la
+      push solo si el token sigue siendo el suyo (lo consume en el mismo
+      UPDATE). Se reprograma con token nuevo al arrancar, al volver a la
+      pantalla y con −15s/+15s; se cancela al saltear, cambiar de
+      ejercicio, terminar el entrenamiento o ver el 0:00 con la app
+      abierta (`document.visibilityState === "visible"`). Solo si
+      `Notification.permission === "granted"`. Tope: descansos de más de
+      280 s no se avisan por push (`maxDuration = 300` en
+      `app/client/log-workout/page.tsx`). `tag: "rest-timer"` + `renotify`
+      en el SW: la nueva reemplaza a la anterior. El entrenamiento propio
+      del coach no tiene push (no pasa estas acciones — no tiene fila en
+      `clients` para el token).
+    - Nota en `/client/profile` (`rest-timer-settings.tsx`): "En iPhone: el
+      sonido solo funciona con la app abierta. Activá las notificaciones
+      para recibir el aviso cuando termina el descanso."
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

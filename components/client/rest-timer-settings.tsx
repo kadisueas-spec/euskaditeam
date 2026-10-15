@@ -99,6 +99,13 @@ export function RestTimerSettings({
           }}
         />
       )}
+      {/* Oct-2026: en iOS el audio de una PWA se suspende en segundo plano
+          (limitación del sistema) — el aviso con la pantalla bloqueada es
+          la push de fin de descanso. */}
+      <p className="pt-3 text-xs text-[#888888]">
+        En iPhone: el sonido solo funciona con la app abierta. Activá las
+        notificaciones para recibir el aviso cuando termina el descanso.
+      </p>
       {error && <p className="pt-2 text-sm text-destructive">{error}</p>}
     </div>
   );

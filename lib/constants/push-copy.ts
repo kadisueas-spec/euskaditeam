@@ -48,3 +48,11 @@ export function newVideoAssignedPushTitle(videoTitle: string): string {
   return `Tu coach te dejó un video: ${videoTitle}`;
 }
 export const NEW_VIDEO_ASSIGNED_PUSH_BODY = "Entrá a verlo cuando quieras.";
+
+// Fin del descanso -> cliente (oct-2026). Texto fijo pedido; el aviso llega
+// a la pantalla bloqueada aunque la app esté en segundo plano (ver
+// app/client/log-workout/rest-push-actions.ts).
+export const REST_END_PUSH = {
+  title: "⏱ Terminó el descanso",
+  body: "Hora de la siguiente serie",
+} as const;

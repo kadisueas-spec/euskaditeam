@@ -68,6 +68,9 @@ self.addEventListener("push", (event) => {
     icon: "/icons/icon-192x192.png",
     badge: "/icons/icon-192x192.png",
     data: { url: payload.url || "/client/my-routine" },
+    // Push con tag (ej. fin del descanso): la nueva reemplaza a la anterior
+    // del mismo tipo en vez de apilarse, y vuelve a sonar/vibrar.
+    ...(payload.tag ? { tag: payload.tag, renotify: true } : {}),
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
