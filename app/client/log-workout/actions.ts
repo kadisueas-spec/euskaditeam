@@ -12,6 +12,7 @@ import { EDIT_WINDOW_DAYS, daysAgo } from "@/lib/utils/edit-window";
 import {
   bestSetByExercise,
   detectWeeklyRecord,
+  isBetterSet,
   summarizeSessionRecords,
   type SessionRecord,
   type SetLogWithExerciseRow,
@@ -1035,11 +1036,14 @@ export async function getWorkoutSuggestions(
     }
     if (rowWeeksAgo > current.weeksAgo) continue; // semana más vieja, ya tenemos una mejor
 
-    const weight = row.weight_kg ?? -Infinity;
-    const currentWeight = current.weight_kg ?? -Infinity;
-    const reps = row.reps_completed ?? -Infinity;
-    const currentReps = current.reps_completed ?? -Infinity;
-    if (weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
+    // Oct-2026: empate de peso y reps -> la de más RIR (isBetterSet), así
+    // el récord de referencia es la mejor ejecución real de esa semana.
+    if (
+      isBetterSet(
+        { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual },
+        { weight: current.weight_kg, reps: current.reps_completed, rir: current.rir_actual }
+      )
+    ) {
       bestByExercise.set(row.routine_exercise_id, { ...row, weeksAgo: rowWeeksAgo });
     }
   }

@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { recordSummaryLine } from "@/lib/utils/session-records";
 import type { WeeklyCelebrationSummary } from "@/app/client/log-workout/actions";
 import {
   randomWeeklyCelebrationPhrase,
@@ -114,6 +116,30 @@ export function WeeklyCelebration({
           />
           <Stat label="Récords" value={String(summary.records.length)} />
         </div>
+
+        {/* Oct-2026: antes solo mostraba la cantidad. Ahora TODOS los
+            récords de la semana, ya ordenados por impacto (peso > reps >
+            RIR, ver summarizeSessionRecords) — con scroll propio para que
+            una semana con muchos récords no empuje el botón fuera de la
+            pantalla. */}
+        {summary.records.length > 0 && (
+          <div
+            className="animate-fade-in-up flex max-h-48 w-full flex-col gap-2 overflow-y-auto rounded-2xl border border-[#e8001c]/30 bg-[#111111] p-4 text-left"
+            style={{ animationDelay: "0.22s" }}
+          >
+            <p className="font-display text-xl tracking-wide text-[#e8001c] uppercase">
+              Tus récords de la semana
+            </p>
+            <ul className="flex flex-col gap-1.5">
+              {summary.records.map((record) => (
+                <li key={record.id} className="flex items-start gap-2 text-sm text-[#f5f5f5]">
+                  <Trophy className="mt-0.5 size-3.5 shrink-0 text-[#e8001c]" />
+                  {recordSummaryLine(record)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         <p
           className="animate-fade-in-up text-sm text-[#c9c9c9]"

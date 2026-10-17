@@ -941,6 +941,28 @@ momento, no una galería genérica.
       en iPhone la PWA y Safari no comparten cookies. Ídem "Confirm
       signup" (opcional): `...?token_hash={{ .TokenHash }}&type=email&next=/login?notice=confirmed`.
       Redirect URLs del Dashboard tienen que incluir `<dominio>/auth/confirm`.
+63. Récords: RIR corregido, prioridad por impacto y lista completa
+    (oct-2026, `lib/utils/session-records.ts`).
+    - Bug RIR invertido: `detectWeeklyRecord` premiaba MENOS RIR. Ahora
+      récord de RIR = mismo peso y mismas reps con MÁS RIR que antes (le
+      sobró más con el mismo trabajo → más fuerte). Guarda `rirDelta` y
+      `previousRir` para el texto ("RIR 1 → 3").
+    - `isBetterSet` (peso > reps > más RIR) es el único criterio de "mejor
+      serie": lo usan `bestSetByExercise` (récords semanales y de Mi Mes)
+      y la referencia de la serie 1 en `getWorkoutSuggestions`. Antes el
+      empate de peso y reps ignoraba el RIR.
+    - Orden por impacto (`compareRecordsByImpact`): 1º subida de peso, 2º
+      más reps, 3º más RIR; dentro de cada tipo, la mejora más grande
+      primero. `summarizeSessionRecords` devuelve TODOS los ejercicios con
+      récord (uno por ejercicio, el más impactante) ya ordenados — resumen
+      de sesión, celebración semanal y Mi Mes.
+    - Celebración semanal (`weekly-celebration.tsx`): antes solo mostraba
+      la cantidad; ahora lista todos los récords de la semana (con scroll
+      propio).
+    - Ejercicios nuevos (migración `20261017_abdomen_cardio_exercises.sql`):
+      15 de abdomen ("Abdomen/Core") y 11 de cardio ("Cardio" — el grupo
+      que ya existía), con video de YouTube. Propios del coach, no
+      globales, para poder cambiar el video desde la app.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

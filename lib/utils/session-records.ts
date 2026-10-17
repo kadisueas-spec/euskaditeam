@@ -21,6 +21,9 @@ export type SessionRecord = {
   rir: number | null;
   weightDelta?: number;
   repsDelta?: number;
+  // Récord de RIR: cuántas reps MÁS en reserva que antes (mismo peso y reps).
+  rirDelta?: number;
+  previousRir?: number;
 };
 
 const EPS = 0.001;
@@ -30,13 +33,24 @@ function round2(n: number): number {
 }
 
 // Cualquier mejora vs la semana anterior cuenta, en orden de prioridad:
-// más peso -> mismo peso y más reps -> mismo peso y reps con menor RIR
-// (menos esfuerzo). Cada criterio requiere que el anterior haya empatado,
-// no solo "no haya empeorado".
+// más peso -> mismo peso y más reps -> mismo peso y reps con MAYOR RIR.
+// Cada criterio requiere que el anterior haya empatado, no solo "no haya
+// empeorado".
+//
+// RIR = repeticiones en reserva. Mismo peso y mismas reps con más RIR que
+// antes es un récord: el mismo trabajo le sale con más resto, o sea que se
+// hizo más fuerte (antes 50kg × 10 a RIR 1, ahora 50kg × 10 a RIR 3).
+// Bug oct-2026: estaba al revés (premiaba MENOS RIR, que es más esfuerzo).
 export function detectWeeklyRecord(
   previousRecord: PreviousRecord | null,
   entered: { weight: number | null; reps: number | null; rir: number | null }
-): { type: RecordType; weightDelta?: number; repsDelta?: number } | null {
+): {
+  type: RecordType;
+  weightDelta?: number;
+  repsDelta?: number;
+  rirDelta?: number;
+  previousRir?: number;
+} | null {
   if (!previousRecord || entered.weight == null) return null;
 
   const weightDiff = entered.weight - previousRecord.weight;
@@ -50,8 +64,12 @@ export function detectWeeklyRecord(
   if (repsDiff > 0) return { type: "reps", repsDelta: repsDiff };
   if (repsDiff < 0) return null;
 
-  if (entered.rir != null && previousRecord.rir != null && entered.rir < previousRecord.rir) {
-    return { type: "rir" };
+  if (entered.rir != null && previousRecord.rir != null && entered.rir > previousRecord.rir) {
+    return {
+      type: "rir",
+      rirDelta: entered.rir - previousRecord.rir,
+      previousRir: previousRecord.rir,
+    };
   }
   return null;
 }
@@ -68,7 +86,9 @@ export function recordBannerDetail(record: SessionRecord): string {
   if (record.type === "reps") {
     return `+${record.repsDelta ?? 0} reps con ${formatKg(record.weight)}kg`;
   }
-  return "Mismo peso, menos esfuerzo 💪";
+  return record.previousRir != null
+    ? `Mismo peso y reps, con ${record.rirDelta ?? 0} rep${record.rirDelta === 1 ? "" : "s"} más en reserva 💪`
+    : "Mismo peso y reps, te sobraron más reps 💪";
 }
 
 // Momento 2 — una línea por ejercicio en "Tus récords de hoy".
@@ -80,7 +100,9 @@ export function recordSummaryLine(record: SessionRecord): string {
   if (record.type === "reps") {
     return `${record.exerciseName}: +${record.repsDelta ?? 0} reps (${formatKg(record.weight)}kg${repsSuffix})`;
   }
-  return `${record.exerciseName}: mismo peso y reps, menos esfuerzo (RIR ${record.rir})`;
+  const rirChange =
+    record.previousRir != null ? `RIR ${record.previousRir} → ${record.rir}` : `RIR ${record.rir}`;
+  return `${record.exerciseName}: mismo peso y reps, te sobraron más reps (${rirChange})`;
 }
 
 export function recordSummaryMessage(count: number): string {
@@ -89,29 +111,37 @@ export function recordSummaryMessage(count: number): string {
   return "Un récord es un paso adelante.";
 }
 
-// Un récord por ejercicio para el resumen final — si el cliente batió el
-// mismo ejercicio en más de una serie, se queda con la mejora más
-// significativa (peso > reps > RIR), no una línea repetida por serie.
+// Prioridad por impacto real (oct-2026): 1º subida de peso, 2º más reps con
+// el mismo peso, 3º mismo peso y reps con más RIR. Dentro de cada tipo,
+// la mejora más grande primero (+5kg antes que +2,5kg).
 const TYPE_PRIORITY: Record<RecordType, number> = { weight: 2, reps: 1, rir: 0 };
 
+function recordMagnitude(record: SessionRecord): number {
+  if (record.type === "weight") return record.weightDelta ?? 0;
+  if (record.type === "reps") return record.repsDelta ?? 0;
+  return record.rirDelta ?? 0;
+}
+
+// Negativo si `a` es más impactante que `b` (para Array.sort).
+export function compareRecordsByImpact(a: SessionRecord, b: SessionRecord): number {
+  const byType = TYPE_PRIORITY[b.type] - TYPE_PRIORITY[a.type];
+  if (byType !== 0) return byType;
+  return recordMagnitude(b) - recordMagnitude(a);
+}
+
+// TODOS los ejercicios con récord, sin límite de cantidad, ordenados por
+// impacto. Una línea por ejercicio: si el cliente batió el mismo
+// ejercicio en más de una serie, queda la mejora más impactante de ese
+// ejercicio (no una línea repetida por serie).
 export function summarizeSessionRecords(records: SessionRecord[]): SessionRecord[] {
   const byExercise = new Map<string, SessionRecord>();
   for (const record of records) {
     const current = byExercise.get(record.exerciseId);
-    if (!current) {
+    if (!current || compareRecordsByImpact(record, current) < 0) {
       byExercise.set(record.exerciseId, record);
-      continue;
     }
-    const currentRank = TYPE_PRIORITY[current.type];
-    const nextRank = TYPE_PRIORITY[record.type];
-    const better =
-      nextRank > currentRank ||
-      (nextRank === currentRank &&
-        (record.weightDelta ?? 0) + (record.repsDelta ?? 0) >
-          (current.weightDelta ?? 0) + (current.repsDelta ?? 0));
-    if (better) byExercise.set(record.exerciseId, record);
   }
-  return Array.from(byExercise.values());
+  return Array.from(byExercise.values()).sort(compareRecordsByImpact);
 }
 
 // Fila de workout_set_logs con lo necesario para agrupar "mejor serie por
@@ -127,8 +157,25 @@ export type SetLogWithExerciseRow = {
   routine_exercises: { exercises: { name: string } | null } | null;
 };
 
+// ¿La serie `a` es mejor que `b`? Mayor peso; empate -> más reps; empate ->
+// MÁS RIR (le sobró más con el mismo trabajo). Compartido por la mejor
+// serie de la semana (récords) y la referencia de la sugerencia de la
+// serie 1 (getWorkoutSuggestions), así las dos miran lo mismo.
+export function isBetterSet(
+  a: { weight: number | null; reps: number | null; rir: number | null },
+  b: { weight: number | null; reps: number | null; rir: number | null }
+): boolean {
+  const aw = a.weight ?? -Infinity;
+  const bw = b.weight ?? -Infinity;
+  if (aw !== bw) return aw > bw;
+  const ar = a.reps ?? -Infinity;
+  const br = b.reps ?? -Infinity;
+  if (ar !== br) return ar > br;
+  return (a.rir ?? -Infinity) > (b.rir ?? -Infinity);
+}
+
 // Mejor serie por ejercicio dentro de un subconjunto de filas ya filtrado
-// por rango de fechas: mayor peso, empate -> más reps.
+// por rango de fechas (ver isBetterSet).
 export function bestSetByExercise<T extends SetLogWithExerciseRow>(
   rows: T[]
 ): Map<string, T> {
@@ -136,11 +183,13 @@ export function bestSetByExercise<T extends SetLogWithExerciseRow>(
   for (const row of rows) {
     if (!row.routine_exercise_id) continue;
     const current = best.get(row.routine_exercise_id);
-    const weight = row.weight_kg ?? -Infinity;
-    const currentWeight = current?.weight_kg ?? -Infinity;
-    const reps = row.reps_completed ?? -Infinity;
-    const currentReps = current?.reps_completed ?? -Infinity;
-    if (!current || weight > currentWeight || (weight === currentWeight && reps > currentReps)) {
+    if (
+      !current ||
+      isBetterSet(
+        { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual },
+        { weight: current.weight_kg, reps: current.reps_completed, rir: current.rir_actual }
+      )
+    ) {
       best.set(row.routine_exercise_id, row);
     }
   }

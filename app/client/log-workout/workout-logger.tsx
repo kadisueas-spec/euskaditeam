@@ -923,7 +923,7 @@ export function WorkoutLogger({
             </p>
             <ul className="flex flex-col gap-1.5">
               {sessionSummaryRecords.map((record) => (
-                <li key={record.id} className="flex items-center gap-2 text-sm text-[#f5f5f5]">
+                <li key={record.id} className="flex items-start gap-2 text-sm text-[#f5f5f5]">
                   <Trophy className="size-3.5 shrink-0 text-[#e8001c]" />
                   {recordSummaryLine(record)}
                 </li>
