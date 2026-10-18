@@ -963,6 +963,31 @@ momento, no una galería genérica.
       15 de abdomen ("Abdomen/Core") y 11 de cardio ("Cardio" — el grupo
       que ya existía), con video de YouTube. Propios del coach, no
       globales, para poder cambiar el video desde la app.
+64. GIFs animados de ExerciseDB (oct-2026, migración
+    `20261017b_exercise_gif_url.sql`, agrega `exercises.gif_url`).
+    - Fuente: ExerciseDB V1 libre, `https://oss.exercisedb.dev/api/v1`
+      (la URL vieja `exercisedb-api.vercel.app` está dada de baja). Los GIFs
+      se copiaron al bucket público `exercise-gifs` de Supabase Storage
+      (`exercisedb/<id>.gif`) con `scripts/import-exercise-gifs.mjs` — se
+      corre a mano con la service role key en variables de entorno, es
+      idempotente, saltea los GIFs que dan 404 y los lista al final. No se
+      linkean directo a `static.exercisedb.dev` para no depender de que
+      siga arriba. Algunos IDs del catálogo dan 404: el mismo ejercicio
+      suele estar repetido con otro ID que sí funciona.
+    - Mapeo por nombre (ES → EN) revisado a mano contra el músculo objetivo
+      de ExerciseDB (ej. "cable kickback" es de tríceps, no glúteo). 110
+      ejercicios con GIF; sin GIF a propósito (no hay equivalente):
+      Plancha frontal / Plancha abdominal, Hollow body hold, Dragon flag,
+      Remo ergométrico, Patada de glúteo en cuadrupedia.
+    - Pantalla de Entrenar (`components/client/exercise-demo.tsx`, en
+      `workout-logger.tsx`): GIF → video de YouTube → nada (sin el
+      placeholder "próximamente"). GIF sobre fondo `#F5F5F5` (la silueta
+      es negra), 220px de alto, ancho completo; si no carga cae al video.
+      `gifUrl` en `MyRoutineExercise` (`client-routine.ts`,
+      `coach-training.ts`). Mi Rutina y Mi Entrenamiento siguen con el
+      video solo.
+    - Pendiente antes de producción: revisar los términos de uso de los
+      GIFs de ExerciseDB (el código es AGPL; los medios tienen ToS propio).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

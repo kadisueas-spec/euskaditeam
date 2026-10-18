@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
-import { ExerciseVideo } from "@/components/client/exercise-video";
+import { ExerciseDemo } from "@/components/client/exercise-demo";
 import { RecordCelebrationBanner } from "@/components/client/record-celebration-banner";
 import { RestTimerBar } from "@/components/client/rest-timer-bar";
 import { WarmupBanner } from "@/components/client/warmup-banner";
@@ -1021,7 +1021,12 @@ export function WorkoutLogger({
         )}
       </div>
 
-      <ExerciseVideo videoId={exercise.videoId} />
+      <ExerciseDemo
+        key={exercise.id}
+        gifUrl={exercise.gifUrl}
+        videoId={exercise.videoId}
+        exerciseName={exercise.exerciseName}
+      />
 
       {currentSets.length > 0 && (
         <div className="flex flex-col gap-2">

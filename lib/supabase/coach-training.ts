@@ -31,7 +31,7 @@ type MyActiveRoutineRow = {
       warmup_type: string;
       warmup_fixed_weight_kg: number | null;
       weight_increment: number;
-      exercises: { name: string; video_url: string | null } | null;
+      exercises: { name: string; video_url: string | null; gif_url: string | null } | null;
     }[];
   }[];
 };
@@ -51,7 +51,7 @@ export async function getMyTrainingRoutine(): Promise<MyRoutine | null> {
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
            rir_target, rest_seconds, coach_notes, warmup_type, warmup_fixed_weight_kg, weight_increment,
-           exercises ( name, video_url )
+           exercises ( name, video_url, gif_url )
          )
        )`
     )
@@ -87,6 +87,7 @@ export async function getMyTrainingRoutine(): Promise<MyRoutine | null> {
           exerciseId: re.exercise_id,
           exerciseName: re.exercises?.name ?? "Ejercicio",
           videoId: re.exercises?.video_url ?? null,
+          gifUrl: re.exercises?.gif_url ?? null,
           order: re.order_index,
           sets: re.sets,
           repsMin: re.reps_min,
