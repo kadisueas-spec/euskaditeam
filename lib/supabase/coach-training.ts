@@ -76,6 +76,8 @@ export async function getMyTrainingRoutine(): Promise<MyRoutine | null> {
     // coach a un cliente") — quedan null a propósito.
     mesocicloNombre: null,
     welcomeBannerShownAt: null,
+    tourHomeSeenAt: null,
+    tourWorkoutSeenAt: null,
     days: days.map((d) => ({
       id: d.id,
       name: d.name,

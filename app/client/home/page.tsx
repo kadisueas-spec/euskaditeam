@@ -10,6 +10,7 @@ import { ClientGreeting } from "@/components/client/client-greeting";
 import { NextWorkoutCard } from "@/components/client/next-workout-card";
 import { PlanCard } from "@/components/client/plan-card";
 import { RoutineWelcomeBanner } from "@/components/client/routine-welcome-banner";
+import { HomeTour } from "@/components/client/home-tour";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getClientHomeData } from "@/lib/supabase/client-home";
 import { getActiveWorkoutSession } from "@/lib/supabase/client-routine";
@@ -39,14 +40,16 @@ export default async function ClientHomePage() {
 
       {data.hasRoutine && (
         <FadeIn>
-          <NextWorkoutCard
-            activeWorkout={activeWorkout}
-            trainedToday={data.trainedToday}
-            todaySummary={data.todaySummary}
-            suggestedDay={data.suggestedDay}
-            completedCount={data.completedThisWeek}
-            plannedCount={data.plannedThisWeek}
-          />
+          <div data-tour="today-workout">
+            <NextWorkoutCard
+              activeWorkout={activeWorkout}
+              trainedToday={data.trainedToday}
+              todaySummary={data.todaySummary}
+              suggestedDay={data.suggestedDay}
+              completedCount={data.completedThisWeek}
+              plannedCount={data.plannedThisWeek}
+            />
+          </div>
         </FadeIn>
       )}
 
@@ -98,19 +101,21 @@ export default async function ClientHomePage() {
           }
           hasData={!!data.nutritionCard}
         />
-        <PlanCard
-          href="/client/body?tab=cuerpo"
-          icon={Ruler}
-          label="Mi Cuerpo"
-          detail={
-            data.bodyCard
-              ? data.bodyCard.bodyFatPercentage != null
-                ? `${data.bodyCard.bodyFatPercentage}% de grasa · medido el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`
-                : `Última medición el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`
-              : "Tu primera evaluación está por venir"
-          }
-          hasData={!!data.bodyCard}
-        />
+        <div data-tour="body-card">
+          <PlanCard
+            href="/client/body?tab=cuerpo"
+            icon={Ruler}
+            label="Mi Cuerpo"
+            detail={
+              data.bodyCard
+                ? data.bodyCard.bodyFatPercentage != null
+                  ? `${data.bodyCard.bodyFatPercentage}% de grasa · medido el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`
+                  : `Última medición el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`
+                : "Tu primera evaluación está por venir"
+            }
+            hasData={!!data.bodyCard}
+          />
+        </div>
         <PlanCard
           href="/client/body?tab=cuerpo"
           icon={Camera}
@@ -157,6 +162,15 @@ export default async function ClientHomePage() {
           mesocicloNombre={data.welcomeBanner.mesocicloNombre}
           daysPerWeek={data.welcomeBanner.daysPerWeek}
           isFirstRoutine={data.welcomeBanner.isFirstRoutine}
+        />
+      )}
+
+      {/* Recorrido de bienvenida, parte Inicio (oct-2026): una vez por
+          rutina, después del banner "Empecemos" si este también sale. */}
+      {data.homeTourRoutineId && (
+        <HomeTour
+          routineId={data.homeTourRoutineId}
+          waitForWelcomeBanner={!!data.welcomeBanner}
         />
       )}
     </div>

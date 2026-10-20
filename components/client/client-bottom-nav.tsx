@@ -55,7 +55,7 @@ export function ClientBottomNav({
   // divisoria) que abajo (los 10px de la franja de safe area), sin dejar
   // padding extra propio — el contenido llena el resto de la caja.
   return (
-    <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e]">
+    <nav data-tour="bottom-nav" className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e]">
       <div className="flex bg-[#080808]">
         {CLIENT_NAV_ITEMS.map(({ href, label, icon: Icon, matches }) => {
           const active =

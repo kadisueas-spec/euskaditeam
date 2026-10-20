@@ -475,6 +475,55 @@
   }
 }
 
+/* Recorrido de bienvenida (oct-2026, components/client/onboarding-tour.tsx).
+   El oscurecido entra con un fade; la tarjeta aparece subiendo apenas, con
+   un leve rebote de escala — se repite en cada paso (key por paso). */
+@utility animate-tour-overlay-in {
+  animation: tour-overlay-in 0.35s ease-out both;
+}
+@utility animate-tour-card-in {
+  animation: tour-card-in 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@utility animate-tour-ring {
+  animation: tour-ring 2.2s ease-in-out infinite;
+}
+
+@keyframes tour-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tour-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Pulso suave del borde rojo del elemento resaltado: solo el glow, el
+   oscurecido de alrededor (primer box-shadow) queda fijo. */
+@keyframes tour-ring {
+  0%,
+  100% {
+    box-shadow:
+      0 0 0 9999px rgba(8, 8, 8, 0.8),
+      0 0 18px 2px rgba(232, 0, 28, 0.35);
+  }
+  50% {
+    box-shadow:
+      0 0 0 9999px rgba(8, 8, 8, 0.8),
+      0 0 30px 6px rgba(232, 0, 28, 0.55);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-check-pop,
   .animate-pr-pop,
@@ -489,6 +538,9 @@
   .animate-fade-in-up,
   .animate-page-in,
   .animate-slide-up-in,
+  .animate-tour-overlay-in,
+  .animate-tour-card-in,
+  .animate-tour-ring,
   .animate-shimmer-sweep,
   .glow-pulse,
   .animate-pulse {

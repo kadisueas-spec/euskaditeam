@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { dismissWelcomeBanner } from "@/app/client/my-routine/actions";
+import { WELCOME_BANNER_CLOSED_EVENT } from "@/lib/constants/onboarding-tour";
 
 const GREETING: Record<"male" | "female" | "neutral", string> = {
   male: "Bienvenido",
@@ -50,6 +51,8 @@ export function RoutineWelcomeBanner({
     // frente a bloquear el uso de la app).
     if ("error" in result) console.error("dismissWelcomeBanner error:", result.error);
     setHidden(true);
+    // El recorrido de bienvenida de Inicio espera este aviso para arrancar.
+    window.dispatchEvent(new Event(WELCOME_BANNER_CLOSED_EVENT));
   }
 
   if (hidden) return null;

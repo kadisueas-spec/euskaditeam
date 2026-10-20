@@ -44,6 +44,10 @@ export type MyRoutine = {
   // Banner de bienvenida (ago-2026): null = todavía no se mostró para esta
   // rutina puntual — ver dismissWelcomeBanner en app/client/my-routine/actions.ts.
   welcomeBannerShownAt: string | null;
+  // Recorrido de bienvenida (oct-2026): una marca por parte (Inicio /
+  // Entrenar), null = todavía no lo vio para esta rutina.
+  tourHomeSeenAt: string | null;
+  tourWorkoutSeenAt: string | null;
   days: MyRoutineDay[];
 };
 
@@ -53,6 +57,8 @@ type MyActiveRoutineRow = {
   objective: string | null;
   mesociclo_nombre: string | null;
   welcome_banner_shown_at: string | null;
+  tour_home_seen_at: string | null;
+  tour_workout_seen_at: string | null;
   routine_days: {
     id: string;
     name: string;
@@ -88,6 +94,7 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
     .from("routines")
     .select(
       `id, name, objective, mesociclo_nombre, welcome_banner_shown_at,
+       tour_home_seen_at, tour_workout_seen_at,
        routine_days (
          id, name, day_number,
          routine_exercises (
@@ -116,6 +123,8 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
     objective: routine.objective,
     mesocicloNombre: routine.mesociclo_nombre,
     welcomeBannerShownAt: routine.welcome_banner_shown_at,
+    tourHomeSeenAt: routine.tour_home_seen_at,
+    tourWorkoutSeenAt: routine.tour_workout_seen_at,
     days: days.map((d) => ({
       id: d.id,
       name: d.name,

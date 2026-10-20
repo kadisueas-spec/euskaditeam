@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Pencil, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,9 @@ import { ExerciseDemo } from "@/components/client/exercise-demo";
 import { RecordCelebrationBanner } from "@/components/client/record-celebration-banner";
 import { RestTimerBar } from "@/components/client/rest-timer-bar";
 import { WarmupBanner } from "@/components/client/warmup-banner";
+import { OnboardingTour } from "@/components/client/onboarding-tour";
+import { workoutTourSteps } from "@/lib/constants/onboarding-tour";
+import { markTourSeen } from "@/app/client/onboarding-actions";
 import { WeeklyCelebration } from "@/components/client/weekly-celebration";
 import type { MyRoutineDay } from "@/lib/supabase/client-routine";
 import { savePendingSet } from "@/lib/offline/workout-store";
@@ -132,11 +135,16 @@ export function WorkoutLogger({
   actions = DEFAULT_ACTIONS,
   enableOfflineSync = true,
   restTimerPrefs = DEFAULT_REST_TIMER_PREFS,
+  workoutTour = null,
 }: {
   day: MyRoutineDay;
   actions?: WorkoutLoggerActions;
   enableOfflineSync?: boolean;
   restTimerPrefs?: { enabled: boolean; sound: boolean; vibration: boolean };
+  // Recorrido de bienvenida, parte Entrenar (oct-2026): solo el cliente lo
+  // pasa, y solo si todavía no lo vio para su rutina activa. El
+  // entrenamiento propio del coach no lo usa.
+  workoutTour?: { routineId: string } | null;
 }) {
   const router = useRouter();
   const [initializing, setInitializing] = useState(true);
@@ -393,6 +401,25 @@ export function WorkoutLogger({
     currentSets.length === 0 &&
     !!exercise &&
     exercise.warmupType !== "none";
+  // Recorrido de bienvenida (oct-2026): arranca cuando la pantalla de carga
+  // de la serie está lista y no hay nada encima (calentamiento) — y solo
+  // si el ejercicio todavía tiene series por cargar (si no, no existen el
+  // formulario ni el botón que el recorrido explica).
+  // El paso de la sugerencia cambia de texto si todavía no hay recuadro
+  // amarillo (primera sesión, sin historial). Memo: un array nuevo en cada
+  // render reiniciaría el timer de arranque del recorrido.
+  const hasFirstSetSuggestion = suggested.weight || suggested.reps;
+  const workoutTourStepsMemo = useMemo(
+    () => workoutTourSteps(hasFirstSetSuggestion),
+    [hasFirstSetSuggestion]
+  );
+  const workoutTourReady =
+    !!workoutTour &&
+    phase === "logging" &&
+    !initializing &&
+    suggestionsLoaded &&
+    !showWarmupBanner &&
+    !exerciseDone;
   // Bug jul-2026: cuántos ejercicios tienen menos series cargadas que las
   // planificadas — la base para la confirmación antes de finalizar.
   const incompleteExerciseCount = day.exercises.filter(
@@ -1156,7 +1183,7 @@ export function WorkoutLogger({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div data-tour="set-inputs" className="grid grid-cols-3 gap-2">
         <div className="flex flex-col gap-1">
           <Label className="text-xs">Peso (kg)</Label>
           <Input
@@ -1183,7 +1210,7 @@ export function WorkoutLogger({
             className={`h-[72px] text-center text-2xl font-bold ${suggested.reps ? SUGGESTED_CLASS : ""}`}
           />
         </div>
-        <div className="flex flex-col gap-1">
+        <div data-tour="rir" className="flex flex-col gap-1">
           <Label className="text-xs">RIR</Label>
           <Input
             type="number"
@@ -1243,6 +1270,7 @@ export function WorkoutLogger({
       )}
 
       <Button
+        data-tour="complete-set"
         onClick={handleCompleteSet}
         className="min-h-[56px] w-full font-display text-xl tracking-widest uppercase"
       >
@@ -1272,6 +1300,15 @@ export function WorkoutLogger({
         </Button>
       </div>
       {recordBanner}
+      {workoutTour && (
+        <OnboardingTour
+          steps={workoutTourStepsMemo}
+          enabled={workoutTourReady}
+          onStart={() => {
+            markTourSeen(workoutTour.routineId, "workout").catch(() => {});
+          }}
+        />
+      )}
       {showWarmupBanner && (
         <WarmupBanner
           exerciseName={exercise.exerciseName}

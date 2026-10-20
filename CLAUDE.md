@@ -1018,6 +1018,36 @@ momento, no una galería genérica.
       `compressImage` falla, mensaje propio en vez del genérico. Para
       archivos de más de 4 MB habría que subir directo al Storage con URL
       firmada de subida.
+66. Recorrido de bienvenida (oct-2026, migración
+    `20261020_onboarding_tour.sql`: `routines.tour_home_seen_at` y
+    `.tour_workout_seen_at`). Una vez POR RUTINA y por parte; sin backfill a
+    propósito — los clientes que ya usaban la app también lo ven.
+    - Dos partes, no un recorrido que navega solo: abrir Entrenar crea una
+      sesión real "en curso" (`getOrCreateInProgressWorkout`), así que el
+      recorrido no puede llevar al cliente ahí. Parte Inicio
+      (`components/client/home-tour.tsx`): entrenamiento del día → bottom
+      nav → Mi Cuerpo → cierre "¡Listo!". Parte Entrenar (en
+      `workout-logger.tsx`, prop `workoutTour` que solo pasa
+      `app/client/log-workout/page.tsx`): sugerencia/campos de la serie →
+      RIR → Completar serie. Arranca la primera vez que el cliente entra a
+      entrenar por su cuenta, cuando cargaron las sugerencias, sin el banner
+      de calentamiento encima y con el ejercicio sin completar.
+    - Sin sugerencia (primera sesión, sin historial) el paso 1 de Entrenar
+      cambia de texto: explica qué va a aparecer ahí desde la próxima vez
+      (`workoutTourSteps(hasSuggestion)`, `lib/constants/onboarding-tour.ts`).
+    - Va después del banner "Empecemos": el banner dispara
+      `WELCOME_BANNER_CLOSED_EVENT` al cerrarse y la parte Inicio lo espera.
+    - `components/client/onboarding-tour.tsx`: overlay + recorte del
+      elemento `[data-tour="..."]` (box-shadow 0 0 0 9999px + borde/glow
+      rojo pulsante), re-medido en cada frame con `getBoundingClientRect`;
+      tarjeta `#111111` con línea roja arriba, Bebas Neue/DM Sans, puntos de
+      progreso, "Siguiente"/"Saltar", tocar afuera avanza, Escape cierra.
+      Pasos cuyo elemento no está en pantalla se saltean. Animaciones CSS
+      (`animate-tour-*` en `globals.css`, desactivadas con reduced-motion).
+    - Se marca visto apenas aparece el primer paso (`markTourSeen` en
+      `app/client/onboarding-actions.ts`, service role tras verificar que
+      la rutina es del cliente — sin policy de UPDATE, igual que el banner):
+      cerrarlo a mitad o cerrar la app no lo vuelve a mostrar.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

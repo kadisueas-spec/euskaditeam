@@ -58,6 +58,9 @@ export type ClientHomeData = {
     daysPerWeek: number;
     isFirstRoutine: boolean;
   } | null;
+  // Recorrido de bienvenida, parte Inicio (oct-2026): id de la rutina activa
+  // si todavía no lo vio para esta rutina; null = no mostrar.
+  homeTourRoutineId: string | null;
 };
 
 type TodayLogRow = { id: string; routine_days: { name: string } | null };
@@ -194,5 +197,6 @@ export async function getClientHomeData(): Promise<ClientHomeData | null> {
             isFirstRoutine,
           }
         : null,
+    homeTourRoutineId: routine && !routine.tourHomeSeenAt ? routine.id : null,
   };
 }

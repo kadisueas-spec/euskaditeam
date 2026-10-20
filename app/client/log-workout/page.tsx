@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import {
   getInProgressWorkoutDayId,
-  getRoutineDayForLogging,
+  getMyActiveRoutine,
 } from "@/lib/supabase/client-routine";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { WorkoutLogger } from "./workout-logger";
@@ -44,7 +44,10 @@ export default async function LogWorkoutPage({
     );
   }
 
-  const day = await getRoutineDayForLogging(dayId);
+  // Una sola lectura de la rutina activa: el día a entrenar y la marca del
+  // recorrido de bienvenida (parte Entrenar) salen de la misma consulta.
+  const routine = await getMyActiveRoutine();
+  const day = routine?.days.find((d) => d.id === dayId) ?? null;
 
   if (!day) {
     return (
@@ -75,5 +78,11 @@ export default async function LogWorkoutPage({
       }
     : undefined;
 
-  return <WorkoutLogger day={day} restTimerPrefs={restTimerPrefs} />;
+  return (
+    <WorkoutLogger
+      day={day}
+      restTimerPrefs={restTimerPrefs}
+      workoutTour={routine && !routine.tourWorkoutSeenAt ? { routineId: routine.id } : null}
+    />
+  );
 }
