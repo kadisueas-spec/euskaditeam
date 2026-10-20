@@ -60,6 +60,16 @@ const nextConfig: NextConfig = {
   // deshabilitado arriba, así que esto solo evita el warning de mismatch;
   // producción sigue necesitando `next build --webpack` (ver package.json).
   turbopack: {},
+  // Bug oct-2026: las subidas de fotos de progreso y PDFs de nutrición son
+  // Server Actions, y su cuerpo tiene un tope de 1 MB por default — todo
+  // PDF de más de 1 MB fallaba siempre. 4 MB y no más: Vercel corta
+  // cualquier pedido de más de 4,5 MB. El mismo límite se chequea en el
+  // navegador antes de enviar (lib/constants/uploads.ts).
+  experimental: {
+    serverActions: {
+      bodySizeLimit: "4mb",
+    },
+  },
   // Permite acceder al dev server desde la IP de red local (celular en la
   // misma WiFi); sin esto Next.js bloquea el recurso HMR cross-origin y la
   // página queda en blanco/negro.

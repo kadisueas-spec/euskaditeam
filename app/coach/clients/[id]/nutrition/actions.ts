@@ -7,8 +7,11 @@ import {
   NEW_NUTRITION_PLAN_PUSH_BODY,
   NEW_NUTRITION_PLAN_PUSH_TITLE,
 } from "@/lib/constants/push-copy";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants/uploads";
 
-const MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024; // 20MB
+// Oct-2026: 20MB -> 4MB, el tope real de un Server Action (ver
+// lib/constants/uploads.ts) — por encima no llegaba ni a esta validación.
+const MAX_FILE_SIZE_BYTES = MAX_UPLOAD_BYTES;
 const PDF_SIGNATURE = "%PDF-";
 
 // Auditoría de seguridad jul-2026, sección 3: file.type es el MIME que
@@ -54,7 +57,7 @@ export async function uploadNutritionPlan(
     return { error: "El archivo tiene que ser un PDF." };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "El PDF no puede pesar más de 20MB." };
+    return { error: `El PDF no puede pesar más de ${MAX_UPLOAD_LABEL}.` };
   }
   if (!(await hasValidPdfSignature(file))) {
     return { error: "El archivo no es un PDF válido." };

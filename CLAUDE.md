@@ -988,6 +988,36 @@ momento, no una galería genérica.
       video solo.
     - Pendiente antes de producción: revisar los términos de uso de los
       GIFs de ExerciseDB (el código es AGPL; los medios tienen ToS propio).
+65. Fixes de oct-2026 (Entrenar, banner, subidas):
+    - Mi Rutina (`app/client/my-routine/page.tsx`) usa `ExerciseDemo`
+      igual que Entrenar: GIF → YouTube → nada.
+    - Ejercicio completo en Entrenar: al volver con "Anterior" a un
+      ejercicio con todas sus series hechas se mostraba el formulario
+      (autocompletado por la progresión serie a serie) y un toque agregaba
+      una serie de más. Ahora `exerciseDone` (`currentSets.length >=
+      exercise.sets`) reemplaza formulario + "Completar serie" por
+      "Ejercicio completo ✓" (las series se siguen pudiendo editar), y
+      `handleCompleteSet` corta si ya está completo.
+    - Temporizador: "Anterior"/"Siguiente ejercicio" ya no llaman a
+      `clearRestTimer()` — el descanso sigue visible y corriendo en
+      cualquier ejercicio. Se cierra solo con "Saltear", con una serie
+      nueva o al terminar el entrenamiento.
+    - Banner de bienvenida (una vez POR RUTINA, a propósito): la marca
+      nunca se guardaba porque el cliente no tiene policy de UPDATE sobre
+      `routines` (solo SELECT) — el UPDATE no daba error, tocaba 0 filas.
+      `dismissWelcomeBanner` verifica la propiedad con la sesión del
+      cliente y escribe solo `welcome_banner_shown_at` con el service
+      role, exigiendo 1 fila actualizada. No se agregó policy de UPDATE
+      para el cliente (podría tocar cualquier columna de su rutina).
+    - Subidas (fotos de progreso, PDFs de nutrición): son Server Actions y
+      su cuerpo tenía el tope default de 1 MB — todo PDF de más de 1 MB
+      fallaba. `experimental.serverActions.bodySizeLimit = "4mb"` en
+      `next.config.ts` (Vercel corta a 4,5 MB) y `MAX_UPLOAD_BYTES` (4 MB,
+      `lib/constants/uploads.ts`) en las 3 acciones y en el navegador
+      antes de enviar, con mensaje claro (peso real + máximo). Fotos: si
+      `compressImage` falla, mensaje propio en vez del genérico. Para
+      archivos de más de 4 MB habría que subir directo al Storage con URL
+      firmada de subida.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

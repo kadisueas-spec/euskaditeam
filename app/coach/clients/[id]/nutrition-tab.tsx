@@ -10,14 +10,33 @@ import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { NutritionPlan } from "@/lib/supabase/nutrition";
 import { formatDate } from "@/lib/utils/format-date";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, formatFileSize } from "@/lib/constants/uploads";
 import { deleteNutritionPlan, uploadNutritionPlan } from "./nutrition/actions";
+
+// Bug oct-2026: un PDF de más de 4 MB ni siquiera llega al Server Action
+// (tope del cuerpo del pedido, ver lib/constants/uploads.ts) — falla sin
+// un mensaje entendible. Se chequea acá, al elegir el archivo y al enviar.
+function pdfSizeError(file: File | undefined): string | null {
+  if (!file || file.size <= MAX_UPLOAD_BYTES) return null;
+  return `El PDF pesa ${formatFileSize(file.size)} y el máximo es ${MAX_UPLOAD_LABEL}. Comprimilo con un compresor de PDF y volvé a subirlo.`;
+}
 
 function UploadForm({ clientId }: { clientId: string }) {
   const action = uploadNutritionPlan.bind(null, clientId);
   const [state, formAction, pending] = useActionState(action, undefined);
+  const [fileError, setFileError] = useState<string | null>(null);
 
   return (
-    <form action={formAction} className="flex flex-col gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+    <form
+      action={formAction}
+      onSubmit={(e) => {
+        const input = e.currentTarget.elements.namedItem("file") as HTMLInputElement | null;
+        const error = pdfSizeError(input?.files?.[0]);
+        setFileError(error);
+        if (error) e.preventDefault();
+      }}
+      className="flex flex-col gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4"
+    >
       <p className="text-sm font-medium text-white">Subir plan de alimentación</p>
       <div className="flex flex-col gap-2">
         <Label htmlFor="plan-name">Nombre del plan</Label>
@@ -47,13 +66,17 @@ function UploadForm({ clientId }: { clientId: string }) {
           type="file"
           accept="application/pdf"
           required
+          onChange={(e) => setFileError(pdfSizeError(e.target.files?.[0]))}
           className="min-h-[44px] w-full cursor-pointer rounded-lg border border-[#1e1e1e] bg-transparent text-sm text-white file:mr-3 file:min-h-[44px] file:cursor-pointer file:touch-manipulation file:rounded-lg file:border-0 file:bg-[#e8001c] file:px-3 file:text-sm file:font-medium file:text-white"
         />
+        <p className="text-xs text-[#888888]">Máximo {MAX_UPLOAD_LABEL}.</p>
       </div>
 
-      {state?.error && <p className="text-sm text-destructive">{state.error}</p>}
+      {(fileError ?? state?.error) && (
+        <p className="text-sm text-destructive">{fileError ?? state?.error}</p>
+      )}
 
-      <Button type="submit" disabled={pending} className="min-h-[44px] w-fit">
+      <Button type="submit" disabled={pending || !!fileError} className="min-h-[44px] w-fit">
         {pending && <Spinner size="sm" className="border-white/30 border-t-white" />}
         <Upload className="size-4" />
         {pending ? "Subiendo..." : "Subir plan"}

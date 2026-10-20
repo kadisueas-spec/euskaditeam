@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { compressImage } from "@/lib/utils/compress-image";
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, formatFileSize } from "@/lib/constants/uploads";
 import { uploadClientProgressPhoto } from "@/app/coach/clients/[id]/photos-actions";
 import { PhotoComparisonView } from "@/components/client/photo-comparison-view";
 import type { PhotoCategory, ProgressPhoto } from "@/lib/supabase/progress-photos";
@@ -56,7 +57,22 @@ export function ClientProgressPhotos({
     setUploading(true);
     setUploadError(null);
     try {
-      const compressed = await compressImage(file);
+      // Bug oct-2026: si la compresión falla (ej. formato que el navegador
+      // no sabe abrir) o el resultado supera el tope del Server Action, se
+      // avisa acá con un mensaje claro en vez del genérico.
+      let compressed: Blob;
+      try {
+        compressed = await compressImage(file);
+      } catch {
+        setUploadError("No se pudo procesar esa foto. Probá con otra o sacala de nuevo con la cámara.");
+        return;
+      }
+      if (compressed.size > MAX_UPLOAD_BYTES) {
+        setUploadError(
+          `La foto pesa ${formatFileSize(compressed.size)} y el máximo es ${MAX_UPLOAD_LABEL}.`
+        );
+        return;
+      }
       const formData = new FormData();
       formData.append("file", compressed, "photo.jpg");
       if (category) formData.append("category", category);

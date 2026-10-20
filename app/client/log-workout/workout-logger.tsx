@@ -381,6 +381,7 @@ export function WorkoutLogger({
   const isLastExercise = exerciseIndex === day.exercises.length - 1;
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
+  const exerciseDone = !!exercise && currentSets.length >= exercise.sets;
   // Banner de calentamiento (ago-2026): solo para el primer ejercicio del
   // día, antes de cargar su primera serie, y solo si el coach le configuró
   // un tipo de calentamiento a ese ejercicio puntual.
@@ -484,12 +485,11 @@ export function WorkoutLogger({
     }
   }
 
-  // Temporizador de descanso: se llama SOLO desde la navegación manual
-  // entre ejercicios (botones "Anterior"/"Siguiente ejercicio"), nunca
-  // desde el avance automático que hace handleCompleteSet al completar la
-  // última serie de un ejercicio — ese avance no debe cortar un descanso
-  // que recién arrancó, el cliente igual necesita descansar antes de la
-  // primera serie del ejercicio siguiente.
+  // Temporizador de descanso: se cierra con "Saltear" o cuando una serie
+  // nueva sin descanso configurado lo reemplaza. Bug oct-2026: antes
+  // también lo cortaban los botones "Anterior"/"Siguiente ejercicio" — ya
+  // no: el descanso sigue visible y corriendo en cualquier ejercicio (igual
+  // que la push de fin de descanso, que nunca se cancelaba al navegar).
   function clearRestTimer() {
     if (workoutLogId) clearStoredRestTimer(workoutLogId);
     setRestTimer(null);
@@ -516,6 +516,9 @@ export function WorkoutLogger({
   }
 
   async function handleCompleteSet() {
+    // Segunda protección del bug de series de más: un ejercicio con todas
+    // sus series hechas no acepta otra (el botón ya no se muestra).
+    if (exerciseDone) return;
     if (!weight && !reps) {
       setError("Ingresá al menos peso o reps.");
       return;
@@ -1128,6 +1131,22 @@ export function WorkoutLogger({
         </div>
       )}
 
+      {/* Bug oct-2026: al volver con "Anterior" a un ejercicio ya completo
+          seguía el formulario (con la sugerencia autocompletada) y un toque
+          en "Completar serie" agregaba una serie de más ("Serie 4 · 4/3").
+          Completo = solo las series hechas (editables arriba), sin
+          formulario. */}
+      {exerciseDone ? (
+        <div className="flex flex-col items-center justify-center gap-1 rounded-2xl border border-green-500/30 bg-green-500/5 py-6 text-center">
+          <p className="flex items-center gap-2 font-display text-3xl tracking-widest text-green-400 uppercase">
+            <Check className="size-6" /> Ejercicio completo
+          </p>
+          <p className="text-sm text-[#888888]">
+            {exercise.sets}/{exercise.sets} series hechas — tocá una serie para corregirla
+          </p>
+        </div>
+      ) : (
+      <>
       <div className="flex flex-col items-center justify-center gap-0.5 rounded-2xl border border-[#1e1e1e] bg-[#111111] py-6">
         <p className="font-display text-4xl tracking-widest text-[#e8001c] uppercase">
           Serie {nextSetNumber}
@@ -1223,23 +1242,22 @@ export function WorkoutLogger({
         </div>
       )}
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
-
       <Button
         onClick={handleCompleteSet}
         className="min-h-[56px] w-full font-display text-xl tracking-widest uppercase"
       >
         Completar serie
       </Button>
+      </>
+      )}
+
+      {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="mt-2 flex gap-3">
         {exerciseIndex > 0 && (
           <Button
             variant="outline"
-            onClick={() => {
-              clearRestTimer();
-              goBackExercise();
-            }}
+            onClick={goBackExercise}
             className="min-h-[52px] flex-1 text-base"
           >
             Anterior
@@ -1247,10 +1265,7 @@ export function WorkoutLogger({
         )}
         <Button
           variant="outline"
-          onClick={() => {
-            clearRestTimer();
-            goNext();
-          }}
+          onClick={goNext}
           className="min-h-[52px] flex-1 text-base"
         >
           {isLastExercise ? "Terminar ejercicios" : "Siguiente ejercicio"}

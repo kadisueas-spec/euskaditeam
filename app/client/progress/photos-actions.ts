@@ -1,12 +1,14 @@
 "use server";
 
+import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants/uploads";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import type { PhotoCategory } from "@/lib/supabase/progress-photos";
 import { todayInParaguay } from "@/lib/utils/today";
 
-const MAX_FILE_SIZE_BYTES = 8 * 1024 * 1024; // 8MB — ya viene comprimida del cliente
+// Ya viene comprimida del cliente; tope = el del Server Action (oct-2026).
+const MAX_FILE_SIZE_BYTES = MAX_UPLOAD_BYTES;
 const VALID_CATEGORIES: PhotoCategory[] = ["front", "side", "back"];
 
 // Auditoría de seguridad jul-2026, sección 3 (mismo criterio que los PDFs
@@ -44,7 +46,7 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
     return { error: "Elegí una foto." };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
-    return { error: "La foto no puede pesar más de 8MB." };
+    return { error: `La foto no puede pesar más de ${MAX_UPLOAD_LABEL}.` };
   }
   if (!(await hasValidImageSignature(file))) {
     return { error: "El archivo no es una imagen válida." };

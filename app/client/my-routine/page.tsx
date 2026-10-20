@@ -3,7 +3,7 @@ import { Check, ChevronDown, Dumbbell, Lightbulb, MessageSquare } from "lucide-r
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { ExerciseVideo } from "@/components/client/exercise-video";
+import { ExerciseDemo } from "@/components/client/exercise-demo";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getMyActiveRoutine, getWeekProgress } from "@/lib/supabase/client-routine";
 import { getMyFeedback } from "@/lib/supabase/feedback";
@@ -122,7 +122,7 @@ export default async function MyRoutinePage() {
                       </div>
                     </div>
                     <div className="mt-2">
-                      <ExerciseVideo videoId={ex.videoId} />
+                      <ExerciseDemo gifUrl={ex.gifUrl} videoId={ex.videoId} exerciseName={ex.exerciseName} />
                     </div>
                     {ex.coachNotes && (
                       <div className="mt-2 flex items-start gap-2 rounded-lg bg-[#e8001c]/10 p-2">
