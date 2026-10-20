@@ -1048,6 +1048,32 @@ momento, no una galería genérica.
       `app/client/onboarding-actions.ts`, service role tras verificar que
       la rutina es del cliente — sin policy de UPDATE, igual que el banner):
       cerrarlo a mitad o cerrar la app no lo vuelve a mostrar.
+67. Editor de rutinas (`app/coach/routines/[id]/edit/routine-editor.tsx`,
+    oct-2026; el wizard de creación no cambió):
+    - Drag & drop con `@dnd-kit/core` + `@dnd-kit/sortable`: días entre
+      sí, ejercicios dentro de un día y entre días. Siempre desde el ícono
+      de agarre (`DragHandle`, 44x44, `touch-none`) para que el resto
+      scrollee normal en iPhone; `MouseSensor` + `TouchSensor` (delay
+      120ms), no `PointerSensor` (compite con el scroll en iOS). Un
+      ejercicio sobre otro día abierto se mueve en vivo; sobre un día
+      colapsado o vacío se suelta al final de ese día (borde rojo de
+      destino). `DragOverlay` en portal a `body` (los `FadeIn` dejan un
+      transform que descoloca un `position: fixed`).
+    - Días minimizables (solo visual, no se guarda): abierto solo el
+      primero; tocar el encabezado alterna; colapsado muestra la cantidad
+      de ejercicios. Un día nuevo se agrega abierto.
+    - Barra fija arriba (`sticky top-0`) con "Guardar" y el error, además
+      del botón del final.
+    - `updateRoutine` (`app/coach/routines/actions.ts`): (1) ejercicios
+      existentes se buscan en toda la rutina, no día por día — un ejercicio
+      movido de día se actualiza (`day_id` incluido) y conserva su id e
+      historial, en vez de insertarse como nuevo y dejar el original
+      duplicado si tenía series; (2) primero se guardan/mueven días y
+      ejercicios y recién después se borra lo que el coach sacó (si no, el
+      CASCADE de un día borrado se llevaba ejercicios movidos fuera de él);
+      (3) **edición silenciosa**: ya no manda push al cliente — antes cada
+      guardado mandaba "nueva rutina"; la push queda solo en
+      `createRoutine` (asignar un bloque nuevo).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

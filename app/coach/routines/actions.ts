@@ -200,28 +200,45 @@ export async function updateRoutine(
     return { error: "No se pudo actualizar la rutina." };
   }
 
+  // Editor con drag & drop (oct-2026): un ejercicio puede pasar de un día a
+  // otro. Antes los ejercicios existentes se buscaban DÍA POR DÍA, así que
+  // uno movido a otro día se tomaba como nuevo (insert con otro id) y el
+  // original se intentaba borrar — si ya tenía series registradas, el
+  // borrado fallaba y quedaba duplicado, y en cualquier caso el historial
+  // quedaba colgando del id viejo. Ahora se miran todos los ejercicios de
+  // la rutina juntos y un movido se actualiza (day_id incluido),
+  // conservando su id y su historial.
+  //
+  // Orden: primero se guardan/mueven días y ejercicios, recién después se
+  // borra lo que el coach sacó — si se borrara antes un día, el ON DELETE
+  // CASCADE se llevaría los ejercicios que se movieron fuera de él.
   const { data: existingDaysData } = await supabase
     .from("routine_days")
     .select("id")
     .eq("routine_id", routineId);
   const existingDayIds = new Set((existingDaysData ?? []).map((d) => d.id as string));
   const keptDayIds = new Set(
-    input.days.filter((d) => d.id).map((d) => d.id as string)
+    input.days.filter((d) => d.id && existingDayIds.has(d.id)).map((d) => d.id as string)
+  );
+
+  const { data: existingExercisesData } =
+    existingDayIds.size > 0
+      ? await supabase
+          .from("routine_exercises")
+          .select("id")
+          .in("day_id", [...existingDayIds])
+      : { data: [] as { id: string }[] };
+  const existingExerciseIds = new Set(
+    (existingExercisesData ?? []).map((e) => e.id as string)
+  );
+  const keptExerciseIds = new Set(
+    input.days
+      .flatMap((d) => d.exercises)
+      .filter((e) => e.id && existingExerciseIds.has(e.id))
+      .map((e) => e.id as string)
   );
 
   let blockedCount = 0;
-
-  for (const removedId of existingDayIds) {
-    if (keptDayIds.has(removedId)) continue;
-    const { error } = await supabase.from("routine_days").delete().eq("id", removedId);
-    if (error) {
-      if (error.code !== "23503") {
-        console.error("updateRoutine day delete error:", error);
-        return { error: "No se pudo eliminar un día de la rutina." };
-      }
-      blockedCount++;
-    }
-  }
 
   for (let i = 0; i < input.days.length; i++) {
     const day = input.days[i];
@@ -253,35 +270,10 @@ export async function updateRoutine(
       dayId = newDay.id;
     }
 
-    const { data: existingExercisesData } = await supabase
-      .from("routine_exercises")
-      .select("id")
-      .eq("day_id", dayId);
-    const existingExerciseIds = new Set(
-      (existingExercisesData ?? []).map((e) => e.id as string)
-    );
-    const keptExerciseIds = new Set(
-      day.exercises.filter((e) => e.id).map((e) => e.id as string)
-    );
-
-    for (const removedId of existingExerciseIds) {
-      if (keptExerciseIds.has(removedId)) continue;
-      const { error } = await supabase
-        .from("routine_exercises")
-        .delete()
-        .eq("id", removedId);
-      if (error) {
-        if (error.code !== "23503") {
-          console.error("updateRoutine exercise delete error:", error);
-          return { error: `No se pudo eliminar un ejercicio del día ${i + 1}.` };
-        }
-        blockedCount++;
-      }
-    }
-
     for (let j = 0; j < day.exercises.length; j++) {
       const ex = day.exercises[j];
       const payload = {
+        day_id: dayId,
         exercise_id: ex.exerciseId,
         order_index: j + 1,
         sets: ex.sets,
@@ -305,9 +297,7 @@ export async function updateRoutine(
           return { error: `No se pudo actualizar un ejercicio del día ${i + 1}.` };
         }
       } else {
-        const { error } = await supabase
-          .from("routine_exercises")
-          .insert({ ...payload, day_id: dayId });
+        const { error } = await supabase.from("routine_exercises").insert(payload);
         if (error) {
           console.error("updateRoutine exercise insert error:", error);
           return { error: `No se pudo guardar un ejercicio del día ${i + 1}.` };
@@ -316,19 +306,41 @@ export async function updateRoutine(
     }
   }
 
+  for (const removedId of existingExerciseIds) {
+    if (keptExerciseIds.has(removedId)) continue;
+    const { error } = await supabase.from("routine_exercises").delete().eq("id", removedId);
+    if (error) {
+      if (error.code !== "23503") {
+        console.error("updateRoutine exercise delete error:", error);
+        return { error: "No se pudo eliminar un ejercicio de la rutina." };
+      }
+      blockedCount++;
+    }
+  }
+
+  for (const removedId of existingDayIds) {
+    if (keptDayIds.has(removedId)) continue;
+    const { error } = await supabase.from("routine_days").delete().eq("id", removedId);
+    if (error) {
+      if (error.code !== "23503") {
+        console.error("updateRoutine day delete error:", error);
+        return { error: "No se pudo eliminar un día de la rutina." };
+      }
+      blockedCount++;
+    }
+  }
+
   revalidatePath(`/coach/routines/${routineId}`);
   revalidatePath("/coach/routines");
   revalidatePath("/client/my-routine");
+  revalidatePath("/client/home");
+  if (updatedRoutine.client_id) revalidatePath(`/coach/clients/${updatedRoutine.client_id}`);
 
-  if (updatedRoutine.client_id) {
-    sendPushToClient(updatedRoutine.client_id, {
-      title: pickPushCopy(NEW_ROUTINE_PUSH_TITLES),
-      body: input.name.trim(),
-      url: "/client/my-routine",
-    }).catch((error) => {
-      console.error("updateRoutine push error:", error);
-    });
-  }
+  // Edición silenciosa (oct-2026): editar una rutina ya asignada aplica los
+  // cambios al instante y SIN push al cliente — antes se mandaba "Tu nueva
+  // rutina está lista" en cada guardado, aunque fuera para corregir una
+  // nota. La push de rutina nueva queda solo en createRoutine (asignar un
+  // bloque/mesociclo nuevo).
 
   if (blockedCount > 0) {
     return {
