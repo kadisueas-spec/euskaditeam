@@ -1,7 +1,5 @@
 "use server";
 
-import { debugError, describeFormFile } from "@/lib/utils/debug-error";
-
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sendPushToClient } from "@/lib/push/send-push";
@@ -27,7 +25,7 @@ async function hasValidPdfSignature(file: File): Promise<boolean> {
 
 export type UploadPlanFormState = { error: string } | undefined;
 
-async function uploadNutritionPlanInner(
+export async function uploadNutritionPlan(
   clientId: string,
   _prevState: UploadPlanFormState,
   formData: FormData
@@ -53,16 +51,16 @@ async function uploadNutritionPlanInner(
 
   if (!name) return { error: "El nombre del plan es obligatorio." };
   if (!(file instanceof File) || file.size === 0) {
-    return { error: `Elegí un archivo PDF. ${debugError("Archivo recibido", describeFormFile(file))}` };
+    return { error: "Elegí un archivo PDF." };
   }
   if (file.type !== "application/pdf") {
-    return { error: `El archivo tiene que ser un PDF. ${debugError("Archivo recibido", describeFormFile(file))}` };
+    return { error: "El archivo tiene que ser un PDF." };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return { error: `El PDF no puede pesar más de ${MAX_UPLOAD_LABEL}.` };
   }
   if (!(await hasValidPdfSignature(file))) {
-    return { error: `El archivo no es un PDF válido. ${debugError("Archivo recibido", describeFormFile(file))}` };
+    return { error: "El archivo no es un PDF válido." };
   }
 
   // Como máximo un plan activo por cliente (índice único en la base) — se
@@ -74,7 +72,7 @@ async function uploadNutritionPlanInner(
     .eq("status", "active");
   if (archiveError) {
     console.error("uploadNutritionPlan archive error:", archiveError);
-    return { error: debugError("Tabla nutrition_plans (archivar anterior)", archiveError) };
+    return { error: "No se pudo archivar el plan anterior." };
   }
 
   // Fix oct-2026: el path era `<client_id>/<uuid>-<nombre original>` y
@@ -90,7 +88,7 @@ async function uploadNutritionPlanInner(
     .upload(filePath, file, { contentType: "application/pdf" });
   if (uploadError) {
     console.error("uploadNutritionPlan storage error:", uploadError);
-    return { error: debugError(`Storage nutrition-plans (subida, path="${filePath}")`, uploadError) };
+    return { error: "No se pudo subir el archivo." };
   }
 
   const { error: insertError } = await supabase.from("nutrition_plans").insert({
@@ -106,7 +104,7 @@ async function uploadNutritionPlanInner(
   if (insertError) {
     console.error("uploadNutritionPlan insert error:", insertError);
     await supabase.storage.from("nutrition-plans").remove([filePath]);
-    return { error: debugError("Tabla nutrition_plans (insert)", insertError) };
+    return { error: "No se pudo guardar el plan." };
   }
 
   revalidatePath(`/coach/clients/${clientId}`);
@@ -157,15 +155,4 @@ export async function deleteNutritionPlan(
   revalidatePath(`/coach/clients/${clientId}`);
   revalidatePath("/client/body");
   return { success: true };
-}
-
-// TEMPORAL (diagnóstico de subidas, ver lib/utils/debug-error.ts): cualquier
-// excepción se devuelve como mensaje visible en vez de romper la pantalla.
-export async function uploadNutritionPlan(clientId: string, prevState: UploadPlanFormState, formData: FormData): Promise<UploadPlanFormState> {
-  try {
-    return await uploadNutritionPlanInner(clientId, prevState, formData);
-  } catch (err) {
-    console.error("uploadNutritionPlan excepción:", err);
-    return { error: debugError("Excepción en el servidor", err) };
-  }
 }

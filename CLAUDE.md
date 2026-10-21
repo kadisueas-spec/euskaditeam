@@ -1074,9 +1074,10 @@ momento, no una galería genérica.
       (3) **edición silenciosa**: ya no manda push al cliente — antes cada
       guardado mandaba "nueva rutina"; la push queda solo en
       `createRoutine` (asignar un bloque nuevo).
-68. Subidas a Storage que fallaban (oct-2026, encontradas con el modo
-    debug temporal de `lib/utils/debug-error.ts` — se saca cuando Luis
-    confirme que las dos subidas andan):
+68. Subidas a Storage que fallaban (oct-2026, encontradas con un modo
+    debug temporal que mostraba el error crudo de Storage/Postgres en
+    pantalla — commit `f8f7e4f`, ya revertido; si vuelve a pasar algo
+    parecido, revertir ese revert es la forma rápida de diagnosticar):
     - PDF de nutrición: `StorageApiError · Invalid key · 400`. El path era
       `<client_id>/<uuid>-<nombre original>` y Storage rechaza tildes, ñ y
       algunos símbolos. Ahora `<client_id>/<uuid>.pdf`; el nombre original

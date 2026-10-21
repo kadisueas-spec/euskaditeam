@@ -5,7 +5,6 @@ import { AlertTriangle, Camera, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { compressImage } from "@/lib/utils/compress-image";
-import { debugError } from "@/lib/utils/debug-error";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, formatFileSize } from "@/lib/constants/uploads";
 import {
   deleteProgressPhoto,
@@ -72,10 +71,8 @@ export function ProgressPhotosSection({
       let compressed: Blob;
       try {
         compressed = await compressImage(file);
-      } catch (compressErr) {
-        setUploadError(
-          `No se pudo procesar esa foto. ${debugError("Compresión en el navegador", compressErr)} (archivo: ${file.type || "sin tipo"}, ${file.size} bytes)`
-        );
+      } catch {
+        setUploadError("No se pudo procesar esa foto. Probá con otra o sacala de nuevo con la cámara.");
         return;
       }
       if (compressed.size > MAX_UPLOAD_BYTES) {
@@ -110,8 +107,7 @@ export function ProgressPhotosSection({
       setReminderHidden(true);
     } catch (err) {
       console.error("upload progress photo error:", err);
-      // TEMPORAL (diagnóstico de subidas): error real de la llamada.
-      setUploadError(debugError("Llamada a la Server Action", err));
+      setUploadError("No se pudo subir la foto. Probá de nuevo.");
     } finally {
       setUploading(false);
     }

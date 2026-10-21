@@ -1,7 +1,5 @@
 "use server";
 
-import { debugError, describeFormFile } from "@/lib/utils/debug-error";
-
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants/uploads";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -31,7 +29,7 @@ export type UploadClientPhotoResult = { success: true } | { error: string };
 // (el RLS lo exige igual a nivel de base, ver migración 20260802). El
 // consentimiento de uso público ya no vive en progress_photos (ago-2026,
 // pasó a ser una sola decisión por cliente) — el coach nunca lo toca.
-async function uploadClientProgressPhotoInner(
+export async function uploadClientProgressPhoto(
   clientId: string,
   formData: FormData
 ): Promise<UploadClientPhotoResult> {
@@ -56,13 +54,13 @@ async function uploadClientProgressPhotoInner(
     : null;
 
   if (!(file instanceof File) || file.size === 0) {
-    return { error: `Elegí una foto. ${debugError("Archivo recibido", describeFormFile(file))}` };
+    return { error: "Elegí una foto." };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return { error: `La foto no puede pesar más de ${MAX_UPLOAD_LABEL}.` };
   }
   if (!(await hasValidImageSignature(file))) {
-    return { error: `El archivo no es una imagen válida. ${debugError("Archivo recibido", describeFormFile(file))}` };
+    return { error: "El archivo no es una imagen válida." };
   }
 
   const storagePath = `${clientId}/${crypto.randomUUID()}.jpg`;
@@ -72,7 +70,7 @@ async function uploadClientProgressPhotoInner(
     .upload(storagePath, file, { contentType: "image/jpeg" });
   if (uploadError) {
     console.error("uploadClientProgressPhoto storage error:", uploadError);
-    return { error: debugError(`Storage progress-photos (subida, path="${storagePath}")`, uploadError) };
+    return { error: "No se pudo subir la foto." };
   }
 
   const { error: insertError } = await supabase.from("progress_photos").insert({
@@ -85,21 +83,10 @@ async function uploadClientProgressPhotoInner(
   if (insertError) {
     console.error("uploadClientProgressPhoto insert error:", insertError);
     await supabase.storage.from("progress-photos").remove([storagePath]);
-    return { error: debugError("Tabla progress_photos (insert)", insertError) };
+    return { error: "No se pudo guardar la foto." };
   }
 
   revalidatePath(`/coach/clients/${clientId}`);
   revalidatePath("/client/body");
   return { success: true };
-}
-
-// TEMPORAL (diagnóstico de subidas, ver lib/utils/debug-error.ts): cualquier
-// excepción se devuelve como mensaje visible en vez de romper la pantalla.
-export async function uploadClientProgressPhoto(clientId: string, formData: FormData): Promise<UploadClientPhotoResult> {
-  try {
-    return await uploadClientProgressPhotoInner(clientId, formData);
-  } catch (err) {
-    console.error("uploadClientProgressPhoto excepción:", err);
-    return { error: debugError("Excepción en el servidor", err) };
-  }
 }
