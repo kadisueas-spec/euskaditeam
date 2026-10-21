@@ -1041,9 +1041,20 @@ momento, no una galería genérica.
       elemento `[data-tour="..."]` (box-shadow 0 0 0 9999px + borde/glow
       rojo pulsante), re-medido en cada frame con `getBoundingClientRect`;
       tarjeta `#111111` con línea roja arriba, Bebas Neue/DM Sans, puntos de
-      progreso, "Siguiente"/"Saltar", tocar afuera avanza, Escape cierra.
-      Pasos cuyo elemento no está en pantalla se saltean. Animaciones CSS
-      (`animate-tour-*` en `globals.css`, desactivadas con reduced-motion).
+      progreso, "Continuar"/"Saltar", Escape cierra. Pasos cuyo elemento no
+      está en pantalla se saltean. Animaciones CSS (`animate-tour-*` en
+      `globals.css`, desactivadas con reduced-motion).
+    - Ajuste oct-2026 (probado en iPhone): se renderiza en un **portal a
+      `body`** — dentro de la página, el `transform` que deja la animación
+      de `PageTransition` hacía que el `position: fixed` se ubicara respecto
+      del contenido que scrollea y la tarjeta quedaba fuera de la pantalla.
+      `cardTop()`: debajo del elemento si entra, si no arriba, y si no entra
+      de ningún lado se acota a la pantalla (nunca afuera); respeta el área
+      segura (medida con un div de prueba con `env(safe-area-inset-*)`).
+      Avance: "Continuar" o deslizar (izquierda = siguiente, derecha =
+      anterior, solo gestos claramente horizontales); tocar afuera ya NO
+      avanza. Verificado con Playwright/WebKit en 375×667 y 430×932, los 7
+      pasos de las dos partes.
     - Se marca visto apenas aparece el primer paso (`markTourSeen` en
       `app/client/onboarding-actions.ts`, service role tras verificar que
       la rutina es del cliente — sin policy de UPDATE, igual que el banner):

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { TourStep } from "@/lib/constants/onboarding-tour";
 
 // Recorrido de bienvenida (oct-2026). Overlay que oscurece la pantalla y
@@ -8,22 +9,32 @@ import type { TourStep } from "@/lib/constants/onboarding-tour";
 // una tarjeta explicativa arriba o abajo según el espacio. CSS puro para
 // las animaciones (nada de librerías de motion — fallan en Safari iOS).
 //
-// - El recorte es un div del tamaño del elemento con un box-shadow enorme
-//   (0 0 0 9999px) que oscurece todo lo demás + borde y glow rojos.
-// - La posición se re-mide en cada frame mientras está activo (scroll del
-//   <main>, rotación, teclado): getBoundingClientRect es barato y así el
-//   recorte sigue al elemento sin listeners de scroll por contenedor.
-// - Avanza con "Siguiente" o tocando afuera; "Saltar" lo cierra. Se marca
-//   como visto apenas aparece el primer paso (onStart), así que cerrarlo a
+// - Se renderiza en un PORTAL a <body>. Bug oct-2026 (probado en iPhone):
+//   montado dentro de la página, la animación de entrada de PageTransition
+//   deja un `transform` aplicado, y un position:fixed adentro de un
+//   ancestro con transform se ubica respecto de ese ancestro (el contenido
+//   que scrollea), no de la pantalla — la tarjeta quedaba tan abajo que
+//   había que deslizar para verla.
+// - La tarjeta va debajo del elemento si entra, si no arriba, y si no entra
+//   en ninguno de los dos lados se acomoda dentro de la pantalla igual
+//   (puede tapar parte del resaltado, nunca quedar afuera). Siempre dentro
+//   del área segura del iPhone (notch y barra de gestos), medida con un
+//   elemento de prueba que usa env(safe-area-inset-*).
+// - Se avanza con "Continuar" o deslizando (izquierda = siguiente, derecha
+//   = anterior). Tocar afuera NO avanza, para que nadie saltee pasos sin
+//   querer. "Saltar" lo cierra.
+// - Se marca como visto apenas aparece el primer paso (onStart): cerrarlo a
 //   mitad — o cerrar la app — no lo vuelve a mostrar.
 // - Pasos cuyo elemento no está en pantalla al arrancar se saltean.
 
 type Rect = { top: number; left: number; width: number; height: number };
+type Insets = { top: number; bottom: number };
 
 const PAD = 8; // aire alrededor del elemento resaltado
-const GAP = 14; // distancia entre el recorte y la tarjeta
-const MARGIN = 16; // margen mínimo con los bordes de la pantalla
+const GAP = 12; // distancia entre el recorte y la tarjeta
+const MARGIN = 12; // margen mínimo con los bordes (además del área segura)
 const CARD_EST_HEIGHT = 240; // alto estimado hasta medir la tarjeta real
+const SWIPE_MIN_PX = 50;
 const SPOTLIGHT_SHADOW =
   "0 0 0 9999px rgba(8, 8, 8, 0.8), 0 0 18px 2px rgba(232, 0, 28, 0.35)";
 
@@ -40,6 +51,42 @@ function sameRect(a: Rect | null, b: Rect | null): boolean {
     Math.abs(a.width - b.width) < 0.5 &&
     Math.abs(a.height - b.height) < 0.5
   );
+}
+
+// Área segura real (notch / barra de gestos): un div fijo con padding
+// env(safe-area-inset-*) y se lee su tamaño computado.
+function measureSafeInsets(): Insets {
+  const probe = document.createElement("div");
+  probe.style.cssText =
+    "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;" +
+    "padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom);";
+  document.body.appendChild(probe);
+  const cs = getComputedStyle(probe);
+  const insets = {
+    top: parseFloat(cs.paddingTop) || 0,
+    bottom: parseFloat(cs.paddingBottom) || 0,
+  };
+  probe.remove();
+  return insets;
+}
+
+// Posición vertical de la tarjeta (top en px), siempre dentro de la
+// pantalla visible.
+function cardTop(rect: Rect, cardHeight: number, vh: number, insets: Insets): number {
+  const minTop = insets.top + MARGIN;
+  const maxTop = Math.max(minTop, vh - insets.bottom - MARGIN - cardHeight);
+  const spotTop = rect.top - PAD;
+  const spotBottom = rect.top + rect.height + PAD;
+
+  const below = spotBottom + GAP;
+  if (below <= maxTop) return below;
+  const above = spotTop - GAP - cardHeight;
+  if (above >= minTop) return above;
+  // No entra limpio de ningún lado: del lado con más espacio, acotado a la
+  // pantalla (puede tapar parte del resaltado, nunca quedar afuera).
+  const spaceBelow = vh - insets.bottom - spotBottom;
+  const spaceAbove = spotTop - insets.top;
+  return Math.min(Math.max(spaceBelow >= spaceAbove ? below : above, minTop), maxTop);
 }
 
 export function OnboardingTour({
@@ -66,8 +113,11 @@ export function OnboardingTour({
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [cardHeight, setCardHeight] = useState(CARD_EST_HEIGHT);
+  const [viewportHeight, setViewportHeight] = useState(0);
+  const [insets, setInsets] = useState<Insets>({ top: 0, bottom: 0 });
   const cardRef = useRef<HTMLDivElement>(null);
   const onStartRef = useRef(onStart);
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
     onStartRef.current = onStart;
@@ -90,6 +140,8 @@ export function OnboardingTour({
         setStatus("done");
         return;
       }
+      setInsets(measureSafeInsets());
+      setViewportHeight(window.innerHeight);
       setActiveSteps(available);
       setIndex(0);
       setStatus("active");
@@ -101,11 +153,9 @@ export function OnboardingTour({
   const step = status === "active" ? activeSteps[index] : undefined;
   const isLast = index === activeSteps.length - 1;
 
-  // En cada paso: llevar el elemento a la vista y seguir su posición.
-  // El paso sin elemento (cierre) no usa rect; entre dos pasos con elemento
-  // el recorte se desliza del anterior al nuevo (transition en el estilo).
-  // El alto real de la tarjeta se mide en el mismo frame, para ubicarla sin
-  // que se salga de la pantalla.
+  // En cada paso: llevar el elemento a la vista y seguir su posición (y el
+  // alto real de la tarjeta, y el de la pantalla — la barra de Safari
+  // cambia de tamaño) en cada frame.
   useEffect(() => {
     if (!step) return;
     const el = findTarget(step.target);
@@ -114,6 +164,7 @@ export function OnboardingTour({
     let frame = 0;
     let last: Rect | null = null;
     let lastCardHeight = 0;
+    let lastVh = 0;
     const measure = () => {
       if (el) {
         const r = el.getBoundingClientRect();
@@ -128,6 +179,11 @@ export function OnboardingTour({
         lastCardHeight = h;
         setCardHeight(h);
       }
+      const vh = window.innerHeight;
+      if (vh !== lastVh) {
+        lastVh = vh;
+        setViewportHeight(vh);
+      }
       frame = requestAnimationFrame(measure);
     };
     frame = requestAnimationFrame(measure);
@@ -139,16 +195,18 @@ export function OnboardingTour({
     if (isLast) finish();
     else setIndex((i) => i + 1);
   }, [isLast, finish]);
+  const prev = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
 
   useEffect(() => {
     if (!step) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") finish();
       if (e.key === "Enter" || e.key === "ArrowRight") next();
+      if (e.key === "ArrowLeft") prev();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [step, next, finish]);
+  }, [step, next, prev, finish]);
 
   if (!step) return null;
 
@@ -156,29 +214,32 @@ export function OnboardingTour({
   // Paso con elemento pero todavía sin medir (scroll en curso): solo el
   // oscurecido, para que la tarjeta no aparezca en un lugar y salte a otro.
   const waitingForRect = hasTarget && !rect;
+  const vh = viewportHeight || window.innerHeight;
+  const top = hasTarget && rect ? cardTop(rect, cardHeight, vh, insets) : null;
 
-  let cardStyle: React.CSSProperties | undefined;
-  if (hasTarget && rect) {
-    const vh = window.innerHeight;
-    const spotTop = rect.top - PAD;
-    const spotBottom = rect.top + rect.height + PAD;
-    const spaceBelow = vh - spotBottom;
-    const spaceAbove = spotTop;
-    const fitsBelow = spaceBelow >= cardHeight + GAP + MARGIN;
-    if (fitsBelow || spaceBelow >= spaceAbove) {
-      cardStyle = { top: Math.min(spotBottom + GAP, vh - cardHeight - MARGIN) };
-    } else {
-      cardStyle = { bottom: Math.min(vh - spotTop + GAP, vh - cardHeight - MARGIN) };
-    }
-  }
-
-  return (
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Recorrido de la app"
-      className="animate-tour-overlay-in fixed inset-0 z-[80] touch-manipulation"
-      onClick={next}
+      className="animate-tour-overlay-in fixed inset-0 z-[100] touch-pan-y"
+      // Deslizar: izquierda = siguiente, derecha = anterior. Solo si el
+      // gesto es claramente horizontal (no un scroll vertical).
+      onTouchStart={(e) => {
+        const t = e.touches[0];
+        touchStart.current = { x: t.clientX, y: t.clientY };
+      }}
+      onTouchEnd={(e) => {
+        const start = touchStart.current;
+        touchStart.current = null;
+        if (!start) return;
+        const t = e.changedTouches[0];
+        const dx = t.clientX - start.x;
+        const dy = t.clientY - start.y;
+        if (Math.abs(dx) < SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+        if (dx < 0) next();
+        else prev();
+      }}
     >
       {hasTarget && rect ? (
         <div
@@ -199,16 +260,25 @@ export function OnboardingTour({
       {!waitingForRect && (
         <div
           className={`pointer-events-none fixed inset-x-0 flex px-4 ${
-            hasTarget ? "" : "inset-y-0 items-center"
+            top == null ? "inset-y-0 items-center" : ""
           }`}
-          style={cardStyle}
+          style={
+            top == null
+              ? {
+                  paddingTop: `calc(env(safe-area-inset-top) + ${MARGIN}px)`,
+                  paddingBottom: `calc(env(safe-area-inset-bottom) + ${MARGIN}px)`,
+                }
+              : { top }
+          }
         >
           <div
             key={index}
             ref={cardRef}
-            onClick={(e) => e.stopPropagation()}
             aria-live="polite"
-            className="animate-tour-card-in pointer-events-auto relative mx-auto w-full max-w-sm overflow-hidden rounded-2xl border border-[#1e1e1e] bg-[#111111] shadow-[0_18px_48px_-12px_rgba(0,0,0,0.75)]"
+            style={{
+              maxHeight: `calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - ${MARGIN * 2}px)`,
+            }}
+            className="animate-tour-card-in pointer-events-auto relative mx-auto w-full max-w-sm overflow-y-auto rounded-2xl border border-[#1e1e1e] bg-[#111111] shadow-[0_18px_48px_-12px_rgba(0,0,0,0.75)]"
           >
             {/* Acento rojo: línea fina arriba, mismo lenguaje que los
                 bordes/glow de la marca (nada de gradientes). */}
@@ -252,7 +322,7 @@ export function OnboardingTour({
                     onClick={next}
                     className="min-h-[44px] min-w-[44px] rounded-xl bg-[#e8001c] px-5 font-display text-lg tracking-widest text-white uppercase shadow-[0_0_18px_rgba(232,0,28,0.4)] transition-transform active:scale-95"
                   >
-                    {step.cta ?? "Siguiente"}
+                    {step.cta ?? "Continuar"}
                   </button>
                 </div>
               </div>
@@ -260,6 +330,7 @@ export function OnboardingTour({
           </div>
         </div>
       )}
-    </div>
+    </div>,
+    document.body
   );
 }
