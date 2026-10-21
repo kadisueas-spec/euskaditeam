@@ -11,7 +11,12 @@ import { EmptyState } from "@/components/ui/empty-state";
 import type { NutritionPlan } from "@/lib/supabase/nutrition";
 import { formatDate } from "@/lib/utils/format-date";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, formatFileSize } from "@/lib/constants/uploads";
-import { deleteNutritionPlan, uploadNutritionPlan } from "./nutrition/actions";
+import {
+  deleteNutritionPlan,
+  uploadNutritionPlan,
+  type UploadPlanFormState,
+} from "./nutrition/actions";
+import { debugError } from "@/lib/utils/debug-error";
 
 // Bug oct-2026: un PDF de más de 4 MB ni siquiera llega al Server Action
 // (tope del cuerpo del pedido, ver lib/constants/uploads.ts) — falla sin
@@ -22,7 +27,22 @@ function pdfSizeError(file: File | undefined): string | null {
 }
 
 function UploadForm({ clientId }: { clientId: string }) {
-  const action = uploadNutritionPlan.bind(null, clientId);
+  // TEMPORAL (diagnóstico de subidas, ver lib/utils/debug-error.ts): si la
+  // llamada misma a la Server Action falla (red, deploy, cuerpo rechazado),
+  // se muestra el error real en vez de romper la pantalla.
+  const action = async (
+    prevState: UploadPlanFormState,
+    formData: FormData
+  ): Promise<UploadPlanFormState> => {
+    try {
+      return await uploadNutritionPlan(clientId, prevState, formData);
+    } catch (err) {
+      const file = formData.get("file");
+      const fileInfo =
+        file instanceof File ? ` (archivo: ${file.type || "sin tipo"}, ${file.size} bytes)` : "";
+      return { error: `${debugError("Llamada a la Server Action", err)}${fileInfo}` };
+    }
+  };
   const [state, formAction, pending] = useActionState(action, undefined);
   const [fileError, setFileError] = useState<string | null>(null);
 

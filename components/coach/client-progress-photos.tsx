@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Spinner } from "@/components/ui/spinner";
 import { compressImage } from "@/lib/utils/compress-image";
+import { debugError } from "@/lib/utils/debug-error";
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL, formatFileSize } from "@/lib/constants/uploads";
 import { uploadClientProgressPhoto } from "@/app/coach/clients/[id]/photos-actions";
 import { PhotoComparisonView } from "@/components/client/photo-comparison-view";
@@ -63,8 +64,10 @@ export function ClientProgressPhotos({
       let compressed: Blob;
       try {
         compressed = await compressImage(file);
-      } catch {
-        setUploadError("No se pudo procesar esa foto. Probá con otra o sacala de nuevo con la cámara.");
+      } catch (compressErr) {
+        setUploadError(
+          `No se pudo procesar esa foto. ${debugError("Compresión en el navegador", compressErr)} (archivo: ${file.type || "sin tipo"}, ${file.size} bytes)`
+        );
         return;
       }
       if (compressed.size > MAX_UPLOAD_BYTES) {
@@ -95,7 +98,8 @@ export function ClientProgressPhotos({
       ]);
     } catch (err) {
       console.error("upload client progress photo error:", err);
-      setUploadError("No se pudo subir la foto. Probá de nuevo.");
+      // TEMPORAL (diagnóstico de subidas): error real de la llamada.
+      setUploadError(debugError("Llamada a la Server Action", err));
     } finally {
       setUploading(false);
     }

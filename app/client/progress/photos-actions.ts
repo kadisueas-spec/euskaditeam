@@ -1,5 +1,7 @@
 "use server";
 
+import { debugError, describeFormFile } from "@/lib/utils/debug-error";
+
 import { MAX_UPLOAD_BYTES, MAX_UPLOAD_LABEL } from "@/lib/constants/uploads";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -32,7 +34,7 @@ export type UploadPhotoResult = { success: true } | { error: string };
 // browser antes de llegar acá (compressImage, lib/utils/compress-image.ts).
 // Fecha automática (taken_at = hoy, no la elige el cliente), categoría
 // opcional.
-export async function uploadProgressPhoto(formData: FormData): Promise<UploadPhotoResult> {
+async function uploadProgressPhotoInner(formData: FormData): Promise<UploadPhotoResult> {
   const client = await getCurrentClientRecord();
   if (!client) return { error: "No se encontró tu perfil de cliente." };
 
@@ -43,13 +45,13 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
     : null;
 
   if (!(file instanceof File) || file.size === 0) {
-    return { error: "Elegí una foto." };
+    return { error: `Elegí una foto. ${debugError("Archivo recibido", describeFormFile(file))}` };
   }
   if (file.size > MAX_FILE_SIZE_BYTES) {
     return { error: `La foto no puede pesar más de ${MAX_UPLOAD_LABEL}.` };
   }
   if (!(await hasValidImageSignature(file))) {
-    return { error: "El archivo no es una imagen válida." };
+    return { error: `El archivo no es una imagen válida. ${debugError("Archivo recibido", describeFormFile(file))}` };
   }
 
   const supabase = await createClient();
@@ -60,7 +62,7 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
     .upload(storagePath, file, { contentType: "image/jpeg" });
   if (uploadError) {
     console.error("uploadProgressPhoto storage error:", uploadError);
-    return { error: "No se pudo subir la foto." };
+    return { error: debugError(`Storage progress-photos (subida, path="${storagePath}")`, uploadError) };
   }
 
   const { error: insertError } = await supabase.from("progress_photos").insert({
@@ -73,7 +75,7 @@ export async function uploadProgressPhoto(formData: FormData): Promise<UploadPho
   if (insertError) {
     console.error("uploadProgressPhoto insert error:", insertError);
     await supabase.storage.from("progress-photos").remove([storagePath]);
-    return { error: "No se pudo guardar la foto." };
+    return { error: debugError("Tabla progress_photos (insert)", insertError) };
   }
 
   revalidatePath("/client/body");
@@ -124,4 +126,15 @@ export async function dismissProgressPhotoReminder(): Promise<void> {
     .eq("id", client.id);
 
   revalidatePath("/client/body");
+}
+
+// TEMPORAL (diagnóstico de subidas, ver lib/utils/debug-error.ts): cualquier
+// excepción se devuelve como mensaje visible en vez de romper la pantalla.
+export async function uploadProgressPhoto(formData: FormData): Promise<UploadPhotoResult> {
+  try {
+    return await uploadProgressPhotoInner(formData);
+  } catch (err) {
+    console.error("uploadProgressPhoto excepción:", err);
+    return { error: debugError("Excepción en el servidor", err) };
+  }
 }
