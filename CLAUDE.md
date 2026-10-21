@@ -1074,6 +1074,19 @@ momento, no una galería genérica.
       (3) **edición silenciosa**: ya no manda push al cliente — antes cada
       guardado mandaba "nueva rutina"; la push queda solo en
       `createRoutine` (asignar un bloque nuevo).
+68. Subidas a Storage que fallaban (oct-2026, encontradas con el modo
+    debug temporal de `lib/utils/debug-error.ts` — se saca cuando Luis
+    confirme que las dos subidas andan):
+    - PDF de nutrición: `StorageApiError · Invalid key · 400`. El path era
+      `<client_id>/<uuid>-<nombre original>` y Storage rechaza tildes, ñ y
+      algunos símbolos. Ahora `<client_id>/<uuid>.pdf`; el nombre original
+      sigue en `nutrition_plans.file_name` y se aplica a la descarga con
+      `createSignedUrl(..., { download: file_name })` (el atributo
+      `download` del `<a>` no sirve en URLs de otro dominio). Regla: nunca
+      usar el nombre que manda el usuario dentro de un path de Storage.
+    - Fotos de progreso: `Bucket not found · 404` — el bucket
+      `progress-photos` no existía en el proyecto (creado a mano: privado,
+      8 MB, jpeg/png; las policies de `storage.objects` ya estaban).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

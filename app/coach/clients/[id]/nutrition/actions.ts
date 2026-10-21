@@ -77,7 +77,14 @@ async function uploadNutritionPlanInner(
     return { error: debugError("Tabla nutrition_plans (archivar anterior)", archiveError) };
   }
 
-  const filePath = `${clientId}/${crypto.randomUUID()}-${file.name}`;
+  // Fix oct-2026: el path era `<client_id>/<uuid>-<nombre original>` y
+  // Storage rechaza claves con tildes, ñ y algunos símbolos ("Invalid key",
+  // 400) — "Plan de Alimentación - Daniela Espínola.pdf" fallaba siempre.
+  // El path ahora es solo ASCII generado; el nombre original se guarda en
+  // nutrition_plans.file_name (para mostrarlo y como nombre de la descarga,
+  // ver lib/supabase/nutrition.ts). Fotos de progreso y GIFs ya usaban
+  // paths generados, sin el nombre original.
+  const filePath = `${clientId}/${crypto.randomUUID()}.pdf`;
   const { error: uploadError } = await supabase.storage
     .from("nutrition-plans")
     .upload(filePath, file, { contentType: "application/pdf" });

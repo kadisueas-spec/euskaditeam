@@ -31,9 +31,16 @@ async function withDownloadUrl(
   supabase: Awaited<ReturnType<typeof createClient>>,
   row: NutritionPlanRow
 ): Promise<NutritionPlan> {
+  // Oct-2026: el path en Storage ya no lleva el nombre original del archivo
+  // (Storage rechazaba tildes/espacios, ver uploadNutritionPlan) — el
+  // nombre real vive en file_name y se aplica a la descarga con la opción
+  // `download` (Content-Disposition). El atributo download del <a> no
+  // alcanza: el navegador lo ignora en URLs de otro dominio.
   const { data } = await supabase.storage
     .from("nutrition-plans")
-    .createSignedUrl(row.file_path, SIGNED_URL_TTL_SECONDS);
+    .createSignedUrl(row.file_path, SIGNED_URL_TTL_SECONDS, {
+      download: row.file_name || true,
+    });
 
   return {
     id: row.id,
