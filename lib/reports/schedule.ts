@@ -56,3 +56,21 @@ export function nextSundayAt(hour: number, now: Date = new Date()): Date {
   }
   return new Date(candidate);
 }
+
+// "Generar ahora" (bandeja del coach): el último período ya cerrado.
+// Semanal: el lunes a viernes de esta semana si hoy es sábado o domingo
+// (igual que el cron), si no el de la semana pasada. Mensual: el mes
+// anterior.
+export function latestClosedPeriod(kind: "weekly" | "monthly", now: Date = new Date()): Period {
+  const py = paraguayNow(now);
+  const today = py.toISOString().slice(0, 10);
+  if (kind === "weekly") {
+    const dow = py.getUTCDay();
+    const mondayThisWeek = addDays(today, -((dow + 6) % 7));
+    const monday = dow === 6 || dow === 0 ? mondayThisWeek : addDays(mondayThisWeek, -7);
+    return { start: monday, end: addDays(monday, 4) };
+  }
+  const start = new Date(Date.UTC(py.getUTCFullYear(), py.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
+  const end = new Date(Date.UTC(py.getUTCFullYear(), py.getUTCMonth(), 0)).toISOString().slice(0, 10);
+  return { start, end };
+}

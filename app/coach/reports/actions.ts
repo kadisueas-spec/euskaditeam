@@ -3,8 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
-import { regenerateReport, sendReport } from "@/lib/reports/service";
-import { nextSundayAt } from "@/lib/reports/schedule";
+import { createDraft, regenerateReport, sendReport } from "@/lib/reports/service";
+import { latestClosedPeriod, nextSundayAt } from "@/lib/reports/schedule";
+import { decideGenerateNow } from "@/lib/reports/generate-now";
 
 // Acciones de la bandeja de reportes (oct-2026). La propiedad se verifica
 // SIEMPRE con la sesión del coach (RLS "Coach manages own clients
@@ -111,4 +112,76 @@ export async function regenerateReportAction(reportId: string): Promise<Result> 
   const result = await regenerateReport(reportId);
   revalidate(reportId);
   return result;
+}
+
+// "Generar ahora" (oct-2026): arma UN borrador del último período cerrado
+// para el cliente elegido, con el mismo generador que el cron
+// (createDraft). Solo crea o regenera borradores: nunca envía ni manda
+// push. Si ya hay un reporte de ese período: enviado → no se toca;
+// borrador/programado/descartado → pide confirmación antes de regenerarlo
+// (la nota del coach se conserva; uno descartado vuelve a borrador).
+export type GenerateNowResult =
+  | { reportId: string }
+  | { needsConfirm: { status: "draft" | "scheduled" | "discarded" } }
+  | { error: string };
+
+export async function generateReportNow(
+  clientId: string,
+  kind: "weekly" | "monthly",
+  confirmRegenerate: boolean
+): Promise<GenerateNowResult> {
+  if (kind !== "weekly" && kind !== "monthly") return { error: "Tipo de reporte inválido." };
+  const profile = await getCurrentProfile();
+  if (!profile || profile.role !== "coach") return { error: "No autorizado." };
+  const supabase = await createClient();
+
+  const { data: client } = await supabase
+    .from("clients")
+    .select("id")
+    .eq("id", clientId)
+    .eq("coach_id", profile.id)
+    .maybeSingle();
+  if (!client) return { error: "Elegí uno de tus clientes." };
+
+  const period = latestClosedPeriod(kind);
+  const { data: existing } = await supabase
+    .from("progress_reports")
+    .select("id, status")
+    .eq("client_id", clientId)
+    .eq("kind", kind)
+    .eq("period_start", period.start)
+    .maybeSingle<{ id: string; status: "draft" | "scheduled" | "sent" | "discarded" }>();
+
+  const decision = decideGenerateNow(existing?.status ?? null, confirmRegenerate);
+  if (decision.action === "blocked-sent") {
+    return { error: "Ese reporte ya se envió: no se toca. Lo podés ver en Enviados." };
+  }
+  if (decision.action === "ask") return { needsConfirm: { status: decision.status } };
+  if (decision.action === "regenerate" && existing) {
+    if (decision.restoreFromDiscarded) {
+      const { error } = await supabase
+        .from("progress_reports")
+        .update({ status: "draft", updated_at: new Date().toISOString() })
+        .eq("id", existing.id)
+        .eq("status", "discarded");
+      if (error) return { error: "No se pudo recuperar el borrador descartado." };
+    }
+    const result = await regenerateReport(existing.id);
+    if (result.error) return { error: result.error };
+    revalidate(existing.id);
+    return { reportId: existing.id };
+  }
+
+  try {
+    const result = await createDraft(clientId, profile.id, kind, period);
+    if (result.status === "no-data") {
+      return { error: "Este cliente no tiene rutina ni entrenamientos: no hay nada que reportar." };
+    }
+    if (result.status === "exists") return { needsConfirm: { status: "draft" } };
+    revalidate(result.reportId);
+    return { reportId: result.reportId };
+  } catch (err) {
+    console.error("generateReportNow:", err);
+    return { error: "No se pudo generar el borrador." };
+  }
 }

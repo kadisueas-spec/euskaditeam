@@ -5,6 +5,10 @@ import { FadeIn } from "@/components/motion/fade-in";
 import { getCoachReports } from "@/lib/supabase/progress-reports";
 import type { CoachReportListItem } from "@/lib/supabase/progress-reports";
 import { whenLabel } from "@/lib/reports/format";
+import { getClientsForSelect } from "@/lib/supabase/routines";
+import { latestClosedPeriod } from "@/lib/reports/schedule";
+import { reportPeriodLabel } from "@/lib/supabase/progress-reports";
+import { GenerateNow } from "./generate-now";
 
 // Bandeja de reportes de progreso (oct-2026): todo borrador pasa por acá
 // antes de llegar al cliente. Nada se envía solo.
@@ -67,7 +71,13 @@ function Section({ title, items }: { title: string; items: CoachReportListItem[]
 }
 
 export default async function CoachReportsPage() {
-  const reports = await getCoachReports();
+  const [reports, clients] = await Promise.all([getCoachReports(), getClientsForSelect()]);
+  const weekly = latestClosedPeriod("weekly");
+  const monthly = latestClosedPeriod("monthly");
+  const periodLabels = {
+    weekly: reportPeriodLabel("weekly", weekly.start, weekly.end),
+    monthly: reportPeriodLabel("monthly", monthly.start, monthly.end),
+  };
   const drafts = reports.filter((r) => r.status === "draft");
   const scheduled = reports.filter((r) => r.status === "scheduled");
   const sent = reports.filter((r) => r.status === "sent");
@@ -82,6 +92,11 @@ export default async function CoachReportsPage() {
           cliente hasta que lo envíes o lo programes.
         </p>
       </div>
+
+      <GenerateNow
+        clients={clients.map((c) => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name))}
+        periodLabels={periodLabels}
+      />
 
       {reports.length === 0 ? (
         <EmptyState

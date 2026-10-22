@@ -1157,6 +1157,12 @@ momento, no una galería genérica.
       arriba en Inicio hasta verlo completo; historial en
       `/client/progress/reports`. `sendReport` es un UPDATE condicional:
       la push sale una sola vez aunque cron y coach envíen a la vez.
+    - "Generar ahora" (arriba de la bandeja, `generate-now.tsx` +
+      `generateReportNow`): un borrador del último período cerrado
+      (`latestClosedPeriod`) para el cliente elegido, con el mismo
+      `createDraft` del cron. Nunca envía ni manda push. Reglas en
+      `lib/reports/generate-now.ts`: enviado → no se toca; borrador,
+      programado o descartado → pregunta antes de regenerar.
     - Lógica pura y testeada en `lib/reports/` (`build-weekly`,
       `build-monthly`, `records`, `weight`, `weight-goal`, `phrases`,
       `schedule`; fixture anonimizado en `__fixtures__/`); lectura de datos

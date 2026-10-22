@@ -31,6 +31,41 @@ export async function buildReport(
   return kind === "weekly" ? buildWeeklyReport(input) : buildMonthlyReport(input);
 }
 
+// Crea UN borrador (mismo camino para el cron y "Generar ahora"). Si ya
+// existe una fila de ese período no la toca ("exists"). Nunca envía nada.
+export async function createDraft(
+  clientId: string,
+  coachId: string,
+  kind: ReportKind,
+  period: Period
+): Promise<{ status: "created"; reportId: string } | { status: "exists" } | { status: "no-data" }> {
+  const built = await buildReport(clientId, kind, period);
+  if (!built) return { status: "no-data" };
+  const admin = createAdminClient();
+  const { data: row, error } = await admin
+    .from("progress_reports")
+    .upsert(
+      {
+        client_id: clientId,
+        coach_id: coachId,
+        kind,
+        period_start: period.start,
+        period_end: period.end,
+        cards: built.cards,
+        phrase_keys: built.phraseKeys,
+      },
+      { onConflict: "client_id,kind,period_start", ignoreDuplicates: true }
+    )
+    .select("id")
+    .maybeSingle<{ id: string }>();
+  if (error) throw error;
+  if (!row) return { status: "exists" };
+  await admin
+    .from("progress_report_private")
+    .upsert({ report_id: row.id, coach_id: coachId, notices: built.notices });
+  return { status: "created", reportId: row.id };
+}
+
 // Crea los borradores del período para todos los clientes activos que no lo
 // tengan todavía (si el coach lo descartó, la fila existe y no se recrea).
 export async function generateDrafts(kind: ReportKind, period: Period): Promise<{ created: number; failed: number }> {
@@ -56,31 +91,8 @@ export async function generateDrafts(kind: ReportKind, period: Period): Promise<
   for (const c of clients ?? []) {
     if (done.has(c.id)) continue;
     try {
-      const built = await buildReport(c.id, kind, period);
-      if (!built) continue;
-      const { data: row, error } = await admin
-        .from("progress_reports")
-        .upsert(
-          {
-            client_id: c.id,
-            coach_id: c.coach_id,
-            kind,
-            period_start: period.start,
-            period_end: period.end,
-            cards: built.cards,
-            phrase_keys: built.phraseKeys,
-          },
-          { onConflict: "client_id,kind,period_start", ignoreDuplicates: true }
-        )
-        .select("id")
-        .maybeSingle<{ id: string }>();
-      if (error) throw error;
-      if (row) {
-        await admin
-          .from("progress_report_private")
-          .upsert({ report_id: row.id, coach_id: c.coach_id, notices: built.notices });
-        created++;
-      }
+      const result = await createDraft(c.id, c.coach_id, kind, period);
+      if (result.status === "created") created++;
     } catch (err) {
       failed++;
       console.error(`reportes: falló el borrador ${kind} ${period.start} del cliente ${c.id}:`, err);

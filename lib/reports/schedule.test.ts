@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { monthlyPeriodToGenerate, nextSundayAt, weeklyPeriodToGenerate } from "@/lib/reports/schedule";
+import { latestClosedPeriod, monthlyPeriodToGenerate, nextSundayAt, weeklyPeriodToGenerate } from "@/lib/reports/schedule";
 
 // Horas de Paraguay (UTC-3): 07:00 PYT = 10:00 UTC.
 test("semanal: sábado desde las 7 de Paraguay, lunes a viernes", () => {
@@ -41,4 +41,15 @@ test("programar para el domingo a la hora del coach", () => {
   assert.equal(nextSundayAt(10, new Date("2026-10-18T12:00:00Z")).toISOString(), "2026-10-18T13:00:00.000Z");
   // Domingo 11:00 PYT, hora 10 ya pasó → el siguiente
   assert.equal(nextSundayAt(10, new Date("2026-10-18T14:00:00Z")).toISOString(), "2026-10-25T13:00:00.000Z");
+});
+
+test("Generar ahora: último período cerrado", () => {
+  // Jueves 22/10 → semana pasada (12–16); sábado 24/10 → esta semana (19–23)
+  assert.deepEqual(latestClosedPeriod("weekly", new Date("2026-10-22T15:00:00Z")), { start: "2026-10-12", end: "2026-10-16" });
+  assert.deepEqual(latestClosedPeriod("weekly", new Date("2026-10-24T15:00:00Z")), { start: "2026-10-19", end: "2026-10-23" });
+  assert.deepEqual(latestClosedPeriod("weekly", new Date("2026-10-25T15:00:00Z")), { start: "2026-10-19", end: "2026-10-23" });
+  // Lunes 26/10 → la semana que acaba de cerrar (19–23)
+  assert.deepEqual(latestClosedPeriod("weekly", new Date("2026-10-26T15:00:00Z")), { start: "2026-10-19", end: "2026-10-23" });
+  assert.deepEqual(latestClosedPeriod("monthly", new Date("2026-10-22T15:00:00Z")), { start: "2026-09-01", end: "2026-09-30" });
+  assert.deepEqual(latestClosedPeriod("monthly", new Date("2026-01-05T15:00:00Z")), { start: "2025-12-01", end: "2025-12-31" });
 });
