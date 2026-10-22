@@ -1,5 +1,6 @@
 import { paypalFetch } from "./client";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { shouldSetAccessActivatedAt } from "@/lib/utils/access-activation";
 
 export type PayPalWebhookEvent = {
   id: string;
@@ -104,12 +105,11 @@ async function updateSubscriptionRow(
 }
 
 // PAYMENT.SALE.COMPLETED llega en CADA cobro exitoso, incluidos los
-// recurrentes mensuales de un cliente que ya venía activo — por eso
-// access_activated_at solo se pisa cuando el status previo NO era "active"
-// (primera activación o reactivación real tras una baja), nunca en un
-// cobro de renovación. Si se pisara siempre, el conteo de días
-// planificados del mes (lib/utils/planned-days.ts) se reiniciaría con cada
-// pago y la adherencia de un cliente viejo siempre daría ~100%.
+// recurrentes mensuales — access_activated_at solo se escribe en la
+// primera activación (columna vacía, ver lib/utils/access-activation.ts).
+// Si se pisara en cada cobro, el conteo de días planificados del mes
+// (lib/utils/planned-days.ts) se reiniciaría con cada pago y la adherencia
+// de un cliente viejo siempre daría ~100%.
 async function updateClientStatus(
   admin: ReturnType<typeof createAdminClient>,
   clientId: string,
@@ -122,10 +122,10 @@ async function updateClientStatus(
   if (subscriptionStatus === "active") {
     const { data: current } = await admin
       .from("clients")
-      .select("subscription_status")
+      .select("access_activated_at")
       .eq("id", clientId)
       .maybeSingle();
-    if (current && current.subscription_status !== "active") {
+    if (shouldSetAccessActivatedAt(current)) {
       patch.access_activated_at = new Date().toISOString();
     }
   }

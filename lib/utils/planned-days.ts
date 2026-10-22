@@ -18,6 +18,14 @@ function toDateOnly(value: string): string {
 // a que esa rutina existiera para él. Bug real (ago-2026): Ana Siani
 // activó acceso el 06/07 pero el cálculo contaba desde el 01/07, mostrando
 // 12/20 en vez de 12/16.
+//
+// Cantidad (oct-2026): los días de la rutina por semana repartidos en los
+// días REALES del rango — plannedPerWeek × días / 7, redondeado. Los días
+// de la rutina no están atados a un día de la semana (routine_days solo
+// tiene el orden), así que no se puede contar "qué lunes caen en el mes":
+// el reparto proporcional es lo más cercano. Antes se redondeaban las
+// semanas para arriba (Math.ceil(días / 7)): septiembre (30 días) contaba
+// como 5 semanas = 20 días para una rutina de 4, en vez de 17.
 export function plannedDaysInRange(params: {
   rangeStart: string; // "YYYY-MM-DD", inclusive
   rangeEnd: string; // "YYYY-MM-DD", inclusive
@@ -43,6 +51,5 @@ export function plannedDaysInRange(params: {
   const startMs = new Date(`${effectiveStart}T00:00:00Z`).getTime();
   const endMs = new Date(`${rangeEnd}T00:00:00Z`).getTime();
   const daySpan = Math.round((endMs - startMs) / DAY_MS) + 1;
-  const weeksSpan = Math.ceil(daySpan / 7);
-  return plannedPerWeek * weeksSpan;
+  return Math.round((plannedPerWeek * daySpan) / 7);
 }

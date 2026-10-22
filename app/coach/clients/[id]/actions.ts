@@ -11,6 +11,7 @@ import type { PaymentMethod } from "@/lib/constants/access";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { FEEDBACK_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
 import { cancelSubscription } from "@/lib/paypal/subscriptions";
+import { shouldSetAccessActivatedAt } from "@/lib/utils/access-activation";
 
 export type FeedbackFormState = { error: string } | { success: true } | undefined;
 
@@ -123,14 +124,13 @@ export async function activateClientAccess(
 
   const supabase = await createClient();
 
-  // Este mismo form también se usa para renovar a un cliente YA activo
-  // (extender vencimiento) — access_activated_at solo se pisa cuando
-  // realmente está activando el acceso (estaba inactivo/vencido/cancelado),
-  // nunca en una renovación, o cada mes se reiniciaría el conteo de días
-  // planificados del mes (ver lib/utils/planned-days.ts).
+  // Este mismo form también se usa para renovar — access_activated_at solo
+  // se escribe en la primera activación (ver lib/utils/access-activation.ts),
+  // o el conteo de días planificados (lib/utils/planned-days.ts) se
+  // reiniciaría con cada renovación.
   const { data: current } = await supabase
     .from("clients")
-    .select("subscription_status")
+    .select("access_activated_at")
     .eq("id", clientId)
     .maybeSingle();
 
@@ -144,7 +144,7 @@ export async function activateClientAccess(
     subscription_end_date: new Date(endDate).toISOString(),
     payment_method: paymentMethod,
   };
-  if (current && current.subscription_status !== "active") {
+  if (shouldSetAccessActivatedAt(current)) {
     patch.access_activated_at = new Date().toISOString();
   }
 

@@ -545,9 +545,9 @@ momento, no una galería genérica.
     (60%) en vez de 12/16 (75%).
     - `clients.access_activated_at` (nueva columna, migración
       `20260729_access_activated_at.sql`) — se escribe SOLO en la
-      transición real a "active" (estaba inactivo/vencido/cancelado),
-      nunca en una renovación o en cada cobro recurrente de PayPal, o el
-      conteo se reiniciaría todos los meses. Dos puntos de escritura:
+      primera activación (columna vacía; regla corregida en oct-2026, ver
+      ítem 69), nunca en una renovación o en cada cobro recurrente de
+      PayPal, o el conteo se reiniciaría todos los meses. Dos puntos de escritura:
       `activateClientAccess` (`app/coach/clients/[id]/actions.ts`, chequea
       el status previo antes de pisar la fecha) y `updateClientStatus` del
       webhook de PayPal (`lib/paypal/webhooks.ts`, mismo chequeo — cubre
@@ -1099,6 +1099,26 @@ momento, no una galería genérica.
     - Fotos de progreso: `Bucket not found · 404` — el bucket
       `progress-photos` no existía en el proyecto (creado a mano: privado,
       8 MB, jpeg/png; las policies de `storage.objects` ya estaban).
+69. Adherencia: activación y días planificados (oct-2026).
+    - `access_activated_at` solo se escribe si está vacía
+      (`shouldSetAccessActivatedAt`, `lib/utils/access-activation.ts`, en
+      `activateClientAccess` y en el webhook de PayPal). Antes se escribía
+      si el estado previo no era "active" — pero `daily-checks` pasa a
+      `inactive` el mismo día que vence, así que renovar horas después
+      contaba como reactivación y reiniciaba la fecha (Luz Aranda quedó
+      con 29/09 entrenando desde julio). Una reactivación real tras una
+      baja larga no existe: al día +5 el cliente se elimina. Datos de los
+      14 clientes afectados corregidos a mano por SQL (fecha de su primera
+      sesión, medianoche de Paraguay).
+    - `plannedDaysInRange`: `plannedPerWeek × días reales / 7`, redondeado,
+      en vez de redondear semanas para arriba (`Math.ceil(días / 7)`, que
+      daba 20 días para septiembre con 4 por semana en vez de 17). Los
+      días de rutina no están atados a un día de la semana (solo
+      `day_number` = orden), por eso es proporcional. Lo usan los 4
+      cálculos de adherencia del ítem 50.
+    - Tests unitarios: `npm test` (runner nativo de Node 24, que ejecuta
+      TypeScript directo; `scripts/test-alias.mjs` resuelve el alias `@/`).
+      Archivos `lib/**/*.test.ts`.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
@@ -1135,6 +1155,13 @@ ver Fase 5.)
 - Siempre validar el rol del usuario en el servidor antes de devolver datos
 - Las rutas de coach deben estar protegidas con middleware
 - Los clientes solo pueden ver SUS PROPIOS datos (RLS en Supabase)
+- Toda tabla nueva en `public` lleva sus `GRANT` en la MISMA migración: desde
+  el 30-oct-2026 Supabase ya no le da permisos de la Data API a las tablas
+  nuevas automáticamente (sin el grant, la app no la puede leer ni escribir
+  aunque las policies RLS estén bien). Patrón: `grant select, insert,
+  update, delete on public.<tabla> to authenticated;` y lo mismo `to
+  service_role;` — nunca a `anon` salvo que la tabla sea pública a
+  propósito.
 - Siempre manejar estados de carga y error en el UI
 
 ## Reglas PWA
