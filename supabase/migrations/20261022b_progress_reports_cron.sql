@@ -23,13 +23,14 @@ select vault.create_secret(
   'progress_reports_cron_secret'
 );
 
--- 2) La tarea horaria.
+-- 2) La tarea horaria. Ojo: con www — euskaditeam.app redirige (308) a
+--    www.euskaditeam.app y pg_net no sigue redirecciones.
 select cron.schedule(
   'progress-reports-hourly',
   '5 * * * *',
   $$
   select net.http_post(
-    url := 'https://euskaditeam.app/api/cron/progress-reports',
+    url := 'https://www.euskaditeam.app/api/cron/progress-reports',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'Authorization', 'Bearer ' || (
