@@ -142,13 +142,6 @@ function pick(options) {
   return options[Math.floor(Math.random() * options.length)];
 }
 
-function isMonthEndToday(date) {
-  const totalDays = new Date(
-    Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0)
-  ).getUTCDate();
-  return date.getUTCDate() === totalDays;
-}
-
 function daysAgo(dateStr, now) {
   const then = new Date(`${dateStr}T00:00:00Z`).getTime();
   const today = Date.UTC(
@@ -165,7 +158,6 @@ function daysUntil(dateStr, now) {
 
 Deno.serve(async () => {
   const now = new Date();
-  const monthUnlocked = isMonthEndToday(now);
 
   const { data: clients } = await supabase
     .from("clients")
@@ -173,17 +165,9 @@ Deno.serve(async () => {
     .eq("subscription_status", "active");
 
   for (const client of clients ?? []) {
-    if (monthUnlocked) {
-      const [unlockTitle, unlockBody] = pick([
-        ["Terminaste el mes.", "Ahora viene la verdad, vamos a descubrirlo."],
-        ["Tu mes está completo.", "¿Llegaste a tu objetivo? Vamos a descubrirlo."],
-      ]);
-      await sendPushToClient(client.id, {
-        title: unlockTitle,
-        body: unlockBody,
-        url: "/client/my-month",
-      });
-    }
+    // La push de fin de mes ("Terminaste el mes…", a /client/my-month) se
+    // sacó en oct-2026: Mi Mes se integró en el reporte mensual, que tiene
+    // su propia push cuando el coach lo envía (lib/reports/service.ts).
 
     const { data: lastLog } = await supabase
       .from("workout_logs")

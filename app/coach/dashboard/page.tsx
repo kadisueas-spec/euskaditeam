@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, Clock, Flag } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Flag, Sparkles } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -14,6 +14,7 @@ import { getCoachDashboardData } from "@/lib/supabase/dashboard";
 import { getMonthEndAlerts } from "@/lib/supabase/monthly-review";
 import { getNoActiveRoutineAlerts } from "@/lib/supabase/routines";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
+import { countReportsToReview } from "@/lib/supabase/progress-reports";
 import { formatDate } from "@/lib/utils/format-date";
 
 function initials(name: string) {
@@ -26,11 +27,13 @@ export default async function CoachDashboardPage() {
     monthEndAlerts,
     noActiveRoutineAlerts,
     profile,
+    reportsToReview,
   ] = await Promise.all([
     getCoachDashboardData(),
     getMonthEndAlerts(),
     getNoActiveRoutineAlerts(),
     getCurrentProfile(),
+    countReportsToReview(),
   ]);
   const firstName = (profile?.full_name?.trim().split(" ")[0] ?? "Coach").toUpperCase();
 
@@ -43,8 +46,17 @@ export default async function CoachDashboardPage() {
         <div className="mt-1.5 h-0.5 w-10 bg-[#e8001c]" />
       </div>
 
-      {(monthEndAlerts.length > 0 || noActiveRoutineAlerts.length > 0) && (
+      {(reportsToReview > 0 || monthEndAlerts.length > 0 || noActiveRoutineAlerts.length > 0) && (
         <div className="flex flex-col gap-2">
+          {reportsToReview > 0 && (
+            <Link
+              href="/coach/reports"
+              className="flex items-center gap-2 rounded-lg border border-[#e8001c]/40 bg-[#e8001c]/10 p-3 text-sm text-white hover:bg-[#e8001c]/20"
+            >
+              <Sparkles className="size-4 shrink-0 text-[#e8001c]" />
+              {reportsToReview === 1 ? "1 reporte para revisar" : `${reportsToReview} reportes para revisar`}
+            </Link>
+          )}
           {monthEndAlerts.map((alert) => (
             <Link
               key={`month-${alert.clientId}`}

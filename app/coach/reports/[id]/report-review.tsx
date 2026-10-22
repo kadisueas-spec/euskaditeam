@@ -1,0 +1,267 @@
+"use client";
+
+import { useMemo, useState, useTransition } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { AlertTriangle, RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { NativeSelect } from "@/components/ui/native-select";
+import { ReportPlayer, reportPlayerStyles as s } from "@/components/reports/report-player";
+import type { ExtraSlide } from "@/components/reports/report-player";
+import { whenLabel } from "@/lib/reports/format";
+import type { CoachReportDetail } from "@/lib/supabase/progress-reports";
+import type { ReportCard } from "@/lib/reports/types";
+import {
+  discardReport,
+  regenerateReportAction,
+  saveReportNote,
+  scheduleReportForSunday,
+  sendReportNow,
+  unscheduleReport,
+} from "../actions";
+
+const HOURS = Array.from({ length: 24 }, (_, h) => h);
+
+// Misma ubicación que usa sendReport (lib/reports/service.ts): la nota va
+// antes de la imagen para compartir.
+function withNote(cards: ReportCard[], note: string, coachName: string): ReportCard[] {
+  const text = note.trim();
+  if (!text) return cards;
+  const card: ReportCard = { type: "coach-note", theme: "oxblood", text, coachName, coachAvatarUrl: null };
+  const i = cards.findIndex((c) => c.type === "share");
+  return i >= 0 ? [...cards.slice(0, i), card, ...cards.slice(i)] : [...cards, card];
+}
+
+export function ReportReview({ report }: { report: CoachReportDetail }) {
+  const router = useRouter();
+  const [note, setNote] = useState(report.coachNote);
+  const [hour, setHour] = useState(report.sundayHour);
+  const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const [pending, startTransition] = useTransition();
+  const editable = report.status === "draft" || report.status === "scheduled";
+
+  const previewCards = useMemo(
+    () => (editable ? withNote(report.cards, note, "Vos") : report.cards),
+    [editable, report.cards, note]
+  );
+
+  const privateSlide: ExtraSlide = {
+    key: "private",
+    theme: "oxblood",
+    content: (
+      <div className={s.slow} style={{ margin: "auto 0" }}>
+        <div className={s.coachOnly}>
+          <span className={s.coachTag}>Solo lo ves vos</span>
+          <p className={s.phraseLg} style={{ color: "var(--ink)" }}>
+            {report.missingMonthMessage ? "Falta tu mensaje de cierre de mes" : "Avisos de este reporte"}
+          </p>
+          {report.missingMonthMessage && (
+            <p className={s.sub} style={{ color: "#c9c9c9" }}>
+              Escribí el cierre en la ficha y tocá “Volver a generar”: tu mensaje entra al reporte, firmado por vos.
+              Si lo enviás sin escribirlo, esa tarjeta no aparece.
+            </p>
+          )}
+          {report.notices.length > 0 ? (
+            <ul className={s.notices}>
+              {report.notices.map((n) => (
+                <li key={n}>{n}</li>
+              ))}
+            </ul>
+          ) : (
+            !report.missingMonthMessage && <p className={s.sub}>Sin avisos.</p>
+          )}
+        </div>
+      </div>
+    ),
+  };
+
+  function run(action: () => Promise<{ error?: string }>, after?: () => void) {
+    setError(null);
+    setSaved(false);
+    startTransition(async () => {
+      const result = await action();
+      if (result.error) setError(result.error);
+      else {
+        after?.();
+        router.refresh();
+      }
+    });
+  }
+
+  return (
+    <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+      {/* Vista previa: lo mismo que ve el cliente, en un marco de teléfono */}
+      <div className="mx-auto w-full max-w-[390px] shrink-0 lg:mx-0">
+        <div className="h-[760px] overflow-hidden rounded-[40px] border-4 border-[#1e1e1e] bg-[#080808]">
+          <ReportPlayer
+            key={previewCards.length}
+            cards={previewCards}
+            title={report.title}
+            periodLabel={report.periodLabel}
+            variant="embedded"
+            extraSlides={editable ? [privateSlide] : []}
+          />
+        </div>
+        <p className="mt-2 text-center text-xs text-[#888888]">
+          Tocá a la derecha o a la izquierda del teléfono para pasar tarjetas.
+        </p>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-5">
+        {report.status === "sent" ? (
+          <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 text-sm text-[#c9c9c9]">
+            <p className="font-medium text-white">Enviado el {report.sentAt ? whenLabel(report.sentAt) : "—"}</p>
+            <p className="mt-1">
+              {report.completedAt
+                ? `Lo vio completo el ${whenLabel(report.completedAt)}.`
+                : report.openedAt
+                  ? `Lo abrió el ${whenLabel(report.openedAt)}, todavía no lo terminó.`
+                  : "Todavía no lo abrió."}
+            </p>
+          </div>
+        ) : report.status === "discarded" ? (
+          <p className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4 text-sm text-[#c9c9c9]">
+            Descartado. No le llega al cliente.
+          </p>
+        ) : (
+          <>
+            {report.status === "scheduled" && report.scheduledFor && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8001c]/40 bg-[#e8001c]/10 p-4 text-sm">
+                <span className="text-white">Programado para el {whenLabel(report.scheduledFor)}.</span>
+                <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => unscheduleReport(report.id))}>
+                  Cancelar envío
+                </Button>
+              </div>
+            )}
+
+            {report.missingMonthMessage && (
+              <div className="flex items-start gap-3 rounded-2xl border border-[#f5c542]/40 bg-[#f5c542]/10 p-4 text-sm">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[#f5c542]" aria-hidden />
+                <div className="text-[#f5f5f5]">
+                  <p className="font-medium">Falta tu mensaje de cierre de mes</p>
+                  <p className="mt-1 text-[#c9c9c9]">
+                    Escribilo en el{" "}
+                    <Link href={`/coach/clients/${report.clientId}`} className="text-[#f5c542] underline">
+                      cierre de mes de {report.clientName.split(" ")[0]}
+                    </Link>{" "}
+                    y después tocá “Volver a generar”.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {report.notices.length > 0 && (
+              <section className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+                <h2 className="text-sm font-semibold text-white">Avisos para vos</h2>
+                <p className="text-xs text-[#888888]">No le llegan al cliente.</p>
+                <ul className="mt-3 flex flex-col gap-2">
+                  {report.notices.map((n) => (
+                    <li key={n} className="rounded-xl border border-[#f5c542]/30 bg-[#f5c542]/10 px-3 py-2 text-sm text-[#f5f5f5]">
+                      {n}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            <section className="flex flex-col gap-2">
+              <label htmlFor="coach-note" className="text-sm font-semibold text-white">
+                Nota personal (opcional)
+              </label>
+              <Textarea
+                id="coach-note"
+                value={note}
+                maxLength={1000}
+                rows={4}
+                placeholder="Si la escribís, va como última tarjeta, firmada por vos."
+                onChange={(e) => {
+                  setNote(e.target.value);
+                  setSaved(false);
+                }}
+              />
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pending || note === report.coachNote}
+                  onClick={() => run(() => saveReportNote(report.id, note), () => setSaved(true))}
+                >
+                  Guardar nota
+                </Button>
+                {saved && <span className="text-sm text-[#888888]">Guardada ✓</span>}
+              </div>
+            </section>
+
+            <section className="flex flex-col gap-3 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+              <Button size="lg" className="min-h-11" disabled={pending} onClick={() => run(() => sendReportNow(report.id, note))}>
+                {pending ? "Procesando…" : "Enviar ahora"}
+              </Button>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="min-h-11"
+                  disabled={pending}
+                  onClick={() => run(() => scheduleReportForSunday(report.id, note, hour))}
+                >
+                  Programar para el domingo
+                </Button>
+                <label htmlFor="sunday-hour" className="sr-only">
+                  Hora del domingo
+                </label>
+                <NativeSelect
+                  id="sunday-hour"
+                  value={hour}
+                  onChange={(e) => setHour(Number(e.target.value))}
+                  className="w-28"
+                >
+                  {HOURS.map((h) => (
+                    <option key={h} value={h}>
+                      {String(h).padStart(2, "0")}:00
+                    </option>
+                  ))}
+                </NativeSelect>
+                <span className="text-xs text-[#888888]">hora de Paraguay</span>
+              </div>
+            </section>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => regenerateReportAction(report.id))}>
+                <RefreshCw className="size-4" aria-hidden /> Volver a generar con los datos de hoy
+              </Button>
+              {confirmDiscard ? (
+                <span className="flex items-center gap-2 text-sm text-[#c9c9c9]">
+                  ¿Descartarlo? No le va a llegar.
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    disabled={pending}
+                    onClick={() => run(() => discardReport(report.id), () => router.push("/coach/reports"))}
+                  >
+                    Sí, descartar
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirmDiscard(false)}>
+                    No
+                  </Button>
+                </span>
+              ) : (
+                <Button variant="ghost" size="sm" disabled={pending} onClick={() => setConfirmDiscard(true)}>
+                  Descartar
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+
+        {error && (
+          <p role="alert" className="text-sm text-[#e8001c]">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}

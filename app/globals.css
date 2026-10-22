@@ -242,12 +242,6 @@
 @utility animate-confetti-fall {
   animation: confetti-fall 1.8s ease-in both;
 }
-@utility animate-lock-shake {
-  animation: lock-shake 0.5s ease-in-out both;
-}
-@utility animate-lock-pop {
-  animation: lock-pop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.5s both;
-}
 /* Sistema de celebración de récords (jul-2026) — banner parcial que sube
    desde abajo al completar una serie con récord vs la semana pasada. */
 @utility animate-record-banner-in {
@@ -393,40 +387,6 @@
   }
 }
 
-@keyframes lock-shake {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  20% {
-    transform: rotate(-8deg);
-  }
-  40% {
-    transform: rotate(7deg);
-  }
-  60% {
-    transform: rotate(-5deg);
-  }
-  80% {
-    transform: rotate(3deg);
-  }
-}
-
-@keyframes lock-pop {
-  0% {
-    opacity: 0;
-    transform: scale(0.5);
-  }
-  60% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 @keyframes record-banner-in {
   from {
     opacity: 0;
@@ -529,8 +489,6 @@
   .animate-pr-pop,
   .animate-celebrate-check,
   .animate-confetti-fall,
-  .animate-lock-shake,
-  .animate-lock-pop,
   .animate-record-banner-in,
   .animate-record-banner-out,
   .animate-confetti-fall-slow,

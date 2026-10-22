@@ -31,8 +31,8 @@ export type MonthlyGoal = {
   createdAt: string;
 };
 
-// cache(): se llama desde el layout del cliente y de nuevo dentro de
-// getMyMonthProgress/getMyMonthUnlockedData en la misma request.
+// cache(): se llama desde el layout del cliente (modal del objetivo) y de
+// nuevo desde Progreso ("Tu objetivo de [mes]") en la misma request.
 export const getCurrentMonthGoal = cache(async function getCurrentMonthGoal(): Promise<MonthlyGoal | null> {
   const client = await getCurrentClientRecord();
   if (!client) return null;

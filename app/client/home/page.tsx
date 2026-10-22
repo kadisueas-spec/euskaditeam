@@ -14,13 +14,23 @@ import { HomeTour } from "@/components/client/home-tour";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getClientHomeData } from "@/lib/supabase/client-home";
 import { getActiveWorkoutSession } from "@/lib/supabase/client-routine";
+import { getClientReport, getPendingClientReport } from "@/lib/supabase/progress-reports";
+import { HomeReportAccess } from "@/components/client/home-report-access";
 import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
 
-export default async function ClientHomePage() {
-  const [data, activeWorkout] = await Promise.all([
+export default async function ClientHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ report?: string }>;
+}) {
+  const { report: requestedReportId } = await searchParams;
+  const [data, activeWorkout, pendingReport, requestedReport] = await Promise.all([
     getClientHomeData(),
     getActiveWorkoutSession(),
+    getPendingClientReport(),
+    // ?report=<id> llega desde la push del reporte: se abre solo.
+    requestedReportId ? getClientReport(requestedReportId) : Promise.resolve(null),
   ]);
   const motivationalPhrase = randomMotivationalPhrase();
 
@@ -28,9 +38,14 @@ export default async function ClientHomePage() {
 
   const daysSinceEvalLabel =
     data.daysSinceLastEvaluation == null ? "—" : String(data.daysSinceLastEvaluation);
+  const report = requestedReport ?? pendingReport;
 
   return (
     <div className="flex flex-col gap-4">
+      {report && (
+        <HomeReportAccess key={report.id} report={report} autoOpen={!!requestedReport} />
+      )}
+
       <FadeIn>
         <ClientGreeting name={data.firstName} />
         <p className="mt-2 text-xl leading-snug font-medium text-[#f5f5f5] italic">

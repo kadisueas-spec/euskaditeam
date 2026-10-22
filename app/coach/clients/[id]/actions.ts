@@ -341,3 +341,12 @@ export async function deleteClient(
   revalidatePath("/coach/dashboard");
   return { success: true };
 }
+
+// Reportes de progreso (oct-2026): "No mostrar peso en reportes".
+export async function setHideWeightInReports(clientId: string, hide: boolean): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { error } = await supabase.from("clients").update({ hide_weight_in_reports: hide }).eq("id", clientId);
+  if (error) return { error: "No se pudo guardar." };
+  revalidatePath(`/coach/clients/${clientId}`);
+  return {};
+}

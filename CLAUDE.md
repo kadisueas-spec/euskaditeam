@@ -151,6 +151,9 @@ todo el mes.
     mes: objetivo vs. métricas reales, adherencia final, evolución de
     cargas en ejercicios principales, volumen total del mes, comparación
     con el mes anterior, y sección "Mensaje de tu coach".
+**Ítems 19 y 20 (Mi Mes) reemplazados en oct-2026 por los reportes de
+progreso (ítem 70)**: el resumen del mes ahora es el reporte mensual. El
+modal del objetivo (18) y el cierre de mes (21) siguen igual.
 21. Cierre de mes del coach en `/coach/clients/[id]`: resumen del mes,
     objetivos para el mes siguiente, ajustes al plan. Alerta en el
     dashboard del coach cuando el mes de un cliente termina y falta
@@ -237,7 +240,7 @@ El procesador real de pagos es **PayPal Subscriptions** (jul-2026):
     cliente, suscripción guardada en `push_subscriptions` (RLS), push
     inmediato al dejar feedback el coach. Recordatorios programados
     (lunes/miércoles/viernes 9am) y chequeos diarios (desbloqueo de fin de
-    mes, inactividad de 3 días) corren como Supabase Edge Functions
+    mes —sacado en oct-2026, ver ítem 70—, inactividad de 3 días) corren como Supabase Edge Functions
     (`supabase/functions/weekly-reminders`, `supabase/functions/daily-checks`)
     con `pg_cron` — desplegadas manualmente vía el Dashboard de Supabase
     (Edge Functions no se pueden deployar sin las credenciales del proyecto).
@@ -1134,6 +1137,50 @@ momento, no una galería genérica.
       TypeScript directo; `scripts/test-alias.mjs` resuelve el alias `@/`).
       Archivos `lib/**/*.test.ts`.
 
+70. Reportes de progreso tipo Wrapped (oct-2026) — plan, SQL, banco de
+    frases y reglas aprobadas en `docs/plan-reportes.md`. Migración
+    `20261022_progress_reports.sql` (ya corrida): `progress_reports` (lo
+    que ve el cliente: `cards` jsonb + `phrase_keys` + `coach_note`; el
+    cliente solo lee `status = 'sent'`) y `progress_report_private`
+    (avisos "Solo lo ves vos", solo coach — tabla aparte porque RLS filtra
+    filas, no columnas), más `profiles.report_sunday_hour` y
+    `clients.hide_weight_in_reports`.
+    - Flujo: el cron crea BORRADORES (sábado desde 7:00 PYT: lunes a
+      viernes; día 1 desde 7:00: mes anterior; con días de respaldo) y
+      envía solo lo que el coach PROGRAMÓ. Nada sale sin el coach. Bandeja
+      `/coach/reports` (+ aviso en el dashboard): vista previa en marco de
+      teléfono, nota personal (va como tarjeta antes de la imagen para
+      compartir), Enviar ahora / Programar para el domingo a su hora /
+      Volver a generar / Descartar, aviso "Falta tu mensaje de cierre de
+      mes". Al enviar: push "Tu semana está lista 🔥" / "Tu {mes} está
+      listo" → `/client/home?report=<id>` (se abre solo); acceso destacado
+      arriba en Inicio hasta verlo completo; historial en
+      `/client/progress/reports`. `sendReport` es un UPDATE condicional:
+      la push sale una sola vez aunque cron y coach envíen a la vez.
+    - Lógica pura y testeada en `lib/reports/` (`build-weekly`,
+      `build-monthly`, `records`, `weight`, `weight-goal`, `phrases`,
+      `schedule`; fixture anonimizado en `__fixtures__/`); lectura de datos
+      en `load-input.ts` y escritura en `service.ts` (service role);
+      lecturas con sesión en `lib/supabase/progress-reports.ts`.
+      Reproductor compartido cliente/coach en `components/reports/` (portal
+      a body en pantalla completa).
+    - Reglas: récords contra la mejor marca HISTÓRICA anterior al período;
+      día entrenado = finalizada con 1+ serie; volumen solo si sube (si no,
+      aviso privado); líneas del objetivo sin dato → aviso privado; peso
+      festejado solo en la dirección del objetivo (`weightDirectionFromGoal`:
+      "perder grasa, ganar fuerza" es de bajar) y oculto con el interruptor
+      de la ficha; cambio semanal < 0,5 kg → titular = tendencia; ninguna
+      frase repetida en el reporte ni en los enviados de los últimos 28
+      días, ni el mismo remate prioritario dos veces en un reporte.
+    - Mi Mes borrado (`/client/my-month` redirige al historial); el
+      objetivo del mes en curso quedó como tarjeta arriba de Progreso. La
+      push "Terminaste el mes" se sacó de `daily-checks` (hay que
+      redeployar la Edge Function a mano).
+    - Cron: `POST /api/cron/progress-reports` con
+      `Authorization: Bearer <CRON_SECRET>` (variable `CRON_SECRET` en
+      Vercel), agendado con pg_cron + pg_net desde
+      `20261022b_progress_reports_cron.sql` (secreto en Vault).
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)
@@ -1158,6 +1205,7 @@ PAYPAL_MODE=
 PAYPAL_PRODUCT_ID=
 PAYPAL_WEBHOOK_ID=
 PAYPAL_VERIFY_WEBHOOK=
+CRON_SECRET=
 ```
 (Las mismas VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY/VAPID_SUBJECT también deben
 cargarse como secrets de las Supabase Edge Functions, no solo en `.env.local`.)

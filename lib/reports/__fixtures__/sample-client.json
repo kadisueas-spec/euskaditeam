@@ -1,0 +1,1930 @@
+{
+ "_comment": "Datos de entrenamiento reales anonimizados (sin nombre ni email) para tests de lib/reports. Sesiones = solo finalizadas con al menos 1 serie.",
+ "routine": {
+  "daysPerWeek": 4,
+  "assignedAt": "2026-07-12",
+  "endsAt": "2026-09-12",
+  "days": [
+   {
+    "id": "Pierna completa",
+    "name": "Pierna completa"
+   },
+   {
+    "id": "Espalda + Hombros",
+    "name": "Espalda + Hombros"
+   },
+   {
+    "id": "Pierna completa 2",
+    "name": "Pierna completa 2"
+   },
+   {
+    "id": "Brazos",
+    "name": "Brazos"
+   }
+  ]
+ },
+ "sessions": [
+  {
+   "date": "2026-08-01",
+   "dayId": "Brazos",
+   "dayName": "Brazos",
+   "setCount": 16,
+   "volumeKg": 2445
+  },
+  {
+   "date": "2026-08-03",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 17,
+   "volumeKg": 11520
+  },
+  {
+   "date": "2026-08-04",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6245
+  },
+  {
+   "date": "2026-08-06",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 11880
+  },
+  {
+   "date": "2026-08-07",
+   "dayId": "Brazos",
+   "dayName": "Brazos",
+   "setCount": 16,
+   "volumeKg": 3062
+  },
+  {
+   "date": "2026-08-10",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 13265
+  },
+  {
+   "date": "2026-08-11",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 7848
+  },
+  {
+   "date": "2026-08-13",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 13195
+  },
+  {
+   "date": "2026-08-14",
+   "dayId": "Brazos",
+   "dayName": "Brazos",
+   "setCount": 16,
+   "volumeKg": 2834
+  },
+  {
+   "date": "2026-08-17",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 12360
+  },
+  {
+   "date": "2026-08-18",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6270
+  },
+  {
+   "date": "2026-08-20",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 12400
+  },
+  {
+   "date": "2026-08-24",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 14745
+  },
+  {
+   "date": "2026-08-25",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6770
+  },
+  {
+   "date": "2026-08-27",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 13585
+  },
+  {
+   "date": "2026-08-28",
+   "dayId": "Brazos",
+   "dayName": "Brazos",
+   "setCount": 16,
+   "volumeKg": 2956
+  },
+  {
+   "date": "2026-08-31",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 13430
+  },
+  {
+   "date": "2026-09-02",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6228
+  },
+  {
+   "date": "2026-09-04",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 14355
+  },
+  {
+   "date": "2026-09-05",
+   "dayId": "Brazos",
+   "dayName": "Brazos",
+   "setCount": 16,
+   "volumeKg": 2620
+  },
+  {
+   "date": "2026-09-07",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 11953
+  },
+  {
+   "date": "2026-09-09",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 7235
+  },
+  {
+   "date": "2026-09-14",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 13,
+   "volumeKg": 6665
+  },
+  {
+   "date": "2026-09-16",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6470
+  },
+  {
+   "date": "2026-09-18",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 14195
+  },
+  {
+   "date": "2026-09-21",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 12785
+  },
+  {
+   "date": "2026-09-22",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6853
+  },
+  {
+   "date": "2026-09-24",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 13030
+  },
+  {
+   "date": "2026-09-29",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 13670
+  },
+  {
+   "date": "2026-10-01",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6465
+  },
+  {
+   "date": "2026-10-05",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 12880
+  },
+  {
+   "date": "2026-10-06",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6570
+  },
+  {
+   "date": "2026-10-08",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 13130
+  },
+  {
+   "date": "2026-10-12",
+   "dayId": "Pierna completa",
+   "dayName": "Pierna completa",
+   "setCount": 16,
+   "volumeKg": 13905
+  },
+  {
+   "date": "2026-10-13",
+   "dayId": "Espalda + Hombros",
+   "dayName": "Espalda + Hombros",
+   "setCount": 16,
+   "volumeKg": 6280
+  },
+  {
+   "date": "2026-10-15",
+   "dayId": "Pierna completa 2",
+   "dayName": "Pierna completa 2",
+   "setCount": 13,
+   "volumeKg": 14565
+  }
+ ],
+ "bestSets": [
+  {
+   "date": "2026-08-01",
+   "exerciseId": "Curl con barra",
+   "exerciseName": "Curl con barra",
+   "muscleGroup": null,
+   "weight": 16,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-01",
+   "exerciseId": "Curl en banco Scott (predicador)",
+   "exerciseName": "Curl en banco Scott",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 9,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-01",
+   "exerciseId": "Elevación de piernas tumbado",
+   "exerciseName": "Elevación de piernas tumbado",
+   "muscleGroup": null,
+   "weight": 1,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-01",
+   "exerciseId": "Extensión de tríceps en polea alta",
+   "exerciseName": "Extensión de tríceps en polea alta",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 9,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-01",
+   "exerciseId": "Extensión de tríceps en polea tras nuca",
+   "exerciseName": "Extensión de tríceps en polea tras nuca",
+   "muscleGroup": null,
+   "weight": 25,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-03",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 60,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-03",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 13,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-03",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-03",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 140,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-03",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-04",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 55,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-04",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-04",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 45,
+   "reps": 11,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-04",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-04",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-06",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 14,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-06",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 45,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-06",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 6,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-06",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 190,
+   "reps": 10,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-07",
+   "exerciseId": "Curl con barra",
+   "exerciseName": "Curl con barra",
+   "muscleGroup": null,
+   "weight": 16,
+   "reps": 13,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-07",
+   "exerciseId": "Curl en banco Scott (predicador)",
+   "exerciseName": "Curl en banco Scott",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-07",
+   "exerciseId": "Elevación de piernas tumbado",
+   "exerciseName": "Elevación de piernas tumbado",
+   "muscleGroup": null,
+   "weight": 1,
+   "reps": 15,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-07",
+   "exerciseId": "Extensión de tríceps en polea alta",
+   "exerciseName": "Extensión de tríceps en polea alta",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-07",
+   "exerciseId": "Extensión de tríceps en polea tras nuca",
+   "exerciseName": "Extensión de tríceps en polea tras nuca",
+   "muscleGroup": null,
+   "weight": 30,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-10",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 60,
+   "reps": 16,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-10",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 15,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-10",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-10",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 145,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-10",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-11",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 60,
+   "reps": 20,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-11",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-11",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 45,
+   "reps": 14,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-11",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 9,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-11",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 55,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-13",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-13",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 45,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-13",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 9,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-13",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 200,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-14",
+   "exerciseId": "Curl con barra",
+   "exerciseName": "Curl con barra",
+   "muscleGroup": null,
+   "weight": 21,
+   "reps": 5,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-14",
+   "exerciseId": "Curl en banco Scott (predicador)",
+   "exerciseName": "Curl en banco Scott",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-14",
+   "exerciseId": "Elevación de piernas tumbado",
+   "exerciseName": "Elevación de piernas tumbado",
+   "muscleGroup": null,
+   "weight": 1,
+   "reps": 20,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-14",
+   "exerciseId": "Extensión de tríceps en polea alta",
+   "exerciseName": "Extensión de tríceps en polea alta",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-14",
+   "exerciseId": "Extensión de tríceps en polea tras nuca",
+   "exerciseName": "Extensión de tríceps en polea tras nuca",
+   "muscleGroup": null,
+   "weight": 30,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-17",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 65,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-17",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 40,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-17",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 85,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-17",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 150,
+   "reps": 15,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-17",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-18",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 62.5,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-18",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-18",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-18",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 12.5,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-18",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 55,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-20",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 13,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-20",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 30,
+   "reps": 15,
+   "rir": 5
+  },
+  {
+   "date": "2026-08-20",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-20",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 200,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-24",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 65,
+   "reps": 14,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-24",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 40,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-24",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 70,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-24",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-24",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-25",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 62.5,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-25",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 13,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-25",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-25",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 5,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-25",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 60,
+   "reps": 7,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-27",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-27",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 35,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-27",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-27",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 200,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-28",
+   "exerciseId": "Curl con barra",
+   "exerciseName": "Curl con barra",
+   "muscleGroup": null,
+   "weight": 16,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-28",
+   "exerciseId": "Curl en banco Scott (predicador)",
+   "exerciseName": "Curl en banco Scott",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 7,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-28",
+   "exerciseId": "Elevación de piernas tumbado",
+   "exerciseName": "Elevación de piernas tumbado",
+   "muscleGroup": null,
+   "weight": 1,
+   "reps": 20,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-28",
+   "exerciseId": "Extensión de tríceps en polea alta",
+   "exerciseName": "Extensión de tríceps en polea alta",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 11,
+   "rir": 0
+  },
+  {
+   "date": "2026-08-28",
+   "exerciseId": "Extensión de tríceps en polea tras nuca",
+   "exerciseName": "Extensión de tríceps en polea tras nuca",
+   "muscleGroup": null,
+   "weight": 25,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-31",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 70,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-31",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 40,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-08-31",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-08-31",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 13,
+   "rir": 2
+  },
+  {
+   "date": "2026-08-31",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 12,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-02",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 10,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-02",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-02",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-02",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-02",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 60,
+   "reps": 9,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-04",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 13,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-04",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 35,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-04",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 7,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-04",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 200,
+   "reps": 15,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-05",
+   "exerciseId": "Curl con barra",
+   "exerciseName": "Curl con barra",
+   "muscleGroup": null,
+   "weight": 21,
+   "reps": 6,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-05",
+   "exerciseId": "Curl en banco Scott (predicador)",
+   "exerciseName": "Curl en banco Scott",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-05",
+   "exerciseId": "Elevación de piernas tumbado",
+   "exerciseName": "Elevación de piernas tumbado",
+   "muscleGroup": null,
+   "weight": 1,
+   "reps": 20,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-05",
+   "exerciseId": "Extensión de tríceps en polea alta",
+   "exerciseName": "Extensión de tríceps en polea alta",
+   "muscleGroup": null,
+   "weight": 35,
+   "reps": 12,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-05",
+   "exerciseId": "Extensión de tríceps en polea tras nuca",
+   "exerciseName": "Extensión de tríceps en polea tras nuca",
+   "muscleGroup": null,
+   "weight": 30,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-07",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 65,
+   "reps": 10,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-07",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 40,
+   "reps": 13,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-07",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 85,
+   "reps": 8,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-07",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-07",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 17.5,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-09",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-09",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-09",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-09",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 6,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-09",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 60,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-14",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 65,
+   "reps": 11,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-14",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 40,
+   "reps": 13,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-14",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 85,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-14",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 17.5,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-16",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 70,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-16",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 13,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-16",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 12,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-16",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-16",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 8,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-18",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-18",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 35,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-18",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-18",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 200,
+   "reps": 15,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-21",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 65,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-21",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 40,
+   "reps": 14,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-21",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 90,
+   "reps": 8,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-21",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 15,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-21",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 17.5,
+   "reps": 8,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-22",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 70,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-22",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 14,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-22",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 55,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-22",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 8,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-22",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-24",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 85,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-24",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 40,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-24",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-09-24",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 210,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-29",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 65,
+   "reps": 15,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-29",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 45,
+   "reps": 10,
+   "rir": 0
+  },
+  {
+   "date": "2026-09-29",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 90,
+   "reps": 8,
+   "rir": 2
+  },
+  {
+   "date": "2026-09-29",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-09-29",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 17.5,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-01",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 10,
+   "rir": 2
+  },
+  {
+   "date": "2026-10-01",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-01",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 55,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-01",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-01",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-05",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 70,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-05",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 45,
+   "reps": 11,
+   "rir": 0
+  },
+  {
+   "date": "2026-10-05",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-05",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-05",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 17.5,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-06",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-10-06",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 10,
+   "reps": 13,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-06",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 55,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-06",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-06",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 9,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-08",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 85,
+   "reps": 11,
+   "rir": 2
+  },
+  {
+   "date": "2026-10-08",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 40,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-08",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 10,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-08",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 220,
+   "reps": 10,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-12",
+   "exerciseId": "Abducción de cadera en máquina",
+   "exerciseName": "Abducción de cadera en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 70,
+   "reps": 12,
+   "rir": 0
+  },
+  {
+   "date": "2026-10-12",
+   "exerciseId": "Curl de isquios acostado",
+   "exerciseName": "Curl de isquios acostado",
+   "muscleGroup": null,
+   "weight": 45,
+   "reps": 12,
+   "rir": 0
+  },
+  {
+   "date": "2026-10-12",
+   "exerciseId": "Hack squat en máquina",
+   "exerciseName": "Hack squat en máquina",
+   "muscleGroup": null,
+   "weight": 90,
+   "reps": 10,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-12",
+   "exerciseId": "Puente de glúteos en máquina",
+   "exerciseName": "Puente de glúteos en máquina",
+   "muscleGroup": "Glúteos",
+   "weight": 160,
+   "reps": 15,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-12",
+   "exerciseId": "Sentadilla búlgara",
+   "exerciseName": "Sentadilla búlgara",
+   "muscleGroup": null,
+   "weight": 17.5,
+   "reps": 11,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-13",
+   "exerciseId": "Crunch en polea alta (cable crunch)",
+   "exerciseName": "Crunch en polea alta",
+   "muscleGroup": null,
+   "weight": 75,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-13",
+   "exerciseId": "Elevaciones laterales con mancuerna",
+   "exerciseName": "Elevaciones laterales con mancuerna",
+   "muscleGroup": null,
+   "weight": 7.5,
+   "reps": 12,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-13",
+   "exerciseId": "Jalón al pecho agarre ancho",
+   "exerciseName": "Jalón al pecho agarre ancho",
+   "muscleGroup": null,
+   "weight": 50,
+   "reps": 10,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-13",
+   "exerciseId": "Press de hombros con mancuernas",
+   "exerciseName": "Press de hombros con mancuernas",
+   "muscleGroup": null,
+   "weight": 15,
+   "reps": 7,
+   "rir": 0
+  },
+  {
+   "date": "2026-10-13",
+   "exerciseId": "Remo con barra",
+   "exerciseName": "Remo con barra",
+   "muscleGroup": null,
+   "weight": 65,
+   "reps": 7,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-15",
+   "exerciseId": "Extensión de cuádriceps en máquina",
+   "exerciseName": "Extensión de cuádriceps en máquina",
+   "muscleGroup": null,
+   "weight": 85,
+   "reps": 12,
+   "rir": 2
+  },
+  {
+   "date": "2026-10-15",
+   "exerciseId": "Patada de glúteo en polea",
+   "exerciseName": "Patada de glúteo en polea",
+   "muscleGroup": "Glúteos",
+   "weight": 40,
+   "reps": 13,
+   "rir": 3
+  },
+  {
+   "date": "2026-10-15",
+   "exerciseId": "Peso muerto con barra",
+   "exerciseName": "Peso muerto con barra",
+   "muscleGroup": null,
+   "weight": 80,
+   "reps": 8,
+   "rir": 1
+  },
+  {
+   "date": "2026-10-15",
+   "exerciseId": "Prensa pendular",
+   "exerciseName": "Prensa pendular",
+   "muscleGroup": null,
+   "weight": 220,
+   "reps": 13,
+   "rir": 2
+  }
+ ],
+ "weights": [
+  {
+   "date": "2026-08-02",
+   "kg": 89.15
+  },
+  {
+   "date": "2026-08-03",
+   "kg": 89.15
+  },
+  {
+   "date": "2026-08-04",
+   "kg": 88.95
+  },
+  {
+   "date": "2026-08-05",
+   "kg": 89.65
+  },
+  {
+   "date": "2026-08-06",
+   "kg": 89.4
+  },
+  {
+   "date": "2026-08-07",
+   "kg": 89.3
+  },
+  {
+   "date": "2026-08-11",
+   "kg": 88.75
+  },
+  {
+   "date": "2026-08-12",
+   "kg": 88.75
+  },
+  {
+   "date": "2026-08-14",
+   "kg": 88.75
+  },
+  {
+   "date": "2026-08-17",
+   "kg": 89.2
+  },
+  {
+   "date": "2026-08-18",
+   "kg": 89.05
+  },
+  {
+   "date": "2026-08-19",
+   "kg": 88.9
+  },
+  {
+   "date": "2026-08-20",
+   "kg": 88.5
+  },
+  {
+   "date": "2026-08-24",
+   "kg": 88.45
+  },
+  {
+   "date": "2026-08-25",
+   "kg": 87.7
+  },
+  {
+   "date": "2026-08-26",
+   "kg": 88.25
+  },
+  {
+   "date": "2026-08-27",
+   "kg": 88.25
+  },
+  {
+   "date": "2026-08-31",
+   "kg": 88.9
+  },
+  {
+   "date": "2026-09-05",
+   "kg": 87.35
+  },
+  {
+   "date": "2026-09-07",
+   "kg": 87.9
+  },
+  {
+   "date": "2026-09-08",
+   "kg": 87.35
+  },
+  {
+   "date": "2026-09-24",
+   "kg": 87.8
+  },
+  {
+   "date": "2026-09-26",
+   "kg": 87.45
+  },
+  {
+   "date": "2026-10-05",
+   "kg": 86.9
+  },
+  {
+   "date": "2026-10-06",
+   "kg": 86.7
+  },
+  {
+   "date": "2026-10-08",
+   "kg": 86.6
+  },
+  {
+   "date": "2026-10-09",
+   "kg": 86.7
+  },
+  {
+   "date": "2026-10-13",
+   "kg": 86.5
+  }
+ ],
+ "monthGoal": {
+  "mainGoal": "Perder grasa, ganar fuerza y desarrollar glúteos",
+  "weightKg": 88
+ }
+}

@@ -44,6 +44,7 @@ import { AccessForm } from "./access-form";
 import { DeleteClientButton } from "./delete-client-button";
 import { FeedbackForm } from "./feedback-form";
 import { MonthlyReviewForm } from "./monthly-review-form";
+import { HideWeightToggle } from "./hide-weight-toggle";
 
 const ACCESS_BADGE: Record<
   ReturnType<typeof getAccessDisplayStatus>,
@@ -351,6 +352,7 @@ export default async function ClientDetailPage({
                   <p>Altura: {client.heightCm ? `${client.heightCm} cm` : "-"}</p>
                   <p>Objetivo: {client.goal ?? "-"}</p>
                   <p>Experiencia: {client.trainingExperience ?? "-"}</p>
+                  <HideWeightToggle clientId={id} initial={client.hideWeightInReports} />
                   {client.notesCoach && (
                     <p className="mt-2 border-t border-[#1e1e1e] pt-3 whitespace-pre-line text-[#f5f5f5]">
                       {client.notesCoach}
