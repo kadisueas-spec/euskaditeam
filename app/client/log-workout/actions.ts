@@ -528,13 +528,14 @@ async function cleanupWeeklyCelebrationIfIncomplete(
 
   const { data: weekLogs } = await supabase
     .from("workout_logs")
-    .select("workout_date")
+    .select(TRAINING_SESSION_SELECT)
     .eq("client_id", clientId)
     .eq("is_completed", true)
     .gte("workout_date", weekStart)
-    .lt("workout_date", weekEnd);
+    .lt("workout_date", weekEnd)
+    .returns<TrainingSessionRow[]>();
 
-  const completedDays = new Set((weekLogs ?? []).map((l) => l.workout_date)).size;
+  const completedDays = trainedDates(weekLogs ?? []).length;
   if (plannedDays > 0 && completedDays >= plannedDays) return; // sigue completa, no tocar
 
   await supabase.from("weekly_celebrations").delete().eq("id", celebration.id);
@@ -692,13 +693,14 @@ async function checkWeeklyCompletion({
 
   const { data: weekLogs } = await supabase
     .from("workout_logs")
-    .select("workout_date")
+    .select(TRAINING_SESSION_SELECT)
     .eq("client_id", client.id)
     .eq("is_completed", true)
     .gte("workout_date", weekStart)
-    .lt("workout_date", weekEnd);
+    .lt("workout_date", weekEnd)
+    .returns<TrainingSessionRow[]>();
 
-  const completedDays = new Set((weekLogs ?? []).map((l) => l.workout_date)).size;
+  const completedDays = trainedDates(weekLogs ?? []).length;
   if (completedDays < plannedDays) return null;
 
   const { error: insertError } = await supabase

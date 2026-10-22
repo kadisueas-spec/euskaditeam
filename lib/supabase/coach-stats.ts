@@ -1,22 +1,24 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
-import { addWeeks, mondayKeyFor, previousMondayKey } from "@/lib/utils/week";
+import { computeStreaks } from "@/lib/utils/streaks";
 import {
   buildExerciseSessionSeries,
   type ExerciseSessionSeries,
   type RawSetRow,
 } from "@/lib/supabase/metrics";
 import { paraguayNow } from "@/lib/utils/today";
+import { plannedDaysInRange } from "@/lib/utils/planned-days";
+import { TRAINING_SESSION_SELECT, adherencePercent, trainedDates } from "@/lib/utils/training-sessions";
+import type { TrainingSessionRow } from "@/lib/utils/training-sessions";
 
 // Espejo de stats.ts + metrics.ts (getExerciseSessionSeries) para el
 // entrenamiento propio del coach — mismo cálculo, coach_id en vez de
-// client_id. La lógica de rachas/adherencia se reimplementa acá (no vale
-// la pena parametrizar getClientStats solo para esto); el cálculo de
+// client_id. Rachas (lib/utils/streaks.ts), día entrenado
+// (lib/utils/training-sessions.ts) y días planificados
+// (lib/utils/planned-days.ts) son los mismos helpers que el cliente; el cálculo de
 // series por ejercicio SÍ se reusa (buildExerciseSessionSeries, ya
 // exportada de metrics.ts) porque no depende de client_id/coach_id, solo
 // procesa filas ya filtradas.
-
-const DAY_MS = 24 * 60 * 60 * 1000;
 
 export type CoachTrainingStats = {
   dailyStreak: number;
@@ -24,54 +26,10 @@ export type CoachTrainingStats = {
   adherencePercent: number;
 };
 
-function dayBefore(dateStr: string): string {
-  return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() - DAY_MS)
-    .toISOString()
-    .slice(0, 10);
-}
-
-function computeStreaks(
-  datesDesc: string[],
-  plannedPerWeek: number,
-  today: Date
-): { dailyStreak: number; weeklyStreak: number } {
-  if (plannedPerWeek <= 0 || datesDesc.length === 0) {
-    return { dailyStreak: 0, weeklyStreak: 0 };
-  }
-
-  const countByWeekStart = new Map<string, number>();
-  for (const d of datesDesc) {
-    const key = mondayKeyFor(d);
-    countByWeekStart.set(key, (countByWeekStart.get(key) ?? 0) + 1);
-  }
-
-  const todayStr = today.toISOString().slice(0, 10);
-  let cursor = mondayKeyFor(todayStr);
-  let weeklyStreak = 0;
-
-  if ((countByWeekStart.get(cursor) ?? 0) >= plannedPerWeek) {
-    weeklyStreak++;
-  }
-  cursor = previousMondayKey(cursor);
-
-  while ((countByWeekStart.get(cursor) ?? 0) >= plannedPerWeek) {
-    weeklyStreak++;
-    cursor = previousMondayKey(cursor);
-  }
-
-  const earliestMonday = mondayKeyFor(datesDesc[datesDesc.length - 1]);
-  const realFailure = cursor >= earliestMonday;
-  const anchor = realFailure ? addWeeks(cursor, 1) : dayBefore(earliestMonday);
-
-  const anchorMs = new Date(`${anchor}T00:00:00Z`).getTime();
-  const todayMs = new Date(`${todayStr}T00:00:00Z`).getTime();
-  const dailyStreak = Math.max(0, Math.round((todayMs - anchorMs) / DAY_MS));
-
-  return { dailyStreak, weeklyStreak };
-}
-
 type RoutineWithDayCountRow = {
   id: string;
+  starts_at: string | null;
+  created_at: string;
   routine_days: { count: number }[];
 };
 
@@ -88,12 +46,13 @@ export async function getCoachTrainingStats(): Promise<CoachTrainingStats> {
   const [{ data: allLogs }, { data: activeRoutine }] = await Promise.all([
     supabase
       .from("workout_logs")
-      .select("id, workout_date")
+      .select(TRAINING_SESSION_SELECT)
       .eq("coach_id", profile.id)
-      .order("workout_date", { ascending: false }),
+      .order("workout_date", { ascending: false })
+      .returns<TrainingSessionRow[]>(),
     supabase
       .from("routines")
-      .select("id, routine_days(count)")
+      .select("id, starts_at, created_at, routine_days(count)")
       .eq("coach_id", profile.id)
       .is("client_id", null)
       .eq("is_active", true)
@@ -103,18 +62,22 @@ export async function getCoachTrainingStats(): Promise<CoachTrainingStats> {
       .returns<RoutineWithDayCountRow | null>(),
   ]);
 
-  const allLogRows = allLogs ?? [];
-  const distinctDatesDesc = Array.from(new Set(allLogRows.map((l) => l.workout_date)));
+  // Mismo criterio de día entrenado y de días planificados que el cliente
+  // (el coach no tiene access_activated_at: cuenta desde la rutina).
+  const trained = trainedDates(allLogs ?? []);
   const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;
-  const { dailyStreak, weeklyStreak } = computeStreaks(distinctDatesDesc, plannedDaysPerWeek, now);
+  const { dailyStreak, weeklyStreak } = computeStreaks([...trained].reverse(), plannedDaysPerWeek, now);
 
-  const trainedThisMonth = distinctDatesDesc.filter((d) => d.startsWith(monthPrefix)).length;
-  const weeksElapsedThisMonth = Math.ceil(now.getUTCDate() / 7);
-  const plannedTotal = plannedDaysPerWeek * weeksElapsedThisMonth;
-  const adherencePercent =
-    plannedTotal > 0 ? Math.min(100, Math.round((trainedThisMonth / plannedTotal) * 100)) : 0;
+  const trainedThisMonth = trained.filter((d) => d.startsWith(monthPrefix)).length;
+  const plannedTotal = plannedDaysInRange({
+    rangeStart: `${monthPrefix}-01`,
+    rangeEnd: now.toISOString().slice(0, 10),
+    plannedPerWeek: plannedDaysPerWeek,
+    accessActivatedAt: null,
+    routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
+  });
 
-  return { dailyStreak, weeklyStreak, adherencePercent };
+  return { dailyStreak, weeklyStreak, adherencePercent: adherencePercent(trainedThisMonth, plannedTotal) };
 }
 
 export async function getCoachExerciseSessionSeries(): Promise<ExerciseSessionSeries[]> {

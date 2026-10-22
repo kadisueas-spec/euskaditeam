@@ -1122,8 +1122,14 @@ momento, no una galería genérica.
       usan los 4 cálculos de adherencia (stats, Mi Mes, resumen de mes,
       push del 80%) y lo van a usar los reportes. Antes stats y Mi Mes
       contaban cualquier sesión, incluso abierta y vacía (Luz, 20/10:
-      octubre daba 8 días / 62% en vez de 7 / 54%). Las rachas siguen
-      contando todas las sesiones (no se tocaron).
+      octubre daba 8 días / 62% en vez de 7 / 54%). Mismo criterio para
+      las rachas (`computeStreaks`, ahora en `lib/utils/streaks.ts`,
+      compartido por `stats.ts` y `coach-stats.ts` — antes duplicado), la
+      "semana completa" de la celebración semanal (`checkWeeklyCompletion`
+      y `cleanupWeeklyCelebrationIfIncomplete`) y Mi Entrenamiento del
+      coach (`coach-stats.ts`, que además pasó a `plannedDaysInRange`).
+    - Plan de los reportes de progreso: `docs/plan-reportes.md` (plan,
+      SQL, banco de frases y cambios aprobados).
     - Tests unitarios: `npm test` (runner nativo de Node 24, que ejecuta
       TypeScript directo; `scripts/test-alias.mjs` resuelve el alias `@/`).
       Archivos `lib/**/*.test.ts`.
