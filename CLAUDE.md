@@ -1116,6 +1116,14 @@ momento, no una galería genérica.
       días de rutina no están atados a un día de la semana (solo
       `day_number` = orden), por eso es proporcional. Lo usan los 4
       cálculos de adherencia del ítem 50.
+    - Día entrenado = sesión finalizada CON al menos 1 serie
+      (`lib/utils/training-sessions.ts`: `TRAINING_SESSION_SELECT` trae el
+      conteo de series embebido, `trainedDates`, `adherencePercent`). Lo
+      usan los 4 cálculos de adherencia (stats, Mi Mes, resumen de mes,
+      push del 80%) y lo van a usar los reportes. Antes stats y Mi Mes
+      contaban cualquier sesión, incluso abierta y vacía (Luz, 20/10:
+      octubre daba 8 días / 62% en vez de 7 / 54%). Las rachas siguen
+      contando todas las sesiones (no se tocaron).
     - Tests unitarios: `npm test` (runner nativo de Node 24, que ejecuta
       TypeScript directo; `scripts/test-alias.mjs` resuelve el alias `@/`).
       Archivos `lib/**/*.test.ts`.

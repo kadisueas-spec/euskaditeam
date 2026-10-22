@@ -18,6 +18,8 @@ import {
   type SetLogWithExerciseRow,
 } from "@/lib/utils/session-records";
 import { paraguayNow, todayInParaguay } from "@/lib/utils/today";
+import { TRAINING_SESSION_SELECT, countsAsTraining, trainedDates } from "@/lib/utils/training-sessions";
+import type { TrainingSessionRow } from "@/lib/utils/training-sessions";
 
 export type LoggedSet = {
   id: string;
@@ -797,10 +799,11 @@ export async function finishWorkout(
         .single(),
       supabase
         .from("workout_logs")
-        .select("workout_date")
+        .select(TRAINING_SESSION_SELECT)
         .eq("client_id", client.id)
         .eq("is_completed", true)
-        .gte("workout_date", `${monthPrefix}-01`),
+        .gte("workout_date", `${monthPrefix}-01`)
+        .returns<TrainingSessionRow[]>(),
       supabase
         .from("routines")
         .select("id, starts_at, created_at, routine_days(count)")
@@ -840,8 +843,11 @@ export async function finishWorkout(
 
   notifyCoachIfAdherenceCrossed80({
     client,
-    workoutDate: workoutLog?.workout_date,
-    monthLogDates: (monthLogs ?? []).map((l) => l.workout_date),
+    // Una sesión finalizada sin series no suma un día entrenado.
+    workoutDate: countsAsTraining({ isCompleted: true, setCount: (sets ?? []).length })
+      ? workoutLog?.workout_date
+      : undefined,
+    monthLogDates: trainedDates(monthLogs ?? []),
     plannedDaysPerWeek: activeRoutine?.routine_days[0]?.count ?? 0,
     routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
     now: pyNow,

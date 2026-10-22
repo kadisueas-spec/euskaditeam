@@ -8,6 +8,8 @@ import {
 import { getClientStats } from "@/lib/supabase/stats";
 import { plannedDaysInRange } from "@/lib/utils/planned-days";
 import { paraguayNow } from "@/lib/utils/today";
+import { TRAINING_SESSION_SELECT, trainedDates as trainedDatesOf } from "@/lib/utils/training-sessions";
+import type { TrainingSessionRow } from "@/lib/utils/training-sessions";
 
 export type MyMonthProgress = {
   goal: MonthlyGoal | null;
@@ -53,9 +55,10 @@ export async function getMyMonthProgress(): Promise<MyMonthProgress | null> {
     getCurrentMonthGoal(),
     supabase
       .from("workout_logs")
-      .select("workout_date")
+      .select(TRAINING_SESSION_SELECT)
       .eq("client_id", client.id)
-      .gte("workout_date", `${monthPrefix}-01`),
+      .gte("workout_date", `${monthPrefix}-01`)
+      .returns<TrainingSessionRow[]>(),
     supabase
       .from("routines")
       .select("id, starts_at, created_at, routine_days(count)")
@@ -68,9 +71,7 @@ export async function getMyMonthProgress(): Promise<MyMonthProgress | null> {
     getClientStats(),
   ]);
 
-  const trainedDates = Array.from(
-    new Set((logs ?? []).map((l) => l.workout_date))
-  );
+  const trainedDates = trainedDatesOf(logs ?? []);
   const trainedDays = trainedDates.length;
 
   const plannedDaysPerWeek = activeRoutine?.routine_days[0]?.count ?? 0;

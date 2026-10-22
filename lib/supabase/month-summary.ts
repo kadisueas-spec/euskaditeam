@@ -25,6 +25,8 @@ import {
 } from "@/lib/utils/month-highlight";
 import type { PerimeterType } from "@/lib/anthropometrics/constants";
 import { paraguayNow } from "@/lib/utils/today";
+import { TRAINING_SESSION_SELECT, adherencePercent as computeAdherence, trainedDates } from "@/lib/utils/training-sessions";
+import type { TrainingSessionRow } from "@/lib/utils/training-sessions";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -327,17 +329,19 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
       .returns<RoutineWithDayCountRow | null>(),
     supabase
       .from("workout_logs")
-      .select("workout_date")
+      .select(TRAINING_SESSION_SELECT)
       .eq("client_id", client.id)
       .eq("is_completed", true)
-      .lt("workout_date", monthEndExclusive),
+      .lt("workout_date", monthEndExclusive)
+      .returns<TrainingSessionRow[]>(),
     supabase
       .from("workout_logs")
-      .select("workout_date")
+      .select(TRAINING_SESSION_SELECT)
       .eq("client_id", client.id)
       .eq("is_completed", true)
       .gte("workout_date", prevMonthStart)
-      .lt("workout_date", monthStart),
+      .lt("workout_date", monthStart)
+      .returns<TrainingSessionRow[]>(),
     supabase
       .from("workout_set_logs")
       .select(
@@ -407,13 +411,11 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
   const routineAssignedAt = activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null;
 
   // --- Números del mes ---
-  const trainedDatesAllTime = Array.from(
-    new Set((monthLogs ?? []).map((l) => l.workout_date))
-  ).sort();
+  const trainedDatesAllTime = trainedDates(monthLogs ?? []);
   const trainedDaysThisMonth = trainedDatesAllTime.filter(
     (d) => d >= monthStart
   ).length;
-  const prevTrainedDays = new Set((prevMonthLogs ?? []).map((l) => l.workout_date)).size;
+  const prevTrainedDays = trainedDates(prevMonthLogs ?? []).length;
 
   const allRowsThisMonth = (paddedSetRows ?? []).filter(
     (r) => r.workout_logs && r.workout_logs.workout_date >= monthStart
@@ -448,8 +450,7 @@ export async function getMyMonthSummary(): Promise<MyMonthSummary | null> {
     accessActivatedAt: client.accessActivatedAt,
     routineAssignedAt,
   });
-  const prevAdherencePercent =
-    prevPlannedDays > 0 ? Math.min(100, Math.round((prevTrainedDays / prevPlannedDays) * 100)) : 0;
+  const prevAdherencePercent = computeAdherence(prevTrainedDays, prevPlannedDays);
 
   const hasPreviousMonthData = (prevMonthLogs ?? []).length > 0 || (prevMonthSetRows ?? []).length > 0;
   const previousMonthLabel = hasPreviousMonthData
