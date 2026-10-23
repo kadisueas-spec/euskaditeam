@@ -441,7 +441,7 @@ export function WorkoutLogger({
   // Depende de lastSet además de nextSetNumber: si el cliente edita la
   // última serie, la sugerencia de la siguiente se recalcula.
   const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : null;
-  const lastSetKey = lastSet ? `${lastSet.weight}|${lastSet.reps}` : "";
+  const lastSetKey = lastSet ? `${lastSet.weight}|${lastSet.reps}|${lastSet.rir}` : "";
   useEffect(() => {
     if (!exercise) return;
 
@@ -454,6 +454,8 @@ export function WorkoutLogger({
         repsMin: exercise.repsMin,
         repsMax: exercise.repsMax,
         rirTarget: exercise.rirTarget,
+        // El RIR REAL que cargó en la serie anterior (no uno supuesto).
+        rirActual: lastSet.rir !== "" ? Number(lastSet.rir) : null,
         weightIncrement: exercise.weightIncrement,
       });
       setWeight(next?.weight != null ? String(next.weight) : "");

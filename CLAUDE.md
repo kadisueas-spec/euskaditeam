@@ -846,7 +846,13 @@ momento, no una galería genérica.
     semana pasada (la serie 1 sigue con `getWorkoutSuggestions`).
     - `lib/utils/set-progression.ts` (`suggestNextSet`, función pura, sin
       Supabase — corre en el teléfono, funciona offline). Con P = peso,
-      R = reps de la serie anterior: R > máx → mismo peso, reps = máx;
+      R = reps de la serie anterior: R > máx (o R = máx con más RIR que el
+      objetivo; sin objetivo, RIR 3+) → SUBIR el peso (corregido oct-2026: antes
+      mantenía el peso con reps = máx — 15 × 18 @RIR 3 en rango 10-14 daba
+      15 × 14). 1RM por Epley con reps + el RIR REAL cargado, peso para el
+      tope del rango con el RIR objetivo, redondeado hacia arriba y como
+      mínimo un incremento; texto "Te sobró resto: subimos el peso para que
+      la serie cuente" (a peso corporal sigue mismo peso, reps = máx);
       R en rango y R−1 ≥ mín → mismo peso, R−1; R−1 < mín o R < mín →
       P − `weight_increment`, reps = máx. RIR sugerido = `rir_target`
       (vacío si no hay). Si la sesión anterior tuvo menos series que hoy,
