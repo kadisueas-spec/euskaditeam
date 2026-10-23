@@ -1231,6 +1231,22 @@ momento, no una galería genérica.
       prendidas, en orden, y `phrase_keys` solo de esas. Lo privado vive en
       `progress_report_private` (nunca es tarjeta) y con
       `hide_weight_in_reports` la tarjeta de peso no se genera.
+    - Textos editados (oct-2026): "Editar texto" en cada tarjeta del panel
+      (portada y cierre incluidos; racha, gráficos de ejercicios e imagen
+      para compartir no tienen frase) cambia SOLO la frase — números,
+      gráficos y listas salen de los datos. Se guarda en
+      `card_layout.texts` (`{ phrase, basis }` por clave, sin migración:
+      `card_layout` ya es jsonb); `basis` = huella de los datos de la
+      tarjeta al editar (`cardBasis`). Marca "Editada" + "Volver al texto
+      original"; vista previa en vivo. Al regenerar o cambiar el período,
+      si hay textos editados pregunta si conservarlos
+      (`layoutAfterRegenerate`); los conservados cuya huella cambió quedan
+      marcados "Revisar" (`needsReview`, `editedNeedingReview`) hasta que
+      el coach los vuelve a escribir o toca "Ya lo revisé". "Generar
+      ahora" sobre un borrador existente los conserva. La frase editada
+      pierde su `phraseKey` (`applyEditedText`): no cuenta para los 28
+      días, pero se envía tal cual en `cards`. Tests en
+      `lib/reports/edited-texts.test.ts`.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

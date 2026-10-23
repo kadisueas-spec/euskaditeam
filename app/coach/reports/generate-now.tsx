@@ -139,7 +139,7 @@ export function GenerateNow({
       {confirm && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 p-3 text-sm text-[#f5f5f5]">
           <span>
-            Ya hay {STATUS_LABEL[confirm]} de este período. ¿Regenerarlo con los datos de hoy? Tu nota se mantiene
+            Ya hay {STATUS_LABEL[confirm]} de este período. ¿Regenerarlo con los datos de hoy? Tu nota y tus textos editados se mantienen
             {confirm === "scheduled" ? " y sigue programado" : ""}.
           </span>
           <Button size="sm" disabled={pending} onClick={() => generate(true)}>

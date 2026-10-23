@@ -7,10 +7,10 @@ import { createDraft, regenerateReport, sendReport } from "@/lib/reports/service
 import { latestClosedPeriod, nextSundayAt } from "@/lib/reports/schedule";
 import { decideGenerateNow } from "@/lib/reports/generate-now";
 import { kindForRange, validateRange } from "@/lib/reports/periods";
-import { parseCardLayout } from "@/lib/reports/layout";
+import { editedNeedingReview, layoutAfterRegenerate, parseCardLayout } from "@/lib/reports/layout";
 import { todayInParaguay } from "@/lib/utils/today";
 import type { Period } from "@/lib/reports/schedule";
-import type { ReportKind } from "@/lib/reports/types";
+import type { ReportCard, ReportKind } from "@/lib/reports/types";
 
 // Acciones de la bandeja de reportes (oct-2026). La propiedad se verifica
 // SIEMPRE con la sesión del coach (RLS "Coach manages own clients
@@ -111,12 +111,50 @@ export async function discardReport(reportId: string): Promise<Result> {
   return {};
 }
 
-export async function regenerateReportAction(reportId: string): Promise<Result> {
+// Resultado de regenerar: `review` = tarjetas con texto editado que se
+// conservó pero cuyos datos cambiaron (el coach tiene que revisarlas).
+export type RegenerateResult = { error?: string; review?: string[] };
+
+type Owned = NonNullable<Awaited<ReturnType<typeof ownedReport>>>;
+
+// Antes de regenerar: si el coach eligió NO conservar sus textos editados,
+// se sacan del layout (el orden y las prendidas quedan).
+async function prepareTexts(owned: Owned, reportId: string, keepTexts: boolean): Promise<string | null> {
+  if (keepTexts) return null;
+  const { data } = await owned.supabase
+    .from("progress_reports")
+    .select("card_layout")
+    .eq("id", reportId)
+    .maybeSingle<{ card_layout: unknown }>();
+  const layout = parseCardLayout(data?.card_layout);
+  if (!layout?.texts) return null;
+  const { error } = await owned.supabase
+    .from("progress_reports")
+    .update({ card_layout: layoutAfterRegenerate(layout, false), updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .neq("status", "sent");
+  return error ? "No se pudieron descartar los textos editados." : null;
+}
+
+async function textsToReview(owned: Owned, reportId: string): Promise<string[]> {
+  const { data } = await owned.supabase
+    .from("progress_reports")
+    .select("cards, card_layout")
+    .eq("id", reportId)
+    .maybeSingle<{ cards: ReportCard[]; card_layout: unknown }>();
+  return data ? editedNeedingReview(data.cards ?? [], parseCardLayout(data.card_layout)) : [];
+}
+
+export async function regenerateReportAction(reportId: string, keepTexts = true): Promise<RegenerateResult> {
   const owned = await ownedReport(reportId);
   if (!owned) return { error: "No se encontró el reporte." };
+  if (owned.report.status === "sent") return { error: "El reporte ya se envió." };
+  const textError = await prepareTexts(owned, reportId, keepTexts);
+  if (textError) return { error: textError };
   const result = await regenerateReport(reportId);
   revalidate(reportId);
-  return result;
+  if (result.error) return result;
+  return { review: await textsToReview(owned, reportId) };
 }
 
 // "Generar ahora" (oct-2026): arma UN borrador del último período cerrado
@@ -210,10 +248,11 @@ export async function generateReportNow(
   }
 }
 
-// Tarjetas elegidas por el coach (prendidas/apagadas y orden). Se guardan en
-// el borrador y sobreviven a "Volver a generar" (van por clave). Validado:
-// solo arrays/booleanos; lo privado y el peso oculto no existen en el
-// catálogo, así que ningún interruptor los puede mandar al cliente.
+// Tarjetas elegidas por el coach (prendidas/apagadas, orden y textos
+// editados). Se guardan en el borrador y sobreviven a "Volver a generar"
+// (van por clave). Validado: solo arrays/booleanos/textos; lo privado y el
+// peso oculto no existen en el catálogo, así que ningún interruptor los
+// puede mandar al cliente. Un texto editado solo reemplaza la frase.
 export async function saveCardLayout(reportId: string, layout: unknown): Promise<Result> {
   const parsed = parseCardLayout(layout);
   if (!parsed) return { error: "Tarjetas inválidas." };
@@ -231,10 +270,16 @@ export async function saveCardLayout(reportId: string, layout: unknown): Promise
 }
 
 // "Cambiar período" de un borrador: nuevas fechas y se regenera con los
-// datos de ese rango. La nota y las tarjetas elegidas se conservan (la
-// bandeja pregunta antes de llamar). Si ya existe otro reporte del cliente
-// con ese mismo período, no se pisa.
-export async function changeReportPeriod(reportId: string, start: string, end: string): Promise<Result> {
+// datos de ese rango. La nota y las tarjetas elegidas se conservan; los
+// textos editados, si el coach lo elige (la bandeja pregunta antes de
+// llamar). Si ya existe otro reporte del cliente con ese mismo período, no
+// se pisa.
+export async function changeReportPeriod(
+  reportId: string,
+  start: string,
+  end: string,
+  keepTexts = true
+): Promise<RegenerateResult> {
   const invalid = validateRange(start, end, todayInParaguay());
   if (invalid) return { error: invalid };
   const owned = await ownedReport(reportId);
@@ -266,7 +311,10 @@ export async function changeReportPeriod(reportId: string, start: string, end: s
     .eq("id", reportId)
     .neq("status", "sent");
   if (error) return { error: "No se pudo cambiar el período." };
+  const textError = await prepareTexts(owned, reportId, keepTexts);
+  if (textError) return { error: textError };
   const result = await regenerateReport(reportId);
   revalidate(reportId);
-  return result;
+  if (result.error) return result;
+  return { review: await textsToReview(owned, reportId) };
 }

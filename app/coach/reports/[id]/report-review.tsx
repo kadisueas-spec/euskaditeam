@@ -12,7 +12,7 @@ import type { ExtraSlide } from "@/components/reports/report-player";
 import { whenLabel } from "@/lib/reports/format";
 import type { CoachReportDetail } from "@/lib/supabase/progress-reports";
 import type { ReportCard } from "@/lib/reports/types";
-import { clientCards, withCoachNote } from "@/lib/reports/layout";
+import { clientCards, layoutAfterRegenerate, withCoachNote } from "@/lib/reports/layout";
 import type { CardLayout } from "@/lib/reports/layout";
 import { CardsPanel } from "./cards-panel";
 import { ChangePeriod } from "./change-period";
@@ -45,6 +45,35 @@ export function ReportReview({ report, today }: { report: CoachReportDetail; tod
   useEffect(() => () => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
   }, []);
+  // Regenerar con textos editados: primero se pregunta si conservarlos.
+  const [askKeepTexts, setAskKeepTexts] = useState(false);
+  // Textos conservados cuyos datos cambiaron al regenerar.
+  const [review, setReview] = useState<string[]>([]);
+  const editedCount = Object.keys(layout?.texts ?? {}).length;
+
+  // Antes de regenerar (o cambiar el período): se guarda ya el layout, con
+  // o sin los textos editados, así el servidor regenera sobre lo último.
+  async function flushLayout(keepTexts: boolean): Promise<{ error?: string }> {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    const next = layoutAfterRegenerate(layout, keepTexts);
+    if (!next) return {};
+    setLayout(next);
+    const result = await saveCardLayout(report.id, next);
+    setLayoutState(result.error ? "error" : "saved");
+    return result;
+  }
+
+  function regenerate(keepTexts: boolean) {
+    setAskKeepTexts(false);
+    setReview([]);
+    run(async () => {
+      const flushed = await flushLayout(keepTexts);
+      if (flushed.error) return flushed;
+      const result = await regenerateReportAction(report.id);
+      if (result.review) setReview(result.review);
+      return result;
+    });
+  }
 
   // Vista previa en vivo: las tarjetas prendidas en el orden elegido + la
   // nota, en el mismo lugar que las deja sendReport (lib/reports/layout.ts).
@@ -147,7 +176,30 @@ export function ReportReview({ report, today }: { report: CoachReportDetail; tod
           </p>
         ) : (
           <>
-            <ChangePeriod reportId={report.id} start={report.periodStart} end={report.periodEnd} today={today} />
+            <ChangePeriod
+              reportId={report.id}
+              start={report.periodStart}
+              end={report.periodEnd}
+              today={today}
+              editedCount={editedCount}
+              beforeChange={flushLayout}
+              onReview={setReview}
+            />
+
+            {review.length > 0 && (
+              <div role="status" className="flex items-start gap-3 rounded-2xl border border-[#f5c542]/40 bg-[#f5c542]/10 p-4 text-sm">
+                <AlertTriangle className="mt-0.5 size-5 shrink-0 text-[#f5c542]" aria-hidden />
+                <div className="text-[#f5f5f5]">
+                  <p className="font-medium">Revisá tus textos: cambiaron los datos de estas tarjetas</p>
+                  <ul className="mt-1 list-disc pl-5 text-[#c9c9c9]">
+                    {review.map((r) => (
+                      <li key={r}>{r}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-1 text-[#c9c9c9]">Quedan marcadas con “Revisar” en Tarjetas.</p>
+                </div>
+              </div>
+            )}
 
             {report.status === "scheduled" && report.scheduledFor && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8001c]/40 bg-[#e8001c]/10 p-4 text-sm">
@@ -258,9 +310,29 @@ export function ReportReview({ report, today }: { report: CoachReportDetail; tod
             </section>
 
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" size="sm" disabled={pending} onClick={() => run(() => regenerateReportAction(report.id))}>
-                <RefreshCw className="size-4" aria-hidden /> Volver a generar con los datos de hoy
-              </Button>
+              {askKeepTexts ? (
+                <span className="flex flex-wrap items-center gap-2 rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 p-3 text-sm text-[#f5f5f5]">
+                  {editedCount === 1 ? "Editaste 1 texto." : `Editaste ${editedCount} textos.`} ¿Conservarlos al regenerar?
+                  <Button size="sm" disabled={pending} onClick={() => regenerate(true)}>
+                    Conservar mis textos
+                  </Button>
+                  <Button size="sm" variant="outline" disabled={pending} onClick={() => regenerate(false)}>
+                    Volver a los originales
+                  </Button>
+                  <Button size="sm" variant="ghost" disabled={pending} onClick={() => setAskKeepTexts(false)}>
+                    Cancelar
+                  </Button>
+                </span>
+              ) : (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={pending}
+                  onClick={() => (editedCount > 0 ? setAskKeepTexts(true) : regenerate(true))}
+                >
+                  <RefreshCw className="size-4" aria-hidden /> Volver a generar con los datos de hoy
+                </Button>
+              )}
               {confirmDiscard ? (
                 <span className="flex items-center gap-2 text-sm text-[#c9c9c9]">
                   ¿Descartarlo? No le va a llegar.
