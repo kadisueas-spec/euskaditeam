@@ -10,7 +10,7 @@ export type DateRange = { start: string; end: string };
 const KIND_HINT = {
   weekly: "Se guarda como reporte semanal (lunes a viernes).",
   monthly: "Se guarda como reporte mensual (mes completo).",
-  custom: "Reporte de período libre.",
+  custom: "Se guarda como reporte de progreso (fechas libres).",
 } as const;
 
 // Selector de período para los reportes (oct-2026): desde / hasta con

@@ -16,7 +16,7 @@ export function reportPeriodLabel(kind: ReportKind, periodStart: string, periodE
 }
 
 export function reportTitle(kind: ReportKind): string {
-  return kind === "weekly" ? "Tu semana" : kind === "monthly" ? "Tu mes" : "Tu período";
+  return kind === "weekly" ? "Tu semana" : kind === "monthly" ? "Tu mes" : "Tu progreso";
 }
 
 // Un mensual sin la tarjeta del cierre: el coach todavía no escribió (o no

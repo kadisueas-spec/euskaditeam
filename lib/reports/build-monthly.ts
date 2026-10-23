@@ -51,7 +51,7 @@ export function buildPeriodReport(input: ReportInput): BuiltReport {
   const prev = custom ? previousPeriodOf(start, end) : prevMonthOf(start);
   const mes = monthName(start);
   const mesAnterior = monthName(prev.start);
-  const coverWords = custom ? ["Tu", "período"] : monthWords(start);
+  const coverWords = custom ? ["Tu", "progreso"] : monthWords(start);
 
   const period = input.sessions.filter((s) => s.date >= start && s.date <= end);
   const previous = input.sessions.filter((s) => s.date >= prev.start && s.date <= prev.end);
@@ -232,8 +232,8 @@ export function buildPeriodReport(input: ReportInput): BuiltReport {
     type: "share",
     key: "share",
     theme: "black",
-    monthLabel: custom ? "Período" : capitalize(mes),
-    words: custom ? ["Tu", "período"] : monthWords(start),
+    monthLabel: custom ? "Progreso" : capitalize(mes),
+    words: custom ? ["Tu", "progreso"] : monthWords(start),
     clientName: custom ? `${client.fullName} · ${weekRangeLabel(start, end)}` : client.fullName,
     stats: [
       { value: String(trainedDays), label: trainedDays === 1 ? "entrenamiento" : "entrenamientos" },

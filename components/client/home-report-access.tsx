@@ -37,7 +37,7 @@ export function HomeReportAccess({ report, autoOpen }: { report: ClientReport; a
                 ? "Tu semana está lista"
                 : report.kind === "monthly"
                   ? `Tu ${report.periodLabel.split(" ")[0].toLowerCase()} está listo`
-                  : "Tu período está listo"}
+                  : "Tu progreso está listo"}
             </span>
             <span className="mt-1 block text-sm font-bold">{report.periodLabel} · Tocá para verlo</span>
           </span>

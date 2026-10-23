@@ -236,8 +236,9 @@ test("período libre: récords contra la mejor marca anterior al inicio del rang
 
 test("período libre: portada, conteo, volumen contra el período anterior de igual duración", () => {
   const r = buildMonthlyReport(customInput("2026-09-14", "2026-10-02"));
-  assert.deepEqual(card(r.cards, "opening").words, ["Tu", "período"]);
-  assert.deepEqual(card(r.cards, "closing").words, ["Tu", "período"]);
+  assert.deepEqual(card(r.cards, "opening").words, ["Tu", "progreso"]);
+  assert.deepEqual(card(r.cards, "closing").words, ["Tu", "progreso"]);
+  assert.equal(card(r.cards, "share").monthLabel, "Progreso");
   assert.equal(card(r.cards, "count").kicker, "En este período");
   const vol = card(r.cards, "volume");
   assert.equal(vol.previous.label, "Período anterior");

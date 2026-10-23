@@ -1207,9 +1207,11 @@ momento, no una galería genérica.
       rango libre los récords van contra la mejor marca anterior al inicio,
       días planificados con `plannedDaysInRange`, volumen y peso contra el
       período anterior de IGUAL duración (`previousPeriodOf`), peso con
-      tendencia (`rangeWeightCard`), título "Tu período 3 – 17 nov", frases
+      tendencia (`rangeWeightCard`), título "Tu progreso 3 – 17 nov", frases
       neutras (variantes `scope: "custom"` en `phrases.ts`; las que
       nombran el mes o la semana quedan afuera) y "Lo que viene" neutro.
+      Portada y encabezado "TU PROGRESO" (en la bandeja: "Progreso"), push
+      "Tu progreso está listo 🔥".
     - Tarjetas: el generador arma un CATÁLOGO (cada tarjeta con `key`
       estable y `on: false` si va apagada por defecto: volumen que no
       subió, rachas, lista de mejores marcas, objetivo en el semanal,

@@ -19,7 +19,7 @@ export const REPORT_PUSH = {
     body: "Entrá a ver todo lo que hiciste",
   }),
   custom: (start: string, end: string) => ({
-    title: "Tu período está listo 🔥",
+    title: "Tu progreso está listo 🔥",
     body: `Mirá cómo te fue: ${weekRangeLabel(start, end)}`,
   }),
 };

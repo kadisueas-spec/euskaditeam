@@ -21,7 +21,7 @@ export default async function CoachReportPage({ params }: { params: Promise<{ id
       <div>
         <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">{report.clientName}</h1>
         <p className="mt-1 text-sm text-[#888888]">
-          {report.kind === "weekly" ? "Reporte semanal" : report.kind === "monthly" ? "Reporte mensual" : "Reporte de período libre"} · {report.periodLabel}
+          {report.kind === "weekly" ? "Reporte semanal" : report.kind === "monthly" ? "Reporte mensual" : "Reporte de progreso"} · {report.periodLabel}
         </p>
       </div>
       <ReportReview report={report} today={todayInParaguay()} />
