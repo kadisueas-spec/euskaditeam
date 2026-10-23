@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { arrangeCards, clientCards, parseCardLayout } from "@/lib/reports/layout";
+import { arrangeCards, clientCards, parseCardLayout, upgradeLegacyCards } from "@/lib/reports/layout";
 import { kindForRange, previousPeriodOf, rangeShortcuts, validateRange } from "@/lib/reports/periods";
 import type { ReportCard } from "@/lib/reports/types";
 
@@ -84,4 +84,29 @@ test("atajos", () => {
     ["Mes pasado", "2026-09-01", "2026-09-30"],
     ["Últimos 30 días", "2026-09-23", "2026-10-22"],
   ]);
+});
+
+// Rango libre generado antes de "Tu progreso" (oct-2026): se corrige al leer.
+test("reportes viejos de rango libre: 'Tu período' pasa a 'Tu progreso'", () => {
+  const old: ReportCard[] = [
+    { type: "opening", key: "opening", theme: "red", words: ["Tu", "período"], phrase: "Hola" },
+    { type: "closing", key: "closing", theme: "oxblood", words: ["Tu", "período"], coachName: "Luis", coachAvatarUrl: null, phrase: "Así cerramos este período" },
+    { type: "share", key: "share", theme: "black", monthLabel: "Período", words: ["Tu", "período"], clientName: "", stats: [] },
+  ];
+  const up = upgradeLegacyCards(old);
+  for (const c of up) assert.deepEqual("words" in c ? c.words : null, ["Tu", "progreso"]);
+  const share = up[2];
+  assert.ok(share.type === "share" && share.monthLabel === "Progreso");
+  // Las frases no se tocan
+  assert.equal(up[1].phrase, "Así cerramos este período");
+});
+
+test("reportes nuevos, semanales y mensuales quedan igual", () => {
+  const same: ReportCard[] = [
+    { type: "opening", key: "opening", theme: "red", words: ["Tu", "semana"] },
+    { type: "closing", key: "closing", theme: "oxblood", words: ["Sep", "tiem", "bre"], coachName: "Luis", coachAvatarUrl: null },
+    { type: "share", key: "share", theme: "black", monthLabel: "Progreso", words: ["Tu", "progreso"], clientName: "", stats: [] },
+  ];
+  assert.deepEqual(upgradeLegacyCards(same), same);
+  assert.deepEqual(upgradeLegacyCards(cards), cards);
 });

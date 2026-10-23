@@ -136,8 +136,7 @@
 .evidence .ic { width: 22px; height: 22px; border-radius: 11px; display: grid; place-items: center; margin-top: 1px; background: var(--red); color: var(--black); }
 .evidence svg { width: 13px; height: 13px; }
 
-.sig { display: flex; align-items: center; gap: 12px; margin-top: 18px; }
-.av { width: 44px; height: 44px; border-radius: 22px; background: var(--red); color: var(--black); display: grid; place-items: center; font-family: var(--font-bebas-neue), sans-serif; font-size: 22px; object-fit: cover; flex: none; }
+.sig { margin-top: 18px; }
 .sig b { display: block; font-size: 15px; }
 .sig span { font-size: 13px; color: var(--fg-2); }
 .message { font-size: 20px; line-height: 1.45; white-space: pre-line; }

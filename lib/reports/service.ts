@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { buildWeeklyReport } from "@/lib/reports/build-weekly";
 import { buildPeriodReport } from "@/lib/reports/build-monthly";
-import { clientCards, parseCardLayout, withCoachNote } from "@/lib/reports/layout";
+import { clientCards, parseCardLayout, upgradeLegacyCards, withCoachNote } from "@/lib/reports/layout";
 import { loadReportInput } from "@/lib/reports/load-input";
 import { monthName, weekRangeLabel } from "@/lib/reports/format";
 import type { Period } from "@/lib/reports/schedule";
@@ -174,7 +174,7 @@ export async function sendReport(reportId: string): Promise<{ error?: string }> 
 
   // Solo las tarjetas prendidas, en el orden del coach (card_layout). Lo
   // privado nunca está en cards (vive en progress_report_private).
-  let cards: ReportCard[] = clientCards(report.cards, parseCardLayout(report.card_layout));
+  let cards: ReportCard[] = clientCards(upgradeLegacyCards(report.cards), parseCardLayout(report.card_layout));
   const note = report.coach_note?.trim();
   if (note) {
     const { data: coach } = await admin

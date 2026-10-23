@@ -2,7 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { monthYearLabel, weekRangeLabel } from "@/lib/reports/format";
 import type { ReportCard, ReportKind } from "@/lib/reports/types";
-import { parseCardLayout } from "@/lib/reports/layout";
+import { parseCardLayout, upgradeLegacyCards } from "@/lib/reports/layout";
 import type { CardLayout } from "@/lib/reports/layout";
 
 // Lecturas de reportes de progreso con la sesión del usuario (RLS): el
@@ -159,7 +159,7 @@ export async function getCoachReport(reportId: string): Promise<CoachReportDetai
     periodStart: r.period_start,
     periodEnd: r.period_end,
     status: r.status,
-    cards: r.cards,
+    cards: upgradeLegacyCards(r.cards ?? []),
     cardLayout: parseCardLayout(r.card_layout),
     hideWeight: r.clients?.hide_weight_in_reports ?? false,
     coachNote: r.coach_note ?? "",
@@ -233,7 +233,7 @@ export async function getClientReport(reportId: string): Promise<ClientReport | 
     .eq("status", "sent")
     .maybeSingle<ClientRow>();
   if (!data) return null;
-  return { ...toSummary(data), cards: data.cards ?? [] };
+  return { ...toSummary(data), cards: upgradeLegacyCards(data.cards ?? []) };
 }
 
 // El reporte enviado más reciente que el cliente todavía no vio hasta el
@@ -252,5 +252,5 @@ export async function getPendingClientReport(): Promise<ClientReport | null> {
     .limit(1)
     .maybeSingle<ClientRow>();
   if (!data) return null;
-  return { ...toSummary(data), cards: data.cards ?? [] };
+  return { ...toSummary(data), cards: upgradeLegacyCards(data.cards ?? []) };
 }

@@ -308,7 +308,7 @@ Reglas de armado:
 - Volumen vs mes anterior: tarjeta solo si SUBE. Si baja → aviso privado ("Volumen −25 % vs agosto: 12 entrenamientos contra 17").
 - Objetivo: las líneas sin dato no se muestran al cliente → aviso privado ("Grasa: sin medición este mes").
 - Peso: si el cambio semanal es < 0,5 kg, el titular es la tendencia desde el inicio (promedio de la primera semana con datos vs el de esta semana). El texto nunca contradice el gráfico. Se festeja bajar solo si el objetivo incluye perder grasa/peso; subir solo si es ganar masa; sin objetivo de peso → dato + tendencia, sin festejo. Interruptor por cliente "No mostrar peso en reportes" oculta la tarjeta de peso y la línea de peso del objetivo.
-- Cierre firmado con profiles.avatar_url del coach; sin foto → inicial.
+- Cierre firmado solo con el nombre del coach y "Tu coach" debajo: sin foto ni círculo con la inicial (cambio oct-2026).
 - Portadas rojas: textos del encabezado en negro.
 - Frases sin repetir: ni dentro de un reporte ni una que el cliente recibió en reportes ENVIADOS de las últimas 4 semanas. Cada tarjeta guarda en cards jsonb su `phrase_key` (situación + número de variante, ej. "weight.down.3"); al generar se excluyen las keys usadas en progress_reports del cliente con sent_at en los últimos 28 días. Si una situación se queda sin variantes libres, se usa la menos reciente.
 

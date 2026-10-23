@@ -26,19 +26,12 @@ function CardLinkButton({ link, interactive }: { link?: CardLink; interactive: b
   );
 }
 
-function Signature({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+// Firma: solo el nombre y "Tu coach", sin foto ni círculo con la inicial.
+function Signature({ name }: { name: string }) {
   return (
     <div className={styles.sig}>
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- avatar de Storage, tamaño fijo
-        <img className={styles.av} src={avatarUrl} alt="" />
-      ) : (
-        <span className={styles.av}>{name.charAt(0).toUpperCase()}</span>
-      )}
-      <div>
-        <b>{name}</b>
-        <span>Tu coach</span>
-      </div>
+      <b>{name}</b>
+      <span>Tu coach</span>
     </div>
   );
 }
@@ -439,7 +432,7 @@ export function ReportCardView({ card, interactive }: { card: ReportCard; intera
           <p className={styles.message} style={{ marginTop: 14 }}>
             {card.text}
           </p>
-          <Signature name={card.coachName} avatarUrl={card.coachAvatarUrl} />
+          <Signature name={card.coachName} />
         </div>
       );
 
@@ -458,7 +451,7 @@ export function ReportCardView({ card, interactive }: { card: ReportCard; intera
               {card.phrase}
             </p>
           )}
-          <Signature name={card.coachName} avatarUrl={card.coachAvatarUrl} />
+          <Signature name={card.coachName} />
         </div>
       );
 

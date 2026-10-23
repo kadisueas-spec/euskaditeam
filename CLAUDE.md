@@ -1247,6 +1247,14 @@ momento, no una galería genérica.
       pierde su `phraseKey` (`applyEditedText`): no cuenta para los 28
       días, pero se envía tal cual en `cards`. Tests en
       `lib/reports/edited-texts.test.ts`.
+    - Firma (cierre, mensaje de cierre de mes y nota del coach): solo el
+      nombre y "Tu coach", sin foto ni círculo con la inicial
+      (`Signature` en `report-card-view.tsx`). La imagen para compartir no
+      lleva firma.
+    - Rango libre generado antes de "Tu progreso": las tarjetas guardadas
+      decían "Tu período" en portada, cierre e imagen. `upgradeLegacyCards`
+      (`layout.ts`) lo corrige al leer (bandeja, cliente y al enviar), sin
+      regenerar; las frases quedan como se generaron.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

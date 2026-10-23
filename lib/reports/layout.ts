@@ -219,6 +219,23 @@ export function cardLabel(card: ReportCard): string {
   }
 }
 
+// Reportes de rango libre generados antes de oct-2026 guardaron "Tu
+// período" en portada, cierre e imagen para compartir (el título ahora es
+// "Tu progreso"). Se corrige al leer, así no hace falta regenerar cada
+// borrador ni tocar los ya enviados. Solo cambia esas palabras fijas: las
+// frases quedan como se generaron.
+const LEGACY_WORD = "período";
+export function upgradeLegacyCards(cards: ReportCard[]): ReportCard[] {
+  return cards.map((card) => {
+    if (card.type !== "opening" && card.type !== "closing" && card.type !== "share") return card;
+    const legacy = card.words.length === 2 && card.words[1].toLowerCase() === LEGACY_WORD;
+    const label = card.type === "share" && card.monthLabel === "Período";
+    if (!legacy && !label) return card;
+    const next = { ...card, words: legacy ? [card.words[0], "progreso"] : card.words };
+    return next.type === "share" && label ? { ...next, monthLabel: "Progreso" } : next;
+  });
+}
+
 // La nota personal del coach va antes de la imagen para compartir (que
 // cierra el reporte) o al final. Mismo lugar en la vista previa y al enviar.
 export function withCoachNote(cards: ReportCard[], note: ReportCard | null): ReportCard[] {
