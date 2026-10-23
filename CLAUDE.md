@@ -1145,7 +1145,7 @@ momento, no una galería genérica.
     (avisos "Solo lo ves vos", solo coach — tabla aparte porque RLS filtra
     filas, no columnas), más `profiles.report_sunday_hour` y
     `clients.hide_weight_in_reports`.
-    - Flujo: el cron crea BORRADORES (sábado desde 7:00 PYT: lunes a
+    - Flujo: el cron crea BORRADORES (sábado desde 11:00 PYT: lunes a
       viernes; día 1 desde 7:00: mes anterior; con días de respaldo) y
       envía solo lo que el coach PROGRAMÓ. Nada sale sin el coach. Bandeja
       `/coach/reports` (+ aviso en el dashboard): vista previa en marco de

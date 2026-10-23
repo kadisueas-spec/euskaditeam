@@ -2,10 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { latestClosedPeriod, monthlyPeriodToGenerate, nextSundayAt, weeklyPeriodToGenerate } from "@/lib/reports/schedule";
 
-// Horas de Paraguay (UTC-3): 07:00 PYT = 10:00 UTC.
-test("semanal: sábado desde las 7 de Paraguay, lunes a viernes", () => {
-  assert.equal(weeklyPeriodToGenerate(new Date("2026-10-17T09:59:00Z")), null); // sáb 06:59
-  assert.deepEqual(weeklyPeriodToGenerate(new Date("2026-10-17T10:05:00Z")), {
+// Horas de Paraguay (UTC-3): 07:00 PYT = 10:00 UTC; 11:00 PYT = 14:00 UTC.
+test("semanal: sábado desde las 11 de Paraguay, lunes a viernes", () => {
+  assert.equal(weeklyPeriodToGenerate(new Date("2026-10-17T10:05:00Z")), null); // sáb 07:05: todavía no
+  assert.equal(weeklyPeriodToGenerate(new Date("2026-10-17T13:59:00Z")), null); // sáb 10:59
+  assert.deepEqual(weeklyPeriodToGenerate(new Date("2026-10-17T14:05:00Z")), {
     start: "2026-10-12",
     end: "2026-10-16",
   });

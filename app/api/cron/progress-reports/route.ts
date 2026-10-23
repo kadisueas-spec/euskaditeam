@@ -6,7 +6,7 @@ import { monthlyPeriodToGenerate, weeklyPeriodToGenerate } from "@/lib/reports/s
 // Cron horario de los reportes de progreso (oct-2026): lo llama pg_cron
 // (supabase/migrations/20261022b_progress_reports_cron.sql) a los :05 con
 // "Authorization: Bearer <CRON_SECRET>". Idempotente:
-// - sábado desde las 7 PYT (y domingo): borradores semanales;
+// - sábado desde las 11 PYT (y domingo): borradores semanales;
 // - días 1 a 3 desde las 7 PYT: borradores mensuales del mes anterior;
 // - siempre: envía los reportes que el coach PROGRAMÓ y cuya hora llegó.
 // Nunca envía un borrador.

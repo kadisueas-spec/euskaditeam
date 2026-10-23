@@ -4,7 +4,7 @@
 --
 -- Cada hora, a los :05, pg_cron llama a la ruta de la app. La ruta decide
 -- qué hacer (todo idempotente, correrla dos veces no duplica nada):
--- - sábado desde las 7:00 de Paraguay: borradores semanales (lunes a viernes);
+-- - sábado desde las 11:00 de Paraguay: borradores semanales (lunes a viernes);
 -- - día 1 desde las 7:00: borradores mensuales del mes anterior;
 -- - siempre: envía los reportes PROGRAMADOS cuya hora ya llegó.
 -- Nunca envía un borrador: solo lo que el coach programó.

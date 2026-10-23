@@ -6,19 +6,21 @@ import { addDays } from "@/lib/reports/format";
 // toca hacer en cada corrida. Todo es idempotente: si un borrador ya
 // existe (o el coach lo descartó), no se vuelve a crear.
 
-const GENERATE_FROM_HOUR = 7;
+// Semanal desde el sábado a las 11:00; mensual desde el día 1 a las 7:00.
+const WEEKLY_FROM_HOUR = 11;
+const MONTHLY_FROM_HOUR = 7;
 const PARAGUAY_OFFSET_HOURS = 3;
 
 export type Period = { start: string; end: string };
 
 // Semanal: lunes a viernes de la semana en curso. Se genera desde el sábado
-// a las 7:00 (y el domingo, por si el sábado el cron no corrió).
+// a las 11:00 (y el domingo, por si el sábado el cron no corrió).
 export function weeklyPeriodToGenerate(now: Date = new Date()): Period | null {
   const py = paraguayNow(now);
   const dow = py.getUTCDay(); // 0 domingo, 6 sábado
   const hour = py.getUTCHours();
   const today = py.toISOString().slice(0, 10);
-  if (dow === 6 && hour >= GENERATE_FROM_HOUR) {
+  if (dow === 6 && hour >= WEEKLY_FROM_HOUR) {
     const monday = addDays(today, -5);
     return { start: monday, end: addDays(monday, 4) };
   }
@@ -34,7 +36,7 @@ export function weeklyPeriodToGenerate(now: Date = new Date()): Period | null {
 export function monthlyPeriodToGenerate(now: Date = new Date()): Period | null {
   const py = paraguayNow(now);
   const day = py.getUTCDate();
-  if (day > 3 || (day === 1 && py.getUTCHours() < GENERATE_FROM_HOUR)) return null;
+  if (day > 3 || (day === 1 && py.getUTCHours() < MONTHLY_FROM_HOUR)) return null;
   const firstOfThis = new Date(Date.UTC(py.getUTCFullYear(), py.getUTCMonth(), 1));
   const start = new Date(Date.UTC(py.getUTCFullYear(), py.getUTCMonth() - 1, 1)).toISOString().slice(0, 10);
   const end = new Date(firstOfThis.getTime() - 86400000).toISOString().slice(0, 10);

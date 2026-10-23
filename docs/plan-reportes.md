@@ -7,7 +7,7 @@
   - No Edge Function: la lógica vive en el código de la app y se deploya sola con cada push. Vos solo corrés UNA vez el SQL que agenda el llamado.
   - No Vercel Cron: en el plan Hobby solo corre una vez por día y con hasta 1 hora de desfase, así que no permite "domingo a la hora que yo elija".
   - Cada hora la ruta hace 3 cosas, todas idempotentes (si corre dos veces no duplica nada):
-    1. Sábado desde las 7:00 (Paraguay): genera los borradores semanales que falten (lunes a viernes de esa semana).
+    1. Sábado desde las 11:00 (Paraguay): genera los borradores semanales que falten (lunes a viernes de esa semana).
     2. Día 1 desde las 7:00: genera los borradores mensuales del mes anterior.
     3. Siempre: envía los reportes programados cuya hora ya llegó.
 - **Quién recibe reporte:** clientes con acceso activo y rutina activa. Si no entrenó nada, el borrador igual se genera (honesto y alentador) y vos decidís si mandarlo o descartarlo.
