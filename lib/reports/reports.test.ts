@@ -258,13 +258,23 @@ test("período libre: ninguna frase habla de 'el mes' ni de 'la semana'", () => 
 });
 
 // Portada del período libre según si hubo avance (oct-2026)
+const PROGRESS_OPENINGS = [
+  "Sofía, mirá todo lo que avanzaste. Vamos a repasarlo juntos",
+  "Sofía, hay avances para festejar. Vamos a repasarlos juntos",
+  "Sofía, el esfuerzo se nota. Mirá lo que lograste",
+];
+const STEADY_OPENINGS = [
+  "Sofía, la constancia es lo que cuenta. Vamos a repasarlo juntos",
+  "Sofía, seguir presente ya es ganar. Vamos a repasarlo juntos",
+  "Sofía, lo importante es no soltar. Mirá cómo viene tu camino",
+];
 test("período libre: con avance, \"mirá todo lo que avanzaste\" (y su clave en phrase_keys)", () => {
   const r = buildMonthlyReport(customInput("2026-09-14", "2026-10-02"));
   const opening = card(r.cards, "opening");
   assert.deepEqual(opening.words, ["Tu", "progreso"]);
-  assert.equal(opening.phrase, "Sofía, mirá todo lo que avanzaste. Vamos a repasarlo juntos");
-  assert.equal(opening.phraseKey, "custom.opening.progress.1");
-  assert.ok(r.phraseKeys.includes("custom.opening.progress.1"));
+  assert.ok(PROGRESS_OPENINGS.includes(opening.phrase!), opening.phrase);
+  assert.match(opening.phraseKey!, /^custom.opening.progress.[1-3]$/);
+  assert.ok(r.phraseKeys.includes(opening.phraseKey!));
 });
 
 test("período libre: sin avance, \"la constancia es lo que cuenta\"", () => {
@@ -273,8 +283,8 @@ test("período libre: sin avance, \"la constancia es lo que cuenta\"", () => {
   const r = buildMonthlyReport({ ...i, bestSets: i.bestSets.filter((s) => s.date < "2026-09-14"), sessions: [], weights: [] });
   const opening = card(r.cards, "opening");
   assert.deepEqual(opening.words, ["Tu", "progreso"]);
-  assert.equal(opening.phrase, "Sofía, la constancia es lo que cuenta. Vamos a repasarlo juntos");
-  assert.equal(opening.phraseKey, "custom.opening.steady.1");
+  assert.ok(STEADY_OPENINGS.includes(opening.phrase!), opening.phrase);
+  assert.match(opening.phraseKey!, /^custom.opening.steady.[1-3]$/);
 });
 
 test("hubo avance: marcas, volumen o peso hacia el objetivo (0,5 kg o más)", () => {
@@ -299,9 +309,31 @@ test("período libre: con el peso oculto, el peso no cuenta como avance", () => 
     { date: "2026-09-30", kg: 69 },
   ];
   const base = { ...i, bestSets: i.bestSets.filter((s) => s.date < "2026-09-14"), sessions: [], weights, monthGoal: { mainGoal: "Perder grasa", weightKg: null } };
-  assert.equal(card(buildMonthlyReport(base).cards, "opening").phraseKey, "custom.opening.progress.1");
+  assert.match(card(buildMonthlyReport(base).cards, "opening").phraseKey!, /^custom.opening.progress./);
   const hidden = buildMonthlyReport({ ...base, client: { ...i.client, hideWeight: true } });
-  assert.equal(card(hidden.cards, "opening").phraseKey, "custom.opening.steady.1");
+  assert.match(card(hidden.cards, "opening").phraseKey!, /^custom.opening.steady./);
+});
+
+test("período libre: la portada no repite una frase enviada en los últimos 28 días", () => {
+  const i = customInput("2026-09-14", "2026-10-02");
+  const steady = { ...i, bestSets: i.bestSets.filter((s) => s.date < "2026-09-14"), sessions: [], weights: [] };
+  for (const [kind, situation, texts] of [
+    ["progress", "custom.opening.progress", PROGRESS_OPENINGS],
+    ["steady", "custom.opening.steady", STEADY_OPENINGS],
+  ] as const) {
+    const base = kind === "progress" ? i : steady;
+    const seen = new Set<string>();
+    const history = new Map<string, number>();
+    for (let n = 0; n < 3; n++) {
+      const opening = card(buildMonthlyReport({ ...base, phraseHistory: history }).cards, "opening");
+      assert.ok(opening.phraseKey!.startsWith(situation));
+      assert.ok(texts.includes(opening.phrase!), opening.phrase);
+      assert.equal(seen.has(opening.phraseKey!), false, `repetida: ${opening.phraseKey}`);
+      seen.add(opening.phraseKey!);
+      history.set(opening.phraseKey!, Date.now() - (3 - n) * 86400000);
+    }
+    assert.equal(seen.size, 3);
+  }
 });
 
 test("catálogo: opcionales disponibles pero apagadas por defecto", () => {

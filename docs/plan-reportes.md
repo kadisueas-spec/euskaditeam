@@ -245,8 +245,15 @@ Variables entre llaves se completan con datos reales. Si un dato no existe, esa 
 
 ### Período libre ("TU PROGRESO", oct-2026)
 **Apertura** (según si hubo avance: 1+ mejores marcas contra la mejor marca anterior al inicio del rango, volumen que subió contra el período anterior de igual duración, o peso 0,5 kg o más hacia el objetivo — el peso no cuenta si está activo "No mostrar peso en reportes")
-- Con avance: "{nombre}, mirá todo lo que avanzaste. Vamos a repasarlo juntos" (`custom.opening.progress.1`)
-- Sin avance: "{nombre}, la constancia es lo que cuenta. Vamos a repasarlo juntos" (`custom.opening.steady.1`)
+- Con avance (`custom.opening.progress.1-3`):
+  1. {nombre}, mirá todo lo que avanzaste. Vamos a repasarlo juntos
+  2. {nombre}, hay avances para festejar. Vamos a repasarlos juntos
+  3. {nombre}, el esfuerzo se nota. Mirá lo que lograste
+- Sin avance (`custom.opening.steady.1-3`):
+  1. {nombre}, la constancia es lo que cuenta. Vamos a repasarlo juntos
+  2. {nombre}, seguir presente ya es ganar. Vamos a repasarlo juntos
+  3. {nombre}, lo importante es no soltar. Mirá cómo viene tu camino
+- Mismo criterio que el resto del banco: no se repite una frase enviada al cliente en los últimos 28 días.
 
 **Adherencia del mes**
 - Alta (80%+): "{entrenamientos} entrenamientos en {mes}. Orgulloso de tu constancia 👏🏻👏🏻" / "{adherencia}% de lo planificado. Así se hace"

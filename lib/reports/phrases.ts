@@ -129,8 +129,16 @@ export const PHRASE_BANK = {
   ],
   // Período libre ("TU PROGRESO"): la portada depende de si hubo avance
   // (mejores marcas, volumen que sube o peso hacia el objetivo).
-  "custom.opening.progress": [{ text: "{nombre}, mirá todo lo que avanzaste. Vamos a repasarlo juntos", scope: "custom" }],
-  "custom.opening.steady": [{ text: "{nombre}, la constancia es lo que cuenta. Vamos a repasarlo juntos", scope: "custom" }],
+  "custom.opening.progress": [
+    { text: "{nombre}, mirá todo lo que avanzaste. Vamos a repasarlo juntos", scope: "custom" },
+    { text: "{nombre}, hay avances para festejar. Vamos a repasarlos juntos", scope: "custom" },
+    { text: "{nombre}, el esfuerzo se nota. Mirá lo que lograste", scope: "custom" },
+  ],
+  "custom.opening.steady": [
+    { text: "{nombre}, la constancia es lo que cuenta. Vamos a repasarlo juntos", scope: "custom" },
+    { text: "{nombre}, seguir presente ya es ganar. Vamos a repasarlo juntos", scope: "custom" },
+    { text: "{nombre}, lo importante es no soltar. Mirá cómo viene tu camino", scope: "custom" },
+  ],
   // El número de entrenamientos ya está grande en la tarjeta: las frases no lo repiten.
   "month.adherence.records": [
     { text: "Excelente el trabajo de este mes! Orgulloso del progreso que estás teniendo👏🏻👏🏻", scope: "monthly" },
