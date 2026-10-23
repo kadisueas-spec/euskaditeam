@@ -243,6 +243,11 @@ Variables entre llaves se completan con datos reales. Si un dato no existe, esa 
 2. {mes} terminado, {nombre}. Mirá todo lo que hiciste
 3. {nombre}, así fue tu {mes} en Euskadi Team
 
+### Período libre ("TU PROGRESO", oct-2026)
+**Apertura** (según si hubo avance: 1+ mejores marcas contra la mejor marca anterior al inicio del rango, volumen que subió contra el período anterior de igual duración, o peso 0,5 kg o más hacia el objetivo — el peso no cuenta si está activo "No mostrar peso en reportes")
+- Con avance: "{nombre}, mirá todo lo que avanzaste. Vamos a repasarlo juntos" (`custom.opening.progress.1`)
+- Sin avance: "{nombre}, la constancia es lo que cuenta. Vamos a repasarlo juntos" (`custom.opening.steady.1`)
+
 **Adherencia del mes**
 - Alta (80%+): "{entrenamientos} entrenamientos en {mes}. Orgulloso de tu constancia 👏🏻👏🏻" / "{adherencia}% de lo planificado. Así se hace"
 - Media (50-79%): "Cumpliste con lo que pudiste, el mes que viene damos todo de vuelta" (el número ya está grande arriba)

@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { buildWeeklyReport } from "@/lib/reports/build-weekly";
-import { buildMonthlyReport } from "@/lib/reports/build-monthly";
+import { buildMonthlyReport, hadProgress } from "@/lib/reports/build-monthly";
 import { PhrasePicker } from "@/lib/reports/phrases";
 import { personalBests } from "@/lib/reports/records";
 import type { ReportInput } from "@/lib/reports/input";
@@ -255,6 +255,53 @@ test("período libre: ninguna frase habla de 'el mes' ni de 'la semana'", () => 
     const p = (c.phrase ?? "").replace("semana a semana", "");
     assert.equal(/\b(mes|semana)\b/i.test(p), false, p);
   }
+});
+
+// Portada del período libre según si hubo avance (oct-2026)
+test("período libre: con avance, \"mirá todo lo que avanzaste\" (y su clave en phrase_keys)", () => {
+  const r = buildMonthlyReport(customInput("2026-09-14", "2026-10-02"));
+  const opening = card(r.cards, "opening");
+  assert.deepEqual(opening.words, ["Tu", "progreso"]);
+  assert.equal(opening.phrase, "Sofía, mirá todo lo que avanzaste. Vamos a repasarlo juntos");
+  assert.equal(opening.phraseKey, "custom.opening.progress.1");
+  assert.ok(r.phraseKeys.includes("custom.opening.progress.1"));
+});
+
+test("período libre: sin avance, \"la constancia es lo que cuenta\"", () => {
+  const i = customInput("2026-09-14", "2026-10-02");
+  // Sin mejores marcas, sin volumen para comparar y sin peso
+  const r = buildMonthlyReport({ ...i, bestSets: i.bestSets.filter((s) => s.date < "2026-09-14"), sessions: [], weights: [] });
+  const opening = card(r.cards, "opening");
+  assert.deepEqual(opening.words, ["Tu", "progreso"]);
+  assert.equal(opening.phrase, "Sofía, la constancia es lo que cuenta. Vamos a repasarlo juntos");
+  assert.equal(opening.phraseKey, "custom.opening.steady.1");
+});
+
+test("hubo avance: marcas, volumen o peso hacia el objetivo (0,5 kg o más)", () => {
+  const none = { records: 0, volumeUp: false, weightDelta: null, direction: null } as const;
+  assert.equal(hadProgress(none), false);
+  assert.equal(hadProgress({ ...none, records: 1 }), true);
+  assert.equal(hadProgress({ ...none, volumeUp: true }), true);
+  assert.equal(hadProgress({ ...none, weightDelta: -0.5, direction: "lose" }), true);
+  assert.equal(hadProgress({ ...none, weightDelta: 0.8, direction: "gain" }), true);
+  assert.equal(hadProgress({ ...none, weightDelta: -0.4, direction: "lose" }), false); // muy chico
+  assert.equal(hadProgress({ ...none, weightDelta: 1, direction: "lose" }), false); // al revés del objetivo
+  assert.equal(hadProgress({ ...none, weightDelta: -1, direction: null }), false); // sin objetivo de peso
+});
+
+test("período libre: con el peso oculto, el peso no cuenta como avance", () => {
+  const i = customInput("2026-09-14", "2026-10-02");
+  // Solo el peso se movió: 70 kg en el período anterior (26/08–13/09), 69 kg en este
+  const weights = [
+    { date: "2026-09-01", kg: 70 },
+    { date: "2026-09-10", kg: 70 },
+    { date: "2026-09-20", kg: 69 },
+    { date: "2026-09-30", kg: 69 },
+  ];
+  const base = { ...i, bestSets: i.bestSets.filter((s) => s.date < "2026-09-14"), sessions: [], weights, monthGoal: { mainGoal: "Perder grasa", weightKg: null } };
+  assert.equal(card(buildMonthlyReport(base).cards, "opening").phraseKey, "custom.opening.progress.1");
+  const hidden = buildMonthlyReport({ ...base, client: { ...i.client, hideWeight: true } });
+  assert.equal(card(hidden.cards, "opening").phraseKey, "custom.opening.steady.1");
 });
 
 test("catálogo: opcionales disponibles pero apagadas por defecto", () => {

@@ -126,11 +126,11 @@ export const PHRASE_BANK = {
     { text: "{nombre}, este fue tu {mes}. Vamos a repasarlo juntos" },
     { text: "{Mes} terminado, {nombre}. Mirá todo lo que hiciste" },
     { text: "{nombre}, así fue tu {mes} en Euskadi Team" },
-    // Período libre ("3 al 17 de noviembre"): frases neutras.
-    { text: "{nombre}, este fue tu período. Vamos a repasarlo juntos", scope: "custom" },
-    { text: "Período terminado, {nombre}. Mirá todo lo que hiciste", scope: "custom" },
-    { text: "{nombre}, así fue este período en Euskadi Team", scope: "custom" },
   ],
+  // Período libre ("TU PROGRESO"): la portada depende de si hubo avance
+  // (mejores marcas, volumen que sube o peso hacia el objetivo).
+  "custom.opening.progress": [{ text: "{nombre}, mirá todo lo que avanzaste. Vamos a repasarlo juntos", scope: "custom" }],
+  "custom.opening.steady": [{ text: "{nombre}, la constancia es lo que cuenta. Vamos a repasarlo juntos", scope: "custom" }],
   // El número de entrenamientos ya está grande en la tarjeta: las frases no lo repiten.
   "month.adherence.records": [
     { text: "Excelente el trabajo de este mes! Orgulloso del progreso que estás teniendo👏🏻👏🏻", scope: "monthly" },

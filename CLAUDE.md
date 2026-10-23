@@ -1211,7 +1211,11 @@ momento, no una galería genérica.
       neutras (variantes `scope: "custom"` en `phrases.ts`; las que
       nombran el mes o la semana quedan afuera) y "Lo que viene" neutro.
       Portada y encabezado "TU PROGRESO" (en la bandeja: "Progreso"), push
-      "Tu progreso está listo 🔥".
+      "Tu progreso está listo 🔥". Frase de portada según si hubo avance
+      (`hadProgress`: 1+ mejores marcas, volumen que sube o peso 0,5 kg+ hacia
+      el objetivo, sin contar el peso si está oculto): "mirá todo lo que
+      avanzaste" (`custom.opening.progress`) o "la constancia es lo que
+      cuenta" (`custom.opening.steady`).
     - Tarjetas: el generador arma un CATÁLOGO (cada tarjeta con `key`
       estable y `on: false` si va apagada por defecto: volumen que no
       subió, rachas, lista de mejores marcas, objetivo en el semanal,

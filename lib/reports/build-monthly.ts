@@ -1,8 +1,8 @@
 import { PhrasePicker } from "@/lib/reports/phrases";
 import type { Situation } from "@/lib/reports/phrases";
 import { personalBests } from "@/lib/reports/records";
-import { weightDirectionFromGoal } from "@/lib/reports/weight-goal";
-import { CUSTOM_LABELS, monthlyWeightCard, rangeWeightCard } from "@/lib/reports/weight";
+import { weightDirectionFromGoal, type WeightDirection } from "@/lib/reports/weight-goal";
+import { CUSTOM_LABELS, SMALL_CHANGE_KG, monthlyWeightCard, rangeWeightCard } from "@/lib/reports/weight";
 import { routineNotices } from "@/lib/reports/notices";
 import { previousPeriodOf } from "@/lib/reports/periods";
 import { RECORDS_FOR_CELEBRATION, improvementCard } from "@/lib/reports/build-weekly";
@@ -37,6 +37,17 @@ function nextMonthStartOf(monthStart: string): string {
   return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
 }
 
+// "Hubo avance" en un período libre (portada): 1+ mejores marcas, volumen
+// que subió contra el período anterior de igual duración, o peso que se
+// movió 0,5 kg o más hacia el objetivo (weightDelta llega null si el peso
+// está oculto en los reportes).
+export function hadProgress(p: { records: number; volumeUp: boolean; weightDelta: number | null; direction: WeightDirection }): boolean {
+  if (p.records > 0 || p.volumeUp) return true;
+  const d = p.weightDelta;
+  if (d == null) return false;
+  return (p.direction === "lose" && d <= -SMALL_CHANGE_KG) || (p.direction === "gain" && d >= SMALL_CHANGE_KG);
+}
+
 // Reporte mensual (mes calendario) o de período libre ("3 al 17 de
 // noviembre"). Mismas tarjetas; cambian el período de comparación (mes
 // anterior vs. período anterior de igual duración), la portada/cierre y las
@@ -69,13 +80,15 @@ export function buildPeriodReport(input: ReportInput): BuiltReport {
     : 0;
   const adherence = adherencePercent(trainedDays, planned);
 
-  // --- Portada (las frases del mes necesitan {mes}: en el libre no se pasa
-  // y quedan afuera solas) ---
-  const opening = picker.pick(
-    "month.opening",
-    custom ? { nombre: client.firstName } : { nombre: client.firstName, mes, Mes: capitalize(mes) }
-  );
-  cards.push({ type: "opening", key: "opening", theme: "red", words: coverWords, phrase: opening?.text, phraseKey: opening?.key });
+  // --- Portada. En el libre la frase depende de si hubo avance, que se
+  // sabe recién con volumen y peso: se completa más abajo. ---
+  const openingCard: Extract<ReportCard, { type: "opening" }> = { type: "opening", key: "opening", theme: "red", words: coverWords };
+  if (!custom) {
+    const opening = picker.pick("month.opening", { nombre: client.firstName, mes, Mes: capitalize(mes) });
+    openingCard.phrase = opening?.text;
+    openingCard.phraseKey = opening?.key;
+  }
+  cards.push(openingCard);
 
   // --- Entrenamientos: la frase según asistencia Y récords ---
   let adherenceSituation: Situation;
@@ -143,6 +156,13 @@ export function buildPeriodReport(input: ReportInput): BuiltReport {
       : monthlyWeightCard({ weights: input.weights, monthStart: start, monthEnd: end, prevMonthStart: prev.start, direction, picker });
     weightDelta = deltaKg;
     if (card) cards.push(card);
+  }
+
+  if (custom) {
+    const advanced = hadProgress({ records: pbs.length, volumeUp: vol.card?.type === "volume" && vol.card.percent > 0, weightDelta, direction });
+    const opening = picker.pick(advanced ? "custom.opening.progress" : "custom.opening.steady", { nombre: client.firstName });
+    openingCard.phrase = opening?.text;
+    openingCard.phraseKey = opening?.key;
   }
 
   // --- Objetivo vs realidad ---
