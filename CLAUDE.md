@@ -1187,6 +1187,38 @@ momento, no una galería genérica.
       Vercel), agendado con pg_cron + pg_net desde
       `20261022b_progress_reports_cron.sql` (secreto en Vault).
 
+71. Reportes: período libre y tarjetas elegidas por el coach (oct-2026,
+    migración `20261023_progress_reports_custom_and_layout.sql`: kind
+    `custom`, unicidad con `period_end`, columna `card_layout`).
+    - Período: "Generar ahora" acepta Semanal / Mensual / Elegir fechas
+      (desde-hasta + atajos Esta semana, Semana pasada, Mes pasado, Últimos
+      30 días; `components/coach/report-range-picker.tsx`, máximo 92 días) y
+      el borrador tiene "Cambiar período" (`changeReportPeriod`: pide
+      confirmación, conserva nota y tarjetas). `kindForRange`
+      (`lib/reports/periods.ts`): un mes calendario exacto se guarda como
+      mensual y un lunes a viernes como semanal; el resto, `custom`.
+    - Generador (`buildPeriodReport`, mismo archivo que el mensual): en un
+      rango libre los récords van contra la mejor marca anterior al inicio,
+      días planificados con `plannedDaysInRange`, volumen y peso contra el
+      período anterior de IGUAL duración (`previousPeriodOf`), peso con
+      tendencia (`rangeWeightCard`), título "Tu período 3 – 17 nov", frases
+      neutras (variantes `scope: "custom"` en `phrases.ts`; las que
+      nombran el mes o la semana quedan afuera) y "Lo que viene" neutro.
+    - Tarjetas: el generador arma un CATÁLOGO (cada tarjeta con `key`
+      estable y `on: false` si va apagada por defecto: volumen que no
+      subió, rachas, lista de mejores marcas, objetivo en el semanal,
+      gráficos de ejercicios — `exerciseSections`, mejor peso por sesión en
+      12 semanas). Panel "Tarjetas" en el borrador
+      (`app/coach/reports/[id]/cards-panel.tsx`): interruptores + arrastrar
+      (mismo dnd-kit que el editor de rutinas), vista previa en vivo,
+      autoguardado en `card_layout` (`saveCardLayout`). Portada, cierre e
+      imagen fijas. `lib/reports/layout.ts` (`arrangeCards`,
+      `clientCards`, `withCoachNote`) aplica las elecciones por clave, así
+      sobreviven a "Volver a generar". Al enviar se guardan SOLO las
+      prendidas, en orden, y `phrase_keys` solo de esas. Lo privado vive en
+      `progress_report_private` (nunca es tarjeta) y con
+      `hide_weight_in_reports` la tarjeta de peso no se genera.
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)

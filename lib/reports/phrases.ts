@@ -8,7 +8,7 @@
 // que se guarda en progress_reports.phrase_keys para no repetirla en los
 // reportes de las últimas 4 semanas.
 
-type Scope = "weekly" | "monthly";
+type Scope = "weekly" | "monthly" | "custom";
 type Variant = { text: string; scope?: Scope };
 
 const PRIORITY_MARKERS = [
@@ -95,6 +95,7 @@ export const PHRASE_BANK = {
   ],
   "weight.trend_down": [
     { text: "{peso} kg esta semana, {delta_peso} menos que en {mes_inicio}. Seguimos así 👏🏻", scope: "weekly" },
+    { text: "{peso} kg en este período, {delta_peso} menos que en {mes_inicio}. Seguimos así 👏🏻", scope: "custom" },
   ],
   "weight.up": [
     { text: "+{delta_peso} kg esta semana, justo lo que buscamos para ganar masa", scope: "weekly" },
@@ -125,31 +126,62 @@ export const PHRASE_BANK = {
     { text: "{nombre}, este fue tu {mes}. Vamos a repasarlo juntos" },
     { text: "{Mes} terminado, {nombre}. Mirá todo lo que hiciste" },
     { text: "{nombre}, así fue tu {mes} en Euskadi Team" },
+    // Período libre ("3 al 17 de noviembre"): frases neutras.
+    { text: "{nombre}, este fue tu período. Vamos a repasarlo juntos", scope: "custom" },
+    { text: "Período terminado, {nombre}. Mirá todo lo que hiciste", scope: "custom" },
+    { text: "{nombre}, así fue este período en Euskadi Team", scope: "custom" },
   ],
   // El número de entrenamientos ya está grande en la tarjeta: las frases no lo repiten.
   "month.adherence.records": [
-    { text: "Excelente el trabajo de este mes! Orgulloso del progreso que estás teniendo👏🏻👏🏻" },
+    { text: "Excelente el trabajo de este mes! Orgulloso del progreso que estás teniendo👏🏻👏🏻", scope: "monthly" },
+    { text: "Excelente el trabajo de este período! Orgulloso del progreso que estás teniendo👏🏻👏🏻", scope: "custom" },
   ],
   "month.adherence.high": [
     { text: "Orgulloso de tu constancia 👏🏻👏🏻" },
     { text: "{adherencia}% de lo planificado. Así se hace" },
   ],
   "month.adherence.mid": [
-    { text: "Cumpliste con lo que pudiste, el mes que viene damos todo de vuelta" },
+    { text: "Cumpliste con lo que pudiste, el mes que viene damos todo de vuelta", scope: "monthly" },
+    { text: "Cumpliste con lo que pudiste y eso es lo que importa. Ahora damos todo de vuelta", scope: "custom" },
   ],
   "month.adherence.low": [
-    { text: "Fue un mes difícil. Lo importante es seguir, y en {mes_siguiente} vamos con todo 🫡" },
+    { text: "Fue un mes difícil. Lo importante es seguir, y en {mes_siguiente} vamos con todo 🫡", scope: "monthly" },
+    { text: "Fue un período difícil. Lo importante es seguir, y ahora vamos con todo 🫡", scope: "custom" },
   ],
-  "month.records.many": [{ text: "{records} récords en un mes. Todo el esfuerzo vale la pena! 👏🏻" }],
-  "month.records.some": [{ text: "{records} {records_palabra} este mes. Cada uno es un paso adelante" }],
+  "month.records.many": [
+    { text: "{records} récords en un mes. Todo el esfuerzo vale la pena! 👏🏻", scope: "monthly" },
+    { text: "{records} récords en este período. Todo el esfuerzo vale la pena! 👏🏻", scope: "custom" },
+    { text: "{records} récords en una semana. Todo el esfuerzo vale la pena! 👏🏻", scope: "weekly" },
+  ],
+  "month.records.some": [
+    { text: "{records} {records_palabra} este mes. Cada uno es un paso adelante", scope: "monthly" },
+    { text: "{records} {records_palabra} en este período. Cada uno es un paso adelante", scope: "custom" },
+    { text: "{records} {records_palabra} esta semana. Cada uno es un paso adelante", scope: "weekly" },
+  ],
+  // {mes_anterior}: "agosto", "la semana pasada", "el período anterior".
   "month.volume.up": [{ text: "{volumen_pct}% más volumen que en {mes_anterior}. Vamos por más" }],
+  // Volumen parejo o menor: la tarjeta va apagada por defecto, el coach
+  // decide si la muestra. Nunca en tono de reproche.
+  "month.volume.even": [
+    { text: "Un mes parejo con {mes_anterior}. Sostener también es avanzar", scope: "monthly" },
+    { text: "Una semana pareja con la anterior. Sostener también es avanzar", scope: "weekly" },
+    { text: "Un período parejo con el anterior. Sostener también es avanzar", scope: "custom" },
+  ],
+  "month.volume.down": [
+    { text: "Menos volumen que {mes_anterior}, y está bien: hay meses así. Seguimos", scope: "monthly" },
+    { text: "Menos volumen que la semana pasada, y está bien: hay semanas así. Seguimos", scope: "weekly" },
+    { text: "Menos volumen que en el período anterior, y está bien: hay períodos así. Seguimos", scope: "custom" },
+  ],
   "month.goal.on_track": [{ text: "Vamos por buen camino con lo que te propusiste. Seguimos 🫡" }],
   "month.photo": [{ text: "Hace {dias_sin_foto} días que no subís una foto. Sacate una y la comparamos con la anterior" }],
   "month.nutrition": [{ text: "Seguí con tu plan {plan}, que está armado para lo que buscás" }],
   "month.closing": [
-    { text: "Otro mes más que sumamos, {nombre}. Orgulloso de lo que hiciste 👏🏻" },
+    { text: "Otro mes más que sumamos, {nombre}. Orgulloso de lo que hiciste 👏🏻", scope: "monthly" },
     { text: "Así cerramos {mes}. Orgulloso de lo que hiciste, a seguir" },
-    { text: "Un mes más sumado. Vamos juntos por el próximo" },
+    { text: "Un mes más sumado. Vamos juntos por el próximo", scope: "monthly" },
+    { text: "Otro período más que sumamos, {nombre}. Orgulloso de lo que hiciste 👏🏻", scope: "custom" },
+    { text: "Así cerramos este período. Orgulloso de lo que hiciste, a seguir", scope: "custom" },
+    { text: "Un período más sumado. Vamos juntos por el próximo", scope: "custom" },
   ],
 } satisfies Record<string, Variant[]>;
 

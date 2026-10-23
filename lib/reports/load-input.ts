@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isBetterSet } from "@/lib/utils/session-records";
 import { countsAsTraining } from "@/lib/utils/training-sessions";
 import { paraguayDateOf } from "@/lib/utils/today";
-import { addDays } from "@/lib/reports/format";
+import { addDays, daysBetween } from "@/lib/reports/format";
 import type { DayBestSet } from "@/lib/reports/records";
 import type { ReportInput, SessionSummary } from "@/lib/reports/input";
 import type { ReportKind } from "@/lib/reports/types";
@@ -99,7 +99,12 @@ export async function loadReportInput(params: {
 }): Promise<ReportInput | null> {
   const { clientId, kind, periodStart, periodEnd } = params;
   const admin = createAdminClient();
-  const monthKey = `${periodStart.slice(0, 7)}-01`;
+  // Objetivo mensual: el del mes del período (en un rango libre, el del mes
+  // en que termina, el más reciente).
+  const monthKey = `${(kind === "custom" ? periodEnd : periodStart).slice(0, 7)}-01`;
+  // Peso: lo suficiente para el período, el anterior de igual duración y la
+  // serie de tendencia.
+  const weightSince = addDays(periodStart, -Math.max(WEIGHT_LOOKBACK_DAYS, daysBetween(periodStart, periodEnd) + 1 + 120));
   const historySince = new Date(Date.now() - PHRASE_HISTORY_DAYS * 86400000).toISOString();
 
   const { data: client } = await admin
@@ -154,7 +159,7 @@ export async function loadReportInput(params: {
       .from("weight_logs")
       .select("date, weight_kg")
       .eq("client_id", clientId)
-      .gte("date", addDays(periodEnd, -WEIGHT_LOOKBACK_DAYS))
+      .gte("date", weightSince)
       .lte("date", periodEnd)
       .order("date", { ascending: true })
       .returns<{ date: string; weight_kg: number }[]>(),
@@ -180,7 +185,7 @@ export async function loadReportInput(params: {
       .order("taken_at", { ascending: false })
       .limit(1)
       .maybeSingle<{ taken_at: string }>(),
-    kind === "monthly"
+    kind !== "weekly"
       ? admin
           .from("nutrition_plans")
           .select("name")

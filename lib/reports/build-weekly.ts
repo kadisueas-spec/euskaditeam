@@ -3,8 +3,19 @@ import type { PhraseVars, Situation } from "@/lib/reports/phrases";
 import { personalBests, recordRow } from "@/lib/reports/records";
 import type { PersonalBest } from "@/lib/reports/records";
 import { weightDirectionFromGoal } from "@/lib/reports/weight-goal";
-import { weeklyWeightCard } from "@/lib/reports/weight";
+import { WEEK_LABELS, rangeWeightCard } from "@/lib/reports/weight";
 import { routineNotices } from "@/lib/reports/notices";
+import {
+  HISTORY_LINK,
+  STATS_LINK,
+  bodySection,
+  effortVolume,
+  exerciseSections,
+  goalSection,
+  recordsSection,
+  streakSection,
+  volumeSection,
+} from "@/lib/reports/sections";
 import { addDays, daysBetween, fmtKg, fmtNum, signed } from "@/lib/reports/format";
 import type { ReportInput } from "@/lib/reports/input";
 import type { BuiltReport, ReportCard } from "@/lib/reports/types";
@@ -13,18 +24,17 @@ const WEEKDAY_LABELS = ["L", "M", "M", "J", "V"];
 const MAX_EXTRA_RECORDS = 6;
 // A partir de cuántas mejores marcas la apertura festeja aunque la
 // asistencia no haya sido perfecta (aprobado oct-2026).
-const RECORDS_FOR_CELEBRATION = 3;
+export const RECORDS_FOR_CELEBRATION = 3;
 const WEIGH_REMINDER_DAYS = 10;
 const PHOTO_REMINDER_DAYS = 30;
 
-export const STATS_LINK = { label: "Ver en Estadísticas", href: "/client/progress/stats" };
-export const HISTORY_LINK = { label: "Ver historial", href: "/client/progress" };
+export { HISTORY_LINK, STATS_LINK };
 
 function withKg(s: { weight: number | null; reps: number | null }): string {
   return s.weight ? `${fmtKg(s.weight)} kg × ${s.reps ?? 0}` : `${s.reps ?? 0} reps`;
 }
 
-// Tarjeta de la mejora más importante, compartida con el mensual.
+// Tarjeta de la mejora más importante, compartida con el mensual y el libre.
 export function improvementCard(
   top: PersonalBest,
   more: PersonalBest[],
@@ -46,6 +56,7 @@ export function improvementCard(
   const picked = picker.pick(situation, vars);
   return {
     type: "improvement",
+    key: "improvement",
     theme: "black",
     kicker: "Tu mejor avance",
     exercise: top.exerciseName,
@@ -66,6 +77,7 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
   const notices: string[] = [];
 
   const week = input.sessions.filter((s) => s.date >= periodStart && s.date <= periodEnd);
+  const prevWeek = input.sessions.filter((s) => s.date >= addDays(periodStart, -7) && s.date <= addDays(periodEnd, -7));
   const trainedDays = new Set(week.map((s) => s.date)).size;
   const planned = routine ? Math.min(routine.daysPerWeek, 5) : 0;
   const pbs = personalBests(input.bestSets, periodStart, periodEnd);
@@ -87,6 +99,7 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
   const openingPhrase = picker.pick(opening, base);
   cards.push({
     type: "opening",
+    key: "opening",
     theme: "red",
     words: ["Tu", "semana"],
     phrase: openingPhrase?.text,
@@ -97,11 +110,11 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
   if (pbs.length > 0) {
     cards.push(improvementCard(pbs[0], pbs.slice(1, 1 + MAX_EXTRA_RECORDS), picker));
   } else if (trainedDays > 0) {
-    const sets = week.reduce((s, x) => s + x.setCount, 0);
-    const volume = Math.round(week.reduce((s, x) => s + x.volumeKg, 0));
+    const { sets, volume } = effortVolume(week);
     const picked = picker.pick("record.none", { series: sets, volumen: fmtNum(volume) });
     cards.push({
       type: "effort",
+      key: "effort",
       theme: "black",
       sets,
       volumeKg: volume,
@@ -123,6 +136,7 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
     const picked = picker.pick(situation, base);
     cards.push({
       type: "adherence",
+      key: "adherence",
       theme: "card",
       done: trainedDays,
       planned,
@@ -133,32 +147,53 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
     });
   }
 
-  // --- Cuerpo: evaluación nueva, si no peso ---
-  const evaluation = [...input.evaluations].reverse().find((e) => e.date >= periodStart && e.date <= periodEnd);
-  if (evaluation && evaluation.bodyFat != null) {
-    const previousEval = [...input.evaluations].reverse().find((e) => e.date < evaluation.date && e.bodyFat != null);
-    const fatDiff = previousEval ? Math.round((evaluation.bodyFat - previousEval.bodyFat!) * 10) / 10 : null;
-    const picked = picker.pick("body.evaluation", {
-      grasa: fmtKg(evaluation.bodyFat),
-      cambio_grasa: fatDiff != null && fatDiff < 0 ? ` (${signed(fatDiff)} %)` : null,
-      musculo: evaluation.muscleKg != null ? fmtKg(evaluation.muscleKg) : null,
+  // --- Cuerpo: evaluación nueva; si no, peso (los dos disponibles) ---
+  const direction = weightDirectionFromGoal(input.monthGoal?.mainGoal ?? client.goal);
+  const body = bodySection(input, picker);
+  let weightDelta: number | null = null;
+  if (body) cards.push(body);
+  if (!client.hideWeight) {
+    const { card, deltaKg } = rangeWeightCard({
+      weights: input.weights,
+      start: periodStart,
+      end: periodEnd,
+      prevStart: addDays(periodStart, -7),
+      prevEnd: addDays(periodStart, -1),
+      direction,
+      picker,
+      labels: WEEK_LABELS,
     });
-    cards.push({
-      type: "body",
-      theme: "light",
-      date: evaluation.date,
-      bodyFat: evaluation.bodyFat,
-      bodyFatDiff: fatDiff,
-      muscleKg: evaluation.muscleKg,
-      phrase: picked?.text,
-      phraseKey: picked?.key,
-      link: { label: "Ver en Mi Cuerpo", href: "/client/body?tab=cuerpo" },
-    });
-  } else if (!client.hideWeight) {
-    const direction = weightDirectionFromGoal(input.monthGoal?.mainGoal ?? client.goal);
-    const card = weeklyWeightCard({ weights: input.weights, periodStart, periodEnd, direction, picker });
-    if (card) cards.push(card);
+    weightDelta = deltaKg;
+    // Con evaluación nueva en la semana, el peso queda disponible pero apagado.
+    if (card) cards.push(body ? { ...card, on: false } : card);
   }
+
+  // --- Opcionales (apagadas por defecto, el coach las prende) ---
+  const volume = volumeSection({
+    current: week,
+    previous: prevWeek,
+    currentLabel: "Esta semana",
+    previousLabel: "Semana anterior",
+    versus: "la semana pasada",
+    picker,
+  });
+  if (volume.card) cards.push({ ...volume.card, on: false });
+  const streak = streakSection(input, false);
+  if (streak) cards.push(streak);
+  const records = recordsSection({ pbs, picker, on: false, excludeTop: false });
+  if (records) cards.push(records);
+  const goal = goalSection({
+    input,
+    pbs,
+    direction,
+    weightDelta,
+    picker,
+    on: false,
+    words: { inPeriod: "en la semana", thisPeriod: "esta semana", periodName: "esta semana" },
+    withNotices: false,
+  });
+  if (goal.card) cards.push(goal.card);
+  cards.push(...exerciseSections(input.bestSets, periodStart, periodEnd));
 
   // --- Lo que viene ---
   const nextMonday = addDays(periodStart, 7);
@@ -184,6 +219,7 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
   const focusPhrase = picker.pick(focus.situation, { ...base, ...focus.vars });
   cards.push({
     type: "focus",
+    key: "focus",
     theme: "black",
     word: focus.word,
     phrase: focusPhrase?.text,

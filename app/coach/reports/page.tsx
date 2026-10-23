@@ -9,11 +9,12 @@ import { getClientsForSelect } from "@/lib/supabase/routines";
 import { latestClosedPeriod } from "@/lib/reports/schedule";
 import { reportPeriodLabel } from "@/lib/supabase/progress-reports";
 import { GenerateNow } from "./generate-now";
+import { todayInParaguay } from "@/lib/utils/today";
 
 // Bandeja de reportes de progreso (oct-2026): todo borrador pasa por acá
 // antes de llegar al cliente. Nada se envía solo.
 
-const KIND_LABEL = { weekly: "Semanal", monthly: "Mensual" } as const;
+const KIND_LABEL = { weekly: "Semanal", monthly: "Mensual", custom: "Período libre" } as const;
 
 function Row({ r }: { r: CoachReportListItem }) {
   let status: string;
@@ -96,6 +97,7 @@ export default async function CoachReportsPage() {
       <GenerateNow
         clients={clients.map((c) => ({ id: c.id, name: c.name })).sort((a, b) => a.name.localeCompare(b.name))}
         periodLabels={periodLabels}
+        today={todayInParaguay()}
       />
 
       {reports.length === 0 ? (

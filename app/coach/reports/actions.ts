@@ -6,6 +6,11 @@ import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { createDraft, regenerateReport, sendReport } from "@/lib/reports/service";
 import { latestClosedPeriod, nextSundayAt } from "@/lib/reports/schedule";
 import { decideGenerateNow } from "@/lib/reports/generate-now";
+import { kindForRange, validateRange } from "@/lib/reports/periods";
+import { parseCardLayout } from "@/lib/reports/layout";
+import { todayInParaguay } from "@/lib/utils/today";
+import type { Period } from "@/lib/reports/schedule";
+import type { ReportKind } from "@/lib/reports/types";
 
 // Acciones de la bandeja de reportes (oct-2026). La propiedad se verifica
 // SIEMPRE con la sesión del coach (RLS "Coach manages own clients
@@ -125,12 +130,31 @@ export type GenerateNowResult =
   | { needsConfirm: { status: "draft" | "scheduled" | "discarded" } }
   | { error: string };
 
+// Qué período generar: el último semanal/mensual cerrado, o un rango libre
+// (que si coincide con un mes calendario o un lunes a viernes, se guarda
+// como mensual o semanal — ver kindForRange).
+export type GenerateSelection =
+  | { mode: "weekly" | "monthly" }
+  | { mode: "range"; start: string; end: string };
+
+function resolveSelection(selection: GenerateSelection): { kind: ReportKind; period: Period } | { error: string } {
+  if (selection.mode === "weekly" || selection.mode === "monthly") {
+    return { kind: selection.mode, period: latestClosedPeriod(selection.mode) };
+  }
+  if (selection.mode !== "range") return { error: "Tipo de reporte inválido." };
+  const invalid = validateRange(selection.start, selection.end, todayInParaguay());
+  if (invalid) return { error: invalid };
+  return { kind: kindForRange(selection.start, selection.end), period: { start: selection.start, end: selection.end } };
+}
+
 export async function generateReportNow(
   clientId: string,
-  kind: "weekly" | "monthly",
+  selection: GenerateSelection,
   confirmRegenerate: boolean
 ): Promise<GenerateNowResult> {
-  if (kind !== "weekly" && kind !== "monthly") return { error: "Tipo de reporte inválido." };
+  const resolved = resolveSelection(selection);
+  if ("error" in resolved) return { error: resolved.error };
+  const { kind, period } = resolved;
   const profile = await getCurrentProfile();
   if (!profile || profile.role !== "coach") return { error: "No autorizado." };
   const supabase = await createClient();
@@ -143,13 +167,13 @@ export async function generateReportNow(
     .maybeSingle();
   if (!client) return { error: "Elegí uno de tus clientes." };
 
-  const period = latestClosedPeriod(kind);
   const { data: existing } = await supabase
     .from("progress_reports")
     .select("id, status")
     .eq("client_id", clientId)
     .eq("kind", kind)
     .eq("period_start", period.start)
+    .eq("period_end", period.end)
     .maybeSingle<{ id: string; status: "draft" | "scheduled" | "sent" | "discarded" }>();
 
   const decision = decideGenerateNow(existing?.status ?? null, confirmRegenerate);
@@ -184,4 +208,65 @@ export async function generateReportNow(
     console.error("generateReportNow:", err);
     return { error: "No se pudo generar el borrador." };
   }
+}
+
+// Tarjetas elegidas por el coach (prendidas/apagadas y orden). Se guardan en
+// el borrador y sobreviven a "Volver a generar" (van por clave). Validado:
+// solo arrays/booleanos; lo privado y el peso oculto no existen en el
+// catálogo, así que ningún interruptor los puede mandar al cliente.
+export async function saveCardLayout(reportId: string, layout: unknown): Promise<Result> {
+  const parsed = parseCardLayout(layout);
+  if (!parsed) return { error: "Tarjetas inválidas." };
+  const owned = await ownedReport(reportId);
+  if (!owned) return { error: "No se encontró el reporte." };
+  if (owned.report.status === "sent") return { error: "El reporte ya se envió." };
+  const { error } = await owned.supabase
+    .from("progress_reports")
+    .update({ card_layout: parsed, updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .neq("status", "sent");
+  if (error) return { error: "No se pudieron guardar las tarjetas." };
+  revalidatePath(`/coach/reports/${reportId}`);
+  return {};
+}
+
+// "Cambiar período" de un borrador: nuevas fechas y se regenera con los
+// datos de ese rango. La nota y las tarjetas elegidas se conservan (la
+// bandeja pregunta antes de llamar). Si ya existe otro reporte del cliente
+// con ese mismo período, no se pisa.
+export async function changeReportPeriod(reportId: string, start: string, end: string): Promise<Result> {
+  const invalid = validateRange(start, end, todayInParaguay());
+  if (invalid) return { error: invalid };
+  const owned = await ownedReport(reportId);
+  if (!owned) return { error: "No se encontró el reporte." };
+  if (owned.report.status === "sent") return { error: "El reporte ya se envió: no se toca." };
+
+  const { data: current } = await owned.supabase
+    .from("progress_reports")
+    .select("client_id")
+    .eq("id", reportId)
+    .maybeSingle<{ client_id: string }>();
+  if (!current) return { error: "No se encontró el reporte." };
+
+  const kind = kindForRange(start, end);
+  const { data: clash } = await owned.supabase
+    .from("progress_reports")
+    .select("id")
+    .eq("client_id", current.client_id)
+    .eq("kind", kind)
+    .eq("period_start", start)
+    .eq("period_end", end)
+    .neq("id", reportId)
+    .maybeSingle();
+  if (clash) return { error: "Ya hay otro reporte de ese cliente con ese mismo período." };
+
+  const { error } = await owned.supabase
+    .from("progress_reports")
+    .update({ kind, period_start: start, period_end: end, updated_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .neq("status", "sent");
+  if (error) return { error: "No se pudo cambiar el período." };
+  const result = await regenerateReport(reportId);
+  revalidate(reportId);
+  return result;
 }

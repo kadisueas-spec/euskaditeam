@@ -43,7 +43,7 @@ function Signature({ name, avatarUrl }: { name: string; avatarUrl: string | null
   );
 }
 
-function Sparkline({ series, lastLabel }: { series: { weekStart: string; kg: number }[]; lastLabel: string }) {
+function Sparkline({ series, lastLabel }: { series: { date: string; kg: number }[]; lastLabel: string }) {
   if (series.length < 2) return null;
   const W = 350;
   const H = 150;
@@ -62,7 +62,7 @@ function Sparkline({ series, lastLabel }: { series: { weekStart: string; kg: num
   const first = series[0];
   const last = series[series.length - 1];
   const firstLabel = new Intl.DateTimeFormat("es-AR", { day: "numeric", month: "short", timeZone: "UTC" })
-    .format(new Date(`${first.weekStart}T00:00:00Z`))
+    .format(new Date(`${first.date}T00:00:00Z`))
     .replace(".", "");
   return (
     <svg
@@ -268,10 +268,12 @@ export function ReportCardView({ card, interactive }: { card: ReportCard; intera
       return (
         <>
           <div className={styles.rise}>
-            <p className={styles.kicker}>Contra {card.previous.label.toLowerCase()}</p>
+            <p className={styles.kicker}>{card.kicker ?? `Contra ${card.previous.label.toLowerCase()}`}</p>
           </div>
           <div className={styles.focusIn} style={{ marginTop: 6 }}>
-            <span className={`${styles.display} ${styles.big} ${styles.bigMd}`}>+{card.percent}</span>
+            <span className={`${styles.display} ${styles.big} ${styles.bigMd} ${card.percent > 0 ? "" : styles.neutral}`}>
+              {card.percent > 0 ? `+${card.percent}` : card.percent === 0 ? "=" : `−${Math.abs(card.percent)}`}
+            </span>
             <span className={`${styles.display} ${styles.unit}`}>%</span>
           </div>
           <div className={styles.rise}>
@@ -331,9 +333,31 @@ export function ReportCardView({ card, interactive }: { card: ReportCard; intera
               </p>
             )}
           </div>
-          <Sparkline series={card.series} lastLabel={card.lastLabel} />
+          <Sparkline series={card.series.map((p) => ({ date: p.weekStart, kg: p.kg }))} lastLabel={card.lastLabel} />
           <p className={styles.hint} style={{ marginTop: 6 }}>
             Promedio de cada semana
+          </p>
+          {foot}
+        </>
+      );
+
+    case "exercise":
+      return (
+        <>
+          <div className={styles.rise}>
+            <p className={styles.kicker}>Tu evolución</p>
+            <p className={styles.exName}>{card.exercise}</p>
+          </div>
+          <div className={styles.focusIn} style={{ marginTop: 6 }}>
+            <span className={`${styles.display} ${styles.big} ${styles.bigMd}`}>{card.headline}</span>
+            <span className={`${styles.display} ${styles.unit}`}>kg</span>
+          </div>
+          <div className={styles.rise}>
+            <p className={styles.sub}>{card.detail}</p>
+          </div>
+          <Sparkline series={card.points} lastLabel="última" />
+          <p className={styles.hint} style={{ marginTop: 6 }}>
+            Mejor peso de cada sesión
           </p>
           {foot}
         </>

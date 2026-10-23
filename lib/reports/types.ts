@@ -4,8 +4,15 @@
 // recalculan al enviar, así el cliente ve exactamente lo que revisó el
 // coach. Lo privado del coach (avisos) nunca entra acá — va a
 // progress_report_private.
+//
+// Catálogo (oct-2026): el generador arma TODAS las tarjetas posibles y
+// marca con `on: false` las que no van por defecto (volumen que bajó,
+// gráficos de ejercicios, etc.). El coach prende/apaga y reordena en la
+// bandeja (progress_reports.card_layout, ver lib/reports/layout.ts); al
+// enviar se guardan solo las prendidas, en su orden.
 
-export type ReportKind = "weekly" | "monthly";
+// weekly = lunes a viernes; monthly = mes calendario; custom = rango libre.
+export type ReportKind = "weekly" | "monthly" | "custom";
 
 // Un tema por tarjeta (fondo + color). La portada siempre es roja.
 export type CardTheme = "red" | "black" | "card" | "light" | "oxblood";
@@ -16,7 +23,18 @@ export type CardLink = { label: string; href: string };
 // "+5 KG", "RIR 3 (antes 1)").
 export type RecordRow = { exercise: string; value: string; diff: string };
 
-type Base = { theme: CardTheme; phrase?: string; phraseKey?: string; link?: CardLink };
+type Base = {
+  theme: CardTheme;
+  // Clave estable ("volume", "exercise:<id>"): con ella se guardan las
+  // elecciones del coach y se mantienen al regenerar. Opcional solo por los
+  // borradores creados antes de que existiera.
+  key?: string;
+  // false = disponible pero apagada por defecto. Ausente = prendida.
+  on?: boolean;
+  phrase?: string;
+  phraseKey?: string;
+  link?: CardLink;
+};
 
 export type ReportCard =
   | (Base & { type: "opening"; words: string[] })
@@ -40,7 +58,8 @@ export type ReportCard =
   | (Base & { type: "records"; value: number; list: RecordRow[] })
   | (Base & {
       type: "volume";
-      percent: number;
+      kicker: string; // "Contra agosto", "Contra la semana pasada"
+      percent: number; // puede ser negativo: el coach decide si mostrarla
       previous: { label: string; volumeKg: number; sessions: number };
       current: { label: string; volumeKg: number; sessions: number };
     })
@@ -62,6 +81,15 @@ export type ReportCard =
       muscleKg: number | null;
     })
   | (Base & { type: "goal"; goal: string; evidence: string[] })
+  // Evolución de un ejercicio puntual (mejor peso por sesión, últimas 12
+  // semanas hasta el fin del período). Siempre opcional.
+  | (Base & {
+      type: "exercise";
+      exercise: string;
+      headline: string; // "+10" o "90"
+      detail: string; // "200 kg → 210 kg · últimas 12 semanas"
+      points: { date: string; kg: number }[];
+    })
   | (Base & { type: "focus"; word: string })
   | (Base & {
       type: "coach-message";

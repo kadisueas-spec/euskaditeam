@@ -4,9 +4,14 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
+import { ReportRangePicker } from "@/components/coach/report-range-picker";
+import type { DateRange } from "@/components/coach/report-range-picker";
 import { generateReportNow } from "./actions";
 
 type Kind = "weekly" | "monthly";
+type Mode = Kind | "range";
+
+const MODE_LABEL: Record<Mode, string> = { weekly: "Semanal", monthly: "Mensual", range: "Elegir fechas" };
 
 const STATUS_LABEL = {
   draft: "un borrador",
@@ -20,13 +25,16 @@ const STATUS_LABEL = {
 export function GenerateNow({
   clients,
   periodLabels,
+  today,
 }: {
   clients: { id: string; name: string }[];
   periodLabels: Record<Kind, string>;
+  today: string;
 }) {
   const router = useRouter();
   const [clientId, setClientId] = useState("");
-  const [kind, setKind] = useState<Kind>("weekly");
+  const [kind, setKind] = useState<Mode>("weekly");
+  const [range, setRange] = useState<DateRange>({ start: "", end: "" });
   const [confirm, setConfirm] = useState<keyof typeof STATUS_LABEL | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -36,9 +44,17 @@ export function GenerateNow({
       setError("Elegí un cliente.");
       return;
     }
+    if (kind === "range" && (!range.start || !range.end)) {
+      setError("Elegí las dos fechas.");
+      return;
+    }
     setError(null);
     startTransition(async () => {
-      const result = await generateReportNow(clientId, kind, confirmRegenerate);
+      const result = await generateReportNow(
+        clientId,
+        kind === "range" ? { mode: "range", start: range.start, end: range.end } : { mode: kind },
+        confirmRegenerate
+      );
       if ("reportId" in result) {
         setConfirm(null);
         router.push(`/coach/reports/${result.reportId}`);
@@ -83,7 +99,7 @@ export function GenerateNow({
         </div>
         <fieldset className="flex gap-2">
           <legend className="sr-only">Tipo de reporte</legend>
-          {(["weekly", "monthly"] as const).map((k) => (
+          {(["weekly", "monthly", "range"] as const).map((k) => (
             <button
               key={k}
               type="button"
@@ -97,7 +113,7 @@ export function GenerateNow({
                 kind === k ? "bg-[#e8001c] text-white" : "bg-white/5 text-[#c9c9c9] hover:bg-white/10"
               }`}
             >
-              {k === "weekly" ? "Semanal" : "Mensual"}
+              {MODE_LABEL[k]}
             </button>
           ))}
         </fieldset>
@@ -105,7 +121,20 @@ export function GenerateNow({
           {pending ? "Generando…" : "Generar ahora"}
         </Button>
       </div>
-      <p className="text-xs text-[#888888]">Período: {periodLabels[kind]}</p>
+      {kind === "range" ? (
+        <ReportRangePicker
+          idPrefix="generate"
+          today={today}
+          value={range}
+          onChange={(r) => {
+            setRange(r);
+            setConfirm(null);
+            setError(null);
+          }}
+        />
+      ) : (
+        <p className="text-xs text-[#888888]">Período: {periodLabels[kind]}</p>
+      )}
 
       {confirm && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 p-3 text-sm text-[#f5f5f5]">

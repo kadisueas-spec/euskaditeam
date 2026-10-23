@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { getCoachReport } from "@/lib/supabase/progress-reports";
 import { ReportReview } from "./report-review";
+import { todayInParaguay } from "@/lib/utils/today";
 
 export default async function CoachReportPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -20,10 +21,10 @@ export default async function CoachReportPage({ params }: { params: Promise<{ id
       <div>
         <h1 className="font-display text-4xl tracking-wide text-[#f5f5f5] uppercase">{report.clientName}</h1>
         <p className="mt-1 text-sm text-[#888888]">
-          {report.kind === "weekly" ? "Reporte semanal" : "Reporte mensual"} · {report.periodLabel}
+          {report.kind === "weekly" ? "Reporte semanal" : report.kind === "monthly" ? "Reporte mensual" : "Reporte de período libre"} · {report.periodLabel}
         </p>
       </div>
-      <ReportReview report={report} />
+      <ReportReview report={report} today={todayInParaguay()} />
     </div>
   );
 }

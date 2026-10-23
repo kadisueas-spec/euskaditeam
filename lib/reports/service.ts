@@ -1,9 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { buildWeeklyReport } from "@/lib/reports/build-weekly";
-import { buildMonthlyReport } from "@/lib/reports/build-monthly";
+import { buildPeriodReport } from "@/lib/reports/build-monthly";
+import { clientCards, parseCardLayout, withCoachNote } from "@/lib/reports/layout";
 import { loadReportInput } from "@/lib/reports/load-input";
-import { monthName } from "@/lib/reports/format";
+import { monthName, weekRangeLabel } from "@/lib/reports/format";
 import type { Period } from "@/lib/reports/schedule";
 import type { BuiltReport, ReportCard, ReportKind } from "@/lib/reports/types";
 
@@ -17,6 +18,10 @@ export const REPORT_PUSH = {
     title: `Tu ${monthName(monthStart)} está listo`,
     body: "Entrá a ver todo lo que hiciste",
   }),
+  custom: (start: string, end: string) => ({
+    title: "Tu período está listo 🔥",
+    body: `Mirá cómo te fue: ${weekRangeLabel(start, end)}`,
+  }),
 };
 
 // null si el cliente no existe o no tiene coach, y también si no tiene
@@ -28,7 +33,7 @@ export async function buildReport(
 ): Promise<BuiltReport | null> {
   const input = await loadReportInput({ clientId, kind, periodStart: period.start, periodEnd: period.end });
   if (!input || (!input.routine && input.sessions.length === 0)) return null;
-  return kind === "weekly" ? buildWeeklyReport(input) : buildMonthlyReport(input);
+  return kind === "weekly" ? buildWeeklyReport(input) : buildPeriodReport(input);
 }
 
 // Crea UN borrador (mismo camino para el cron y "Generar ahora"). Si ya
@@ -54,7 +59,7 @@ export async function createDraft(
         cards: built.cards,
         phrase_keys: built.phraseKeys,
       },
-      { onConflict: "client_id,kind,period_start", ignoreDuplicates: true }
+      { onConflict: "client_id,kind,period_start,period_end", ignoreDuplicates: true }
     )
     .select("id")
     .maybeSingle<{ id: string }>();
@@ -82,6 +87,7 @@ export async function generateDrafts(kind: ReportKind, period: Period): Promise<
       .select("client_id")
       .eq("kind", kind)
       .eq("period_start", period.start)
+      .eq("period_end", period.end)
       .returns<{ client_id: string }[]>(),
   ]);
   const done = new Set((existing ?? []).map((r) => r.client_id));
@@ -148,7 +154,7 @@ export async function sendReport(reportId: string): Promise<{ error?: string }> 
   const admin = createAdminClient();
   const { data: report } = await admin
     .from("progress_reports")
-    .select("id, client_id, coach_id, kind, period_start, status, cards, coach_note")
+    .select("id, client_id, coach_id, kind, period_start, period_end, status, cards, coach_note, card_layout")
     .eq("id", reportId)
     .maybeSingle<{
       id: string;
@@ -156,15 +162,19 @@ export async function sendReport(reportId: string): Promise<{ error?: string }> 
       coach_id: string;
       kind: ReportKind;
       period_start: string;
+      period_end: string;
       status: string;
       cards: ReportCard[];
       coach_note: string | null;
+      card_layout: unknown;
     }>();
   if (!report) return { error: "No se encontró el reporte." };
   if (report.status === "sent") return {};
   if (report.status === "discarded") return { error: "El reporte está descartado." };
 
-  let cards: ReportCard[] = report.cards.filter((c) => c.type !== "coach-note");
+  // Solo las tarjetas prendidas, en el orden del coach (card_layout). Lo
+  // privado nunca está en cards (vive en progress_report_private).
+  let cards: ReportCard[] = clientCards(report.cards, parseCardLayout(report.card_layout));
   const note = report.coach_note?.trim();
   if (note) {
     const { data: coach } = await admin
@@ -179,22 +189,27 @@ export async function sendReport(reportId: string): Promise<{ error?: string }> 
       coachName: coach?.full_name?.trim() || "Tu coach",
       coachAvatarUrl: coach?.avatar_url ?? null,
     };
-    // La nota va antes de la imagen para compartir (que siempre cierra el mensual).
-    const shareIndex = cards.findIndex((c) => c.type === "share");
-    cards = shareIndex >= 0 ? [...cards.slice(0, shareIndex), noteCard, ...cards.slice(shareIndex)] : [...cards, noteCard];
+    cards = withCoachNote(cards, noteCard);
   }
+  // Para el "no repetir en 28 días" cuentan solo las frases que el cliente ve.
+  const phraseKeys = cards.map((c) => c.phraseKey).filter((k): k is string => !!k);
 
   const now = new Date().toISOString();
   const { data: updated, error } = await admin
     .from("progress_reports")
-    .update({ status: "sent", sent_at: now, scheduled_for: null, cards, updated_at: now })
+    .update({ status: "sent", sent_at: now, scheduled_for: null, cards, phrase_keys: phraseKeys, updated_at: now })
     .eq("id", reportId)
     .in("status", ["draft", "scheduled"])
     .select("id");
   if (error) return { error: "No se pudo enviar el reporte." };
   if (!updated || updated.length === 0) return {};
 
-  const push = report.kind === "weekly" ? REPORT_PUSH.weekly : REPORT_PUSH.monthly(report.period_start);
+  const push =
+    report.kind === "weekly"
+      ? REPORT_PUSH.weekly
+      : report.kind === "monthly"
+        ? REPORT_PUSH.monthly(report.period_start)
+        : REPORT_PUSH.custom(report.period_start, report.period_end);
   await sendPushToClient(report.client_id, {
     ...push,
     url: `/client/home?report=${report.id}`,

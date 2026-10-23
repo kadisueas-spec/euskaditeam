@@ -6,6 +6,7 @@ import { buildMonthlyReport } from "@/lib/reports/build-monthly";
 import { PhrasePicker } from "@/lib/reports/phrases";
 import { personalBests } from "@/lib/reports/records";
 import type { ReportInput } from "@/lib/reports/input";
+import { clientCards } from "@/lib/reports/layout";
 import type { ReportCard } from "@/lib/reports/types";
 
 // Datos reales de entrenamiento anonimizados (los de las hojas aprobadas).
@@ -61,7 +62,8 @@ test("semanal: 7 mejores marcas contra la mejor marca histórica", () => {
 
 test("semanal: tarjetas como en la hoja aprobada", () => {
   const r = buildWeeklyReport(input("weekly"));
-  assert.deepEqual(r.cards.map((c) => c.type), ["opening", "improvement", "adherence", "weight", "focus"]);
+  // Lo que ve el cliente por defecto (sin elecciones del coach).
+  assert.deepEqual(clientCards(r.cards, null).map((c) => c.type), ["opening", "improvement", "adherence", "weight", "focus"]);
 
   // 3+ récords: festeja aunque la asistencia fue 3 de 4.
   assert.equal(r.cards[0].phrase, "Excelente el trabajo de esta semana! Orgulloso del progreso que estás teniendo👏🏻👏🏻");
@@ -101,7 +103,7 @@ test("semanal: tarjetas como en la hoja aprobada", () => {
 
 test("mensual: tarjetas como en la hoja aprobada", () => {
   const r = buildMonthlyReport(input("monthly"));
-  assert.deepEqual(r.cards.map((c) => c.type), [
+  assert.deepEqual(clientCards(r.cards, null).map((c) => c.type), [
     "opening",
     "count",
     "records",
@@ -207,4 +209,77 @@ test("semana sin entrenamientos: apertura amable y aviso al coach", () => {
   const r = buildWeeklyReport({ ...i, sessions: i.sessions.filter((s) => s.date < "2026-10-12") });
   assert.equal(r.cards[0].phraseKey?.startsWith("opening.none"), true);
   assert.ok(r.notices[0].startsWith("Sin entrenamientos esta semana"));
+});
+
+// --- Período libre y catálogo de tarjetas (oct-2026) ---
+
+function customInput(start: string, end: string): ReportInput {
+  const i = input("monthly");
+  return {
+    ...i,
+    kind: "custom",
+    periodStart: start,
+    periodEnd: end,
+    sessions: fx.sessions.filter((s: { date: string }) => s.date <= end),
+    bestSets: fx.bestSets.filter((s: { date: string }) => s.date <= end),
+    weights: fx.weights.filter((w: { date: string }) => w.date <= end),
+  };
+}
+
+test("período libre: récords contra la mejor marca anterior al inicio del rango", () => {
+  const i = customInput("2026-09-14", "2026-10-02");
+  const r = buildMonthlyReport(i);
+  const expected = personalBests(i.bestSets, "2026-09-14", "2026-10-02");
+  assert.equal(card(r.cards, "records").value, expected.length);
+  assert.equal(card(r.cards, "improvement").exercise, expected[0].exerciseName);
+});
+
+test("período libre: portada, conteo, volumen contra el período anterior de igual duración", () => {
+  const r = buildMonthlyReport(customInput("2026-09-14", "2026-10-02"));
+  assert.deepEqual(card(r.cards, "opening").words, ["Tu", "período"]);
+  assert.deepEqual(card(r.cards, "closing").words, ["Tu", "período"]);
+  assert.equal(card(r.cards, "count").kicker, "En este período");
+  const vol = card(r.cards, "volume");
+  assert.equal(vol.previous.label, "Período anterior");
+  assert.equal(vol.kicker, "Contra el período anterior");
+  // 19 días: el anterior es 26/08 a 13/09
+  const prevSessions = fx.sessions.filter((s: { date: string }) => s.date >= "2026-08-26" && s.date <= "2026-09-13");
+  assert.equal(vol.previous.sessions, prevSessions.length);
+  assert.ok(r.cards.some((c) => c.type === "focus" && c.key === "focus"));
+});
+
+test("período libre: ninguna frase habla de 'el mes' ni de 'la semana'", () => {
+  const r = buildMonthlyReport(customInput("2026-09-14", "2026-10-02"));
+  for (const c of r.cards) {
+    const p = (c.phrase ?? "").replace("semana a semana", "");
+    assert.equal(/\b(mes|semana)\b/i.test(p), false, p);
+  }
+});
+
+test("catálogo: opcionales disponibles pero apagadas por defecto", () => {
+  const monthly = buildMonthlyReport(input("monthly"));
+  const vol = card(monthly.cards, "volume");
+  assert.equal(vol.on, false); // bajó −25 %: el coach decide
+  assert.equal(vol.phrase, "Menos volumen que agosto, y está bien: hay meses así. Seguimos");
+  const exercises = monthly.cards.filter((c) => c.type === "exercise");
+  assert.ok(exercises.length > 5);
+  assert.ok(exercises.every((c) => c.on === false && c.key?.startsWith("exercise:")));
+
+  const weekly = buildWeeklyReport(input("weekly"));
+  for (const type of ["volume", "records", "goal"] as const) {
+    assert.equal(card(weekly.cards, type).on, false, type);
+  }
+  // Claves únicas: con ellas se guardan las elecciones del coach.
+  const keys = weekly.cards.map((c) => c.key);
+  assert.equal(new Set(keys).size, keys.length);
+});
+
+test("No mostrar peso: la tarjeta de peso ni siquiera se puede prender", () => {
+  const i = input("weekly");
+  const r = buildWeeklyReport({ ...i, client: { ...i.client, hideWeight: true } });
+  assert.equal(r.cards.some((c) => c.type === "weight"), false);
+  assert.equal(
+    clientCards(r.cards, { order: [], enabled: { weight: true } }).some((c) => c.type === "weight"),
+    false
+  );
 });

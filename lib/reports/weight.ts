@@ -55,39 +55,63 @@ export function weeklySeries(
   return out;
 }
 
-// Tarjeta de peso del reporte SEMANAL.
-export function weeklyWeightCard(params: {
+type RangeLabels = { kicker: string; detail: string; detailShort: string; last: string };
+
+export const WEEK_LABELS: RangeLabels = {
+  kicker: "Tu peso esta semana",
+  detail: "Promedio de la semana contra el de la semana anterior",
+  detailShort: "Promedio de la semana",
+  last: "esta semana",
+};
+
+export const CUSTOM_LABELS: RangeLabels = {
+  kicker: "Tu peso en este período",
+  detail: "Promedio de este período contra el anterior de igual duración",
+  detailShort: "Promedio de este período",
+  last: "fin del período",
+};
+
+// Tarjeta de peso de un rango (semanal o libre): promedio del rango contra
+// el del período anterior de igual duración. Si el cambio es chico, el
+// titular es la tendencia desde el inicio de la serie (aprobado oct-2026).
+export function rangeWeightCard(params: {
   weights: WeightLog[];
-  periodStart: string;
-  periodEnd: string;
+  start: string;
+  end: string;
+  prevStart: string;
+  prevEnd: string;
   direction: WeightDirection;
   picker: PhrasePicker;
-}): ReportCard | null {
-  const { weights, periodStart, periodEnd, direction, picker } = params;
-  const current = averageBetween(weights, periodStart, periodEnd);
-  if (!current) return null;
-  const previous = averageBetween(weights, addDays(periodStart, -7), addDays(periodStart, -1));
-  const series = weeklySeries(weights, periodStart, periodEnd);
-  const weekly = previous ? round1(current.kg - previous.kg) : null;
+  labels: RangeLabels;
+}): { card: ReportCard | null; deltaKg: number | null } {
+  const { weights, start, end, prevStart, prevEnd, direction, picker, labels } = params;
+  const current = averageBetween(weights, start, end);
+  if (!current) return { card: null, deltaKg: null };
+  const previous = averageBetween(weights, prevStart, prevEnd);
+  const series = weeklySeries(weights, mondayKeyFor(end), end);
+  const delta = previous ? round1(current.kg - previous.kg) : null;
   const link = { label: "Ver en Mi Cuerpo", href: "/client/body?tab=peso" };
-  const base = { type: "weight" as const, theme: "light" as const, series, lastLabel: "esta semana", link };
+  const base = { type: "weight" as const, key: "weight", theme: "light" as const, series, lastLabel: labels.last, link };
 
-  if (weekly != null && Math.abs(weekly) >= SMALL_CHANGE_KG) {
-    const vars = { delta_peso: fmtKg(Math.abs(weekly)), peso: fmtKg(current.kg) };
-    const festeja = (weekly < 0 && direction === "lose") || (weekly > 0 && direction === "gain");
-    const picked = festeja ? picker.pick(weekly < 0 ? "weight.down" : "weight.up", vars) : null;
+  if (delta != null && Math.abs(delta) >= SMALL_CHANGE_KG) {
+    const vars = { delta_peso: fmtKg(Math.abs(delta)), peso: fmtKg(current.kg) };
+    const festeja = (delta < 0 && direction === "lose") || (delta > 0 && direction === "gain");
+    const picked = festeja ? picker.pick(delta < 0 ? "weight.down" : "weight.up", vars) : null;
     return {
-      ...base,
-      kicker: "Tu peso esta semana",
-      headline: festeja ? signed(weekly) : fmtKg(current.kg),
-      fromTo: `${fmtKg(previous!.kg)} kg → ${fmtKg(current.kg)} kg`,
-      detail: "Promedio de la semana contra el de la semana anterior",
-      phrase: picked?.text,
-      phraseKey: picked?.key,
+      deltaKg: delta,
+      card: {
+        ...base,
+        kicker: labels.kicker,
+        headline: festeja ? signed(delta) : fmtKg(current.kg),
+        fromTo: `${fmtKg(previous!.kg)} kg → ${fmtKg(current.kg)} kg`,
+        detail: labels.detail,
+        phrase: picked?.text,
+        phraseKey: picked?.key,
+      },
     };
   }
 
-  // Cambio semanal chico: titular = tendencia desde el inicio de la serie.
+  // Cambio chico: titular = tendencia desde el inicio de la serie.
   const first = series[0];
   const trend = first && series.length >= 3 ? round1(current.kg - first.kg) : null;
   if (trend != null && Math.abs(trend) >= SMALL_CHANGE_KG && (trend < 0 ? direction === "lose" : direction === "gain")) {
@@ -97,27 +121,54 @@ export function weeklyWeightCard(params: {
         ? picker.pick("weight.trend_down", { peso: fmtKg(current.kg), delta_peso: fmtKg(Math.abs(trend)), mes_inicio: mes })
         : null;
     return {
-      ...base,
-      kicker: `Tu peso desde ${mes}`,
-      headline: signed(trend),
-      fromTo: `${fmtKg(first.kg)} kg → ${fmtKg(current.kg)} kg`,
-      detail: null,
-      phrase: picked?.text,
-      phraseKey: picked?.key,
+      deltaKg: delta,
+      card: {
+        ...base,
+        kicker: `Tu peso desde ${mes}`,
+        headline: signed(trend),
+        fromTo: `${fmtKg(first.kg)} kg → ${fmtKg(current.kg)} kg`,
+        detail: null,
+        phrase: picked?.text,
+        phraseKey: picked?.key,
+      },
     };
   }
 
-  const stable = weekly != null && Math.abs(weekly) < STABLE_KG;
+  const stable = delta != null && Math.abs(delta) < STABLE_KG;
   const picked = stable ? picker.pick("weight.stable", { peso: fmtKg(current.kg) }) : null;
   return {
-    ...base,
-    kicker: "Tu peso esta semana",
-    headline: fmtKg(current.kg),
-    fromTo: previous ? `${fmtKg(previous.kg)} kg → ${fmtKg(current.kg)} kg` : null,
-    detail: "Promedio de la semana",
-    phrase: picked?.text,
-    phraseKey: picked?.key,
+    deltaKg: delta,
+    card: {
+      ...base,
+      kicker: labels.kicker,
+      headline: fmtKg(current.kg),
+      fromTo: previous ? `${fmtKg(previous.kg)} kg → ${fmtKg(current.kg)} kg` : null,
+      detail: labels.detailShort,
+      phrase: picked?.text,
+      phraseKey: picked?.key,
+    },
   };
+}
+
+// Tarjeta de peso del reporte SEMANAL (lunes a viernes contra la semana
+// anterior completa).
+export function weeklyWeightCard(params: {
+  weights: WeightLog[];
+  periodStart: string;
+  periodEnd: string;
+  direction: WeightDirection;
+  picker: PhrasePicker;
+}): ReportCard | null {
+  return rangeWeightCard({
+    weights: params.weights,
+    start: params.periodStart,
+    end: params.periodEnd,
+    prevStart: addDays(params.periodStart, -7),
+    prevEnd: addDays(params.periodStart, -1),
+    direction: params.direction,
+    picker: params.picker,
+    labels: WEEK_LABELS,
+  }).card;
 }
 
 // Tarjeta de peso del reporte MENSUAL: promedio del mes contra el del mes
@@ -141,6 +192,7 @@ export function monthlyWeightCard(params: {
   );
   const base = {
     type: "weight" as const,
+    key: "weight",
     theme: "light" as const,
     series,
     lastLabel: `fin de ${mes}`,

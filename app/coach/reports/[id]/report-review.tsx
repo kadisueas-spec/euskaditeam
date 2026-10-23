@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AlertTriangle, RefreshCw } from "lucide-react";
@@ -12,9 +12,14 @@ import type { ExtraSlide } from "@/components/reports/report-player";
 import { whenLabel } from "@/lib/reports/format";
 import type { CoachReportDetail } from "@/lib/supabase/progress-reports";
 import type { ReportCard } from "@/lib/reports/types";
+import { clientCards, withCoachNote } from "@/lib/reports/layout";
+import type { CardLayout } from "@/lib/reports/layout";
+import { CardsPanel } from "./cards-panel";
+import { ChangePeriod } from "./change-period";
 import {
   discardReport,
   regenerateReportAction,
+  saveCardLayout,
   saveReportNote,
   scheduleReportForSunday,
   sendReportNow,
@@ -23,17 +28,9 @@ import {
 
 const HOURS = Array.from({ length: 24 }, (_, h) => h);
 
-// Misma ubicación que usa sendReport (lib/reports/service.ts): la nota va
-// antes de la imagen para compartir.
-function withNote(cards: ReportCard[], note: string, coachName: string): ReportCard[] {
-  const text = note.trim();
-  if (!text) return cards;
-  const card: ReportCard = { type: "coach-note", theme: "oxblood", text, coachName, coachAvatarUrl: null };
-  const i = cards.findIndex((c) => c.type === "share");
-  return i >= 0 ? [...cards.slice(0, i), card, ...cards.slice(i)] : [...cards, card];
-}
+const LAYOUT_SAVE_DELAY_MS = 500;
 
-export function ReportReview({ report }: { report: CoachReportDetail }) {
+export function ReportReview({ report, today }: { report: CoachReportDetail; today: string }) {
   const router = useRouter();
   const [note, setNote] = useState(report.coachNote);
   const [hour, setHour] = useState(report.sundayHour);
@@ -42,11 +39,33 @@ export function ReportReview({ report }: { report: CoachReportDetail }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [pending, startTransition] = useTransition();
   const editable = report.status === "draft" || report.status === "scheduled";
+  const [layout, setLayout] = useState<CardLayout | null>(report.cardLayout);
+  const [layoutState, setLayoutState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => {
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+  }, []);
 
-  const previewCards = useMemo(
-    () => (editable ? withNote(report.cards, note, "Vos") : report.cards),
-    [editable, report.cards, note]
-  );
+  // Vista previa en vivo: las tarjetas prendidas en el orden elegido + la
+  // nota, en el mismo lugar que las deja sendReport (lib/reports/layout.ts).
+  const previewCards = useMemo(() => {
+    if (!editable) return report.cards;
+    const text = note.trim();
+    const noteCard: ReportCard | null = text
+      ? { type: "coach-note", theme: "oxblood", text, coachName: "Vos", coachAvatarUrl: null }
+      : null;
+    return withCoachNote(clientCards(report.cards, layout), noteCard);
+  }, [editable, report.cards, layout, note]);
+
+  function changeLayout(next: CardLayout) {
+    setLayout(next);
+    setLayoutState("saving");
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      const result = await saveCardLayout(report.id, next);
+      setLayoutState(result.error ? "error" : "saved");
+    }, LAYOUT_SAVE_DELAY_MS);
+  }
 
   const privateSlide: ExtraSlide = {
     key: "private",
@@ -97,7 +116,7 @@ export function ReportReview({ report }: { report: CoachReportDetail }) {
       <div className="mx-auto w-full max-w-[390px] shrink-0 lg:mx-0">
         <div className="h-[760px] overflow-hidden rounded-[40px] border-4 border-[#1e1e1e] bg-[#080808]">
           <ReportPlayer
-            key={previewCards.length}
+            key={previewCards.map((c) => c.key ?? c.type).join("|")}
             cards={previewCards}
             title={report.title}
             periodLabel={report.periodLabel}
@@ -128,6 +147,8 @@ export function ReportReview({ report }: { report: CoachReportDetail }) {
           </p>
         ) : (
           <>
+            <ChangePeriod reportId={report.id} start={report.periodStart} end={report.periodEnd} today={today} />
+
             {report.status === "scheduled" && report.scheduledFor && (
               <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e8001c]/40 bg-[#e8001c]/10 p-4 text-sm">
                 <span className="text-white">Programado para el {whenLabel(report.scheduledFor)}.</span>
@@ -166,6 +187,14 @@ export function ReportReview({ report }: { report: CoachReportDetail }) {
                 </ul>
               </section>
             )}
+
+            <CardsPanel
+              cards={report.cards}
+              layout={layout}
+              onChange={changeLayout}
+              hideWeight={report.hideWeight}
+              saveState={layoutState}
+            />
 
             <section className="flex flex-col gap-2">
               <label htmlFor="coach-note" className="text-sm font-semibold text-white">

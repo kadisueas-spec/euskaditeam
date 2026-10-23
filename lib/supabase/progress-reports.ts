@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { monthYearLabel, weekRangeLabel } from "@/lib/reports/format";
 import type { ReportCard, ReportKind } from "@/lib/reports/types";
+import { parseCardLayout } from "@/lib/reports/layout";
+import type { CardLayout } from "@/lib/reports/layout";
 
 // Lecturas de reportes de progreso con la sesión del usuario (RLS): el
 // coach ve los de sus clientes; el cliente, solo los suyos ENVIADOS. Las
@@ -10,11 +12,11 @@ import type { ReportCard, ReportKind } from "@/lib/reports/types";
 export type ReportStatus = "draft" | "scheduled" | "sent" | "discarded";
 
 export function reportPeriodLabel(kind: ReportKind, periodStart: string, periodEnd: string): string {
-  return kind === "weekly" ? weekRangeLabel(periodStart, periodEnd) : monthYearLabel(periodStart);
+  return kind === "monthly" ? monthYearLabel(periodStart) : weekRangeLabel(periodStart, periodEnd);
 }
 
 export function reportTitle(kind: ReportKind): string {
-  return kind === "weekly" ? "Tu semana" : "Tu mes";
+  return kind === "weekly" ? "Tu semana" : kind === "monthly" ? "Tu mes" : "Tu período";
 }
 
 // Un mensual sin la tarjeta del cierre: el coach todavía no escribió (o no
@@ -103,8 +105,13 @@ export type CoachReportDetail = {
   title: string;
   periodLabel: string;
   periodStart: string;
+  periodEnd: string;
   status: ReportStatus;
+  // Catálogo completo (prendidas y apagadas); en uno enviado, lo que se envió.
   cards: ReportCard[];
+  cardLayout: CardLayout | null;
+  // "No mostrar peso en reportes": la tarjeta de peso no existe en el catálogo.
+  hideWeight: boolean;
   coachNote: string;
   notices: string[];
   scheduledFor: string | null;
@@ -121,12 +128,18 @@ export async function getCoachReport(reportId: string): Promise<CoachReportDetai
     supabase
       .from("progress_reports")
       .select(
-        `id, client_id, kind, period_start, period_end, status, scheduled_for, sent_at, opened_at, completed_at, cards, coach_note,
-         clients ( profiles!clients_user_id_fkey ( full_name ) ),
+        `id, client_id, kind, period_start, period_end, status, scheduled_for, sent_at, opened_at, completed_at, cards, coach_note, card_layout,
+         clients ( hide_weight_in_reports, profiles!clients_user_id_fkey ( full_name ) ),
          progress_report_private ( notices )`
       )
       .eq("id", reportId)
-      .maybeSingle<CoachRow & { coach_note: string | null }>(),
+      .maybeSingle<
+        Omit<CoachRow, "clients"> & {
+          coach_note: string | null;
+          card_layout: unknown;
+          clients: { hide_weight_in_reports: boolean; profiles: { full_name: string | null } | null } | null;
+        }
+      >(),
     supabase.auth.getUser(),
   ]);
   if (!r) return null;
@@ -144,8 +157,11 @@ export async function getCoachReport(reportId: string): Promise<CoachReportDetai
     title: reportTitle(r.kind),
     periodLabel: reportPeriodLabel(r.kind, r.period_start, r.period_end),
     periodStart: r.period_start,
+    periodEnd: r.period_end,
     status: r.status,
     cards: r.cards,
+    cardLayout: parseCardLayout(r.card_layout),
+    hideWeight: r.clients?.hide_weight_in_reports ?? false,
     coachNote: r.coach_note ?? "",
     notices: r.progress_report_private?.notices ?? [],
     scheduledFor: r.scheduled_for,
