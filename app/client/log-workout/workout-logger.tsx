@@ -173,6 +173,7 @@ function repsRangeLabel(min: number | null, max: number | null): string | null {
 function statCardsFor(exercise: MyRoutineDay["exercises"][number]): { label: string; value: string }[] {
   const t = exercise.tracking;
   const side = t.perSide ? " por lado" : "";
+  if (t.trackingType === "check") return [{ label: "Marcar hecho", value: "✓" }];
   if (t.trackingType === "cardio") {
     const cards = [{ label: "Minutos", value: exercise.minutesTarget != null ? String(exercise.minutesTarget) : "—" }];
     if (exercise.intensityTarget != null) {
@@ -476,6 +477,9 @@ export function WorkoutLogger({
   const isCardio = tracking.trackingType === "cardio";
   const isTime = tracking.trackingType === "time";
   const isBodyweight = tracking.trackingType === "bodyweight_reps";
+  // "Solo marcar hecho" (etapa 5): una serie sin valores; completa el día,
+  // no suma volumen ni récords.
+  const isCheck = tracking.trackingType === "check";
   const isLastExercise = exerciseIndex === day.exercises.length - 1;
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
@@ -740,9 +744,9 @@ export function WorkoutLogger({
       setNumber,
       // Peso + reps: el peso; peso corporal e isométrico: kilos extra
       // (opcionales); cardio y asistidos: sin kilos.
-      weightKg: isCardio || tracking.assistanceUnit ? null : parseDecimalInput(weight),
-      reps: isTime || isCardio ? null : reps ? Number(reps) : null,
-      rir: isTime || isCardio ? null : rir !== "" ? Number(rir) : null,
+      weightKg: isCardio || isCheck || tracking.assistanceUnit ? null : parseDecimalInput(weight),
+      reps: isTime || isCardio || isCheck ? null : reps ? Number(reps) : null,
+      rir: isTime || isCardio || isCheck ? null : rir !== "" ? Number(rir) : null,
       ...(isWeightReps
         ? {}
         : {
@@ -816,7 +820,7 @@ export function WorkoutLogger({
     // perfil, no arranca — instanceId nuevo en cada serie para que
     // RestTimerBar sepa que es un período de descanso distinto y no algo
     // para resumir desde localStorage.
-    if (restTimerPrefs.enabled && !isCardio && exercise.restSeconds && exercise.restSeconds > 0) {
+    if (restTimerPrefs.enabled && !isCardio && !isCheck && exercise.restSeconds && exercise.restSeconds > 0) {
       setRestTimer({
         routineExerciseId: exercise.id,
         restSeconds: exercise.restSeconds,
@@ -890,7 +894,8 @@ export function WorkoutLogger({
   }
 
   function startEditingSet(set: CommittedSet) {
-    if (set.pending) return;
+    // Un "hecho" no tiene nada que corregir.
+    if (set.pending || isCheck) return;
     setEditingSetId(set.id);
     const seconds = numOrNull(set.seconds);
     setEditValues({
@@ -1436,6 +1441,11 @@ export function WorkoutLogger({
         </div>
       ) : (
       <>
+      {isCheck ? (
+        <p className="rounded-2xl border border-[#1e1e1e] bg-[#111111] px-4 py-6 text-center text-sm text-[#888888]">
+          Hacelo y marcalo como hecho. No hace falta anotar nada.
+        </p>
+      ) : (
       <div className="flex flex-col items-center justify-center gap-0.5 rounded-2xl border border-[#1e1e1e] bg-[#111111] py-6">
         <p className="font-display text-4xl tracking-widest text-[#e8001c] uppercase">
           Serie {nextSetNumber}
@@ -1444,8 +1454,9 @@ export function WorkoutLogger({
           {nextSetNumber}/{exercise.sets}
         </p>
       </div>
+      )}
 
-      {!isWeightReps ? (
+      {isCheck ? null : !isWeightReps ? (
         <>
           <div data-tour="set-inputs">
             <SetFields
@@ -1587,7 +1598,7 @@ export function WorkoutLogger({
         onClick={handleCompleteSet}
         className="min-h-[56px] w-full font-display text-xl tracking-widest uppercase"
       >
-        Completar serie
+        {isCheck ? "Hecho ✓" : "Completar serie"}
       </Button>
       </>
       )}

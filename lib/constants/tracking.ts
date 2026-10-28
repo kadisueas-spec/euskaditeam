@@ -33,9 +33,8 @@ export const TRACKING_DESCRIPTIONS: Record<TrackingType, string> = {
   check: "Solo se marca como hecho. Cuenta para completar el día, no para volumen ni récords.",
 };
 
-// Tipos que se pueden elegir en el formulario. "check" se suma cuando
-// Entrenar lo sepa registrar (etapa 5 del plan).
-export const SELECTABLE_TRACKING_TYPES: TrackingType[] = ["weight_reps", "bodyweight_reps", "time", "cardio"];
+// Tipos que se pueden elegir en el formulario (todos desde la etapa 5).
+export const SELECTABLE_TRACKING_TYPES: TrackingType[] = ["weight_reps", "bodyweight_reps", "time", "cardio", "check"];
 
 export const ASSISTANCE_LABELS: Record<AssistanceUnit, string> = {
   kg: "Asistido (kg de ayuda)",

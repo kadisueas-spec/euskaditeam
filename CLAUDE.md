@@ -1275,7 +1275,7 @@ momento, no una galería genérica.
       mismas reglas que los CHECK de la base), formulario de ejercicio con
       "Tipo de registro" (`app/coach/exercises/tracking-fields.tsx`), "Por
       lado", asistencia y escala; etiquetas en la biblioteca. "Solo marcar
-      hecho" no se puede elegir todavía (etapa 5).
+      hecho" se habilitó en la etapa 5.
     - Etapa 2 (editor y Entrenar): `components/coach/prescription-fields.tsx`
       (campos según el tipo del ejercicio elegido, compartido por wizard y
       editor: peso corporal sin calentamiento, isométrico "seg. mín/máx",
@@ -1334,6 +1334,13 @@ momento, no una galería genérica.
       e Inicio. Tarjeta de reporte `cardio` ("Tu cardio", `cardioSection`):
       prendida por defecto y solo si hubo cardio; minutos, contra el período
       anterior y por ejercicio; frases `cardio.up` / `cardio.minutes`.
+    - Etapa 5 ("Solo marcar hecho", `check`): se elige en el catálogo.
+      Prescripción "Marcar hecho" (una serie, sin descanso ni
+      calentamiento). En Entrenar: sin campos ni temporizador, botón
+      "Hecho ✓" que guarda una serie sin valores (no se corrige). Cuenta
+      para completar el día (`countsAsTraining` mira todas las series),
+      pero no es serie de trabajo ni suma volumen, tiempo, récords ni
+      sugerencias.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
