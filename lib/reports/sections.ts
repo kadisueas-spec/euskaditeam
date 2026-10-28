@@ -285,3 +285,48 @@ export function effortVolume(sessions: SessionSummary[]): { sets: number; volume
   return { sets: sum(sessions, "setCount"), volume: Math.round(sum(sessions, "volumeKg")) };
 }
 
+
+// --- Minutos de cardio (oct-2026, tipos de registro) ---
+// Prendida por defecto, solo si hubo cardio en el período. Compara con el
+// período anterior (misma duración / mes anterior / semana pasada).
+export function cardioSection(params: {
+  current: SessionSummary[];
+  previous: SessionSummary[];
+  versus: string;
+  picker: PhrasePicker;
+}): ReportCard | null {
+  const byExercise = new Map<string, { name: string; seconds: number }>();
+  for (const s of params.current) {
+    for (const c of s.cardio ?? []) {
+      const e = byExercise.get(c.exerciseId) ?? { name: c.exerciseName, seconds: 0 };
+      e.seconds += c.seconds;
+      byExercise.set(c.exerciseId, e);
+    }
+  }
+  const seconds = [...byExercise.values()].reduce((a, e) => a + e.seconds, 0);
+  if (seconds <= 0) return null;
+  const minutes = Math.round(seconds / 60);
+  const prevSeconds = params.previous.reduce(
+    (a, s) => a + (s.cardio ?? []).reduce((b, c) => b + c.seconds, 0),
+    0
+  );
+  const previousMinutes = prevSeconds > 0 ? Math.round(prevSeconds / 60) : null;
+  const up = previousMinutes != null && minutes > previousMinutes;
+  const picked = up
+    ? params.picker.pick("cardio.up", { minutos: minutes, delta_min: minutes - previousMinutes!, antes: params.versus })
+    : params.picker.pick("cardio.minutes", { minutos: minutes });
+  return {
+    type: "cardio",
+    key: "cardio",
+    theme: "card",
+    minutes,
+    previousMinutes,
+    versus: params.versus,
+    exercises: [...byExercise.values()]
+      .map((e) => ({ name: e.name, minutes: Math.round(e.seconds / 60) }))
+      .sort((a, b) => b.minutes - a.minutes),
+    phrase: picked?.text,
+    phraseKey: picked?.key,
+    link: STATS_LINK,
+  };
+}

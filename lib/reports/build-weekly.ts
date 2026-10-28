@@ -15,6 +15,7 @@ import {
   recordsSection,
   streakSection,
   volumeSection,
+  cardioSection,
 } from "@/lib/reports/sections";
 import { addDays, daysBetween, fmtKg, fmtNum, signed } from "@/lib/reports/format";
 import type { ReportInput } from "@/lib/reports/input";
@@ -197,6 +198,8 @@ export function buildWeeklyReport(input: ReportInput): BuiltReport {
     picker,
   });
   if (volume.card) cards.push({ ...volume.card, on: false });
+  const cardio = cardioSection({ current: week, previous: prevWeek, versus: "la semana pasada", picker });
+  if (cardio) cards.push(cardio);
   const streak = streakSection(input, false);
   if (streak) cards.push(streak);
   const records = recordsSection({ pbs, picker, on: false, excludeTop: false });

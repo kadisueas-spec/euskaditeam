@@ -89,7 +89,7 @@ export async function getCoachExerciseSessionSeries(): Promise<ExerciseSessionSe
     .from("workout_set_logs")
     .select(
       `workout_log_id, weight_kg, reps_completed, rir_actual,
-       routine_exercises ( exercise_id, exercises ( name, muscle_group ) ),
+       routine_exercises ( exercise_id, exercises ( name, muscle_group, tracking_type ) ),
        workout_logs!inner ( workout_date, coach_id )`
     )
     .eq("workout_logs.coach_id", profile.id)

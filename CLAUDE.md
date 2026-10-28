@@ -1320,6 +1320,20 @@ momento, no una galería genérica.
       solo para peso + reps. El distintivo "¡Nuevo récord!" por serie
       (`checkPersonalRecord`, peso máximo histórico) solo aplica a peso +
       reps.
+    - Etapa 4 (reportes y estadísticas): `lib/utils/set-volume.ts` es el
+      ÚNICO cálculo de volumen (`setVolumeKg`): peso + reps = peso × reps,
+      × 2 por lado; peso corporal = lastre × reps (× 2 por lado); asistido,
+      isométrico, cardio y check = 0. `setTime`: minutos de cardio y
+      segundos de isométricos (× 2 por lado); `countsAsWorkSet`: un check
+      no es serie de trabajo (sí completa el día). Lo usan los reportes
+      (`summarizeSessions`: `SessionSummary.cardio`/`isometricSeconds`),
+      Métricas del coach y Estadísticas del cliente (`metrics.ts`, tarjetas
+      "Minutos de cardio" e "Isométricos" si hay datos; gráficos de peso
+      por ejercicio solo para peso + reps), el resumen de sesión
+      (`finishWorkout`, también Mi Entrenamiento), la celebración semanal
+      e Inicio. Tarjeta de reporte `cardio` ("Tu cardio", `cardioSection`):
+      prendida por defecto y solo si hubo cardio; minutos, contra el período
+      anterior y por ejercicio; frases `cardio.up` / `cardio.minutes`.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

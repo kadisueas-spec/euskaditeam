@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
+import { countsAsWorkSet, setTime, setVolumeKg } from "@/lib/utils/set-volume";
 import { countsAsTraining } from "@/lib/utils/training-sessions";
 import { paraguayDateOf } from "@/lib/utils/today";
 import { addDays, daysBetween } from "@/lib/reports/format";
@@ -75,10 +76,28 @@ export function summarizeSessions(rows: SessionRow[]): { sessions: SessionSummar
   for (const r of rows) {
     if (!countsAsTraining({ isCompleted: r.is_completed, setCount: r.workout_set_logs.length })) continue;
     let volume = 0;
+    let workSets = 0;
+    let isometricSeconds = 0;
+    const cardio = new Map<string, { exerciseId: string; exerciseName: string; seconds: number }>();
     for (const s of r.workout_set_logs) {
-      if (s.weight_kg != null && s.reps_completed != null) volume += s.weight_kg * s.reps_completed;
+      const tracking = trackingFromRow(s.routine_exercises?.exercises ?? {});
+      volume += setVolumeKg(tracking, s.weight_kg, s.reps_completed);
+      if (countsAsWorkSet(tracking)) workSets++;
+      const time = setTime(tracking, s.duration_seconds ?? null);
+      isometricSeconds += time.isometricSeconds;
       const ex = s.routine_exercises;
+      if (time.cardioSeconds > 0 && ex?.exercise_id) {
+        const c = cardio.get(ex.exercise_id) ?? {
+          exerciseId: ex.exercise_id,
+          exerciseName: ex.exercises?.name ?? "Cardio",
+          seconds: 0,
+        };
+        c.seconds += time.cardioSeconds;
+        cardio.set(ex.exercise_id, c);
+      }
       if (!ex?.exercise_id) continue;
+      // "Check" no tiene mejor marca
+      if (tracking.trackingType === "check") continue;
       const key = `${r.workout_date}|${ex.exercise_id}`;
       const candidate: DayBestSet = {
         date: r.workout_date,
@@ -101,8 +120,10 @@ export function summarizeSessions(rows: SessionRow[]): { sessions: SessionSummar
       date: r.workout_date,
       dayId: r.routine_day_id,
       dayName: r.routine_days?.name ?? null,
-      setCount: r.workout_set_logs.length,
+      setCount: workSets,
       volumeKg: volume,
+      cardio: [...cardio.values()],
+      isometricSeconds,
     });
   }
   return { sessions, bestSets: [...best.values()] };

@@ -48,6 +48,7 @@ const EDITABLE: ReportCard["type"][] = [
   "count",
   "records",
   "volume",
+  "cardio",
   "weight",
   "body",
   "goal",
@@ -198,6 +199,8 @@ export function cardLabel(card: ReportCard): string {
       return `Volumen · ${card.percent > 0 ? "+" : ""}${card.percent} %`;
     case "streak":
       return `Racha · ${card.value} ${card.unit}`;
+    case "cardio":
+      return `Minutos de cardio · ${card.minutes}`;
     case "weight":
       return `Peso · ${card.headline} kg`;
     case "body":

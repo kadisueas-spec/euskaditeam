@@ -3,6 +3,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
 import { trackingSetColumns, validateSetInput } from "@/lib/utils/validate-set-input";
+import { countsAsWorkSet, setVolumeKg, trackingOfSetRow, type SetVolumeRow } from "@/lib/utils/set-volume";
+import { TRACKING_COLUMNS } from "@/lib/constants/tracking";
 import type {
   AddSetInput,
   AddSetResult,
@@ -240,8 +242,9 @@ export async function finishTrainingWorkout(
       .single(),
     supabase
       .from("workout_set_logs")
-      .select("weight_kg, reps_completed")
-      .eq("workout_log_id", input.workoutLogId),
+      .select(`weight_kg, reps_completed, routine_exercises ( exercises ( ${TRACKING_COLUMNS} ) )`)
+      .eq("workout_log_id", input.workoutLogId)
+      .returns<SetVolumeRow[]>(),
   ]);
 
   const finishedAt = now.toISOString();
@@ -261,16 +264,19 @@ export async function finishTrainingWorkout(
     return { error: "No se pudo finalizar el entrenamiento." };
   }
 
+  // Tipos de registro (oct-2026): volumen según el tipo (setVolumeKg) y
+  // las series "check" no cuentan como series de trabajo.
   const totalVolume = (sets ?? []).reduce(
-    (sum, s) => sum + (s.weight_kg != null && s.reps_completed != null ? s.weight_kg * s.reps_completed : 0),
+    (sum, s) => sum + setVolumeKg(trackingOfSetRow(s), s.weight_kg, s.reps_completed),
     0
   );
+  const workSets = (sets ?? []).filter((s) => countsAsWorkSet(trackingOfSetRow(s))).length;
   const durationMinutes = workoutLog?.started_at
     ? Math.max(1, Math.round((new Date(finishedAt).getTime() - new Date(workoutLog.started_at).getTime()) / 60000))
     : 0;
 
   const summary: WorkoutSummary = {
-    totalSets: (sets ?? []).length,
+    totalSets: workSets,
     totalVolume: Math.round(totalVolume),
     durationMinutes,
   };

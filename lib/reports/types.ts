@@ -64,6 +64,16 @@ export type ReportCard =
       current: { label: string; volumeKg: number; sessions: number };
     })
   | (Base & { type: "streak"; value: number; unit: string; detail: string })
+  // Minutos de cardio del período (oct-2026, tipos de registro): prendida
+  // por defecto y solo si hubo cardio. previousMinutes null = no hubo cardio
+  // en el período anterior.
+  | (Base & {
+      type: "cardio";
+      minutes: number;
+      previousMinutes: number | null;
+      versus: string; // "la semana pasada", "agosto", "el período anterior"
+      exercises: { name: string; minutes: number }[];
+    })
   | (Base & {
       type: "weight";
       kicker: string;

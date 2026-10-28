@@ -15,6 +15,7 @@ import {
   recordsSection,
   streakSection,
   volumeSection,
+  cardioSection,
 } from "@/lib/reports/sections";
 import { capitalize, daysBetween, fmtNum, monthName, monthWords, weekRangeLabel } from "@/lib/reports/format";
 import { plannedDaysInRange } from "@/lib/utils/planned-days";
@@ -131,6 +132,15 @@ export function buildPeriodReport(input: ReportInput): BuiltReport {
   });
   if (vol.card) cards.push(vol.card);
   if (vol.notice) notices.push(vol.notice);
+
+  // --- Minutos de cardio: prendida, solo si hubo cardio ---
+  const cardio = cardioSection({
+    current: period,
+    previous,
+    versus: custom ? "el período anterior" : mesAnterior,
+    picker,
+  });
+  if (cardio) cards.push(cardio);
 
   // --- Racha: prendida si es récord o 3+ semanas seguidas ---
   const streak = streakSection(input, true);

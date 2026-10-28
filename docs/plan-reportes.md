@@ -315,3 +315,14 @@ Reglas de armado:
 Frases nuevas:
 - Apertura semanal con 3+ récords: "Excelente el trabajo de esta semana! Orgulloso del progreso que estás teniendo👏🏻👏🏻" (aprobada, texto de Luis)
 - Peso, tendencia (cambio semanal chico): "{peso_promedio_semana} kg esta semana, {delta_peso} menos que en {mes_inicio}. Seguimos así 👏🏻" (aprobada; es el promedio semanal, nunca "hoy")
+
+## Tipos de registro (oct-2026)
+
+- Volumen: solo kilos de peso + reps (× 2 si el ejercicio es "por lado") y el lastre de los ejercicios de peso corporal. Asistidos, isométricos, cardio y "solo marcar hecho" no suman kilos.
+- Mejores marcas por tipo (contra la mejor marca histórica anterior al período): menos ayuda en asistidos, más lastre o reps en peso corporal, más segundos en isométricos, más nivel/minutos/km en cardio. Frases `record.typed`, con la mejora ya escrita:
+  1. {ejercicio}: {mejora}. Todo el esfuerzo vale la pena 👏🏻
+  2. Nueva mejor marca en {ejercicio}: {mejora}. Vamos por más
+  3. {ejercicio}, {mejora} contra tu mejor marca. Así se progresa
+- Tarjeta "Tu cardio" (minutos de cardio): prendida por defecto, solo si hubo cardio en el período. Frases:
+  - `cardio.up` (subieron contra el período anterior): "{minutos} minutos de cardio, {delta_min} más que {antes}. El corazón también se entrena 👏🏻" / "Le sumaste {delta_min} minutos de cardio a {antes}. Eso se nota en todo lo demás"
+  - `cardio.minutes`: "{minutos} minutos de cardio. El corazón también se entrena 👏🏻" / "Sumaste {minutos} minutos de cardio. Eso se nota en todo lo demás" / "{minutos} minutos de cardio encima. Así se construye la base"

@@ -75,6 +75,16 @@ export const PHRASE_BANK = {
     { text: "Nueva mejor marca en {ejercicio}: {mejora}. Vamos por más" },
     { text: "{ejercicio}, {mejora} contra tu mejor marca. Así se progresa" },
   ],
+  // Minutos de cardio (oct-2026). {antes} = "la semana pasada", "agosto"...
+  "cardio.up": [
+    { text: "{minutos} minutos de cardio, {delta_min} más que {antes}. El corazón también se entrena 👏🏻" },
+    { text: "Le sumaste {delta_min} minutos de cardio a {antes}. Eso se nota en todo lo demás" },
+  ],
+  "cardio.minutes": [
+    { text: "{minutos} minutos de cardio. El corazón también se entrena 👏🏻" },
+    { text: "Sumaste {minutos} minutos de cardio. Eso se nota en todo lo demás" },
+    { text: "{minutos} minutos de cardio encima. Así se construye la base" },
+  ],
   "record.none": [
     { text: "Esta semana fueron {series} series y {volumen} kg movidos. El progreso es más que números, lo diste todo", scope: "weekly" },
     { text: "{series} series hechas. Cumpliste con lo que pudiste y eso es lo que importa" },

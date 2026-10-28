@@ -12,8 +12,12 @@ export type SessionSummary = {
   date: string;
   dayId: string | null;
   dayName: string | null;
-  setCount: number;
+  setCount: number; // series de trabajo (un "check" no cuenta)
   volumeKg: number;
+  // Tipos de registro (oct-2026): tiempo de cardio por ejercicio (segundos)
+  // e isométricos en total. Opcionales: los fixtures de antes no los tienen.
+  cardio?: { exerciseId: string; exerciseName: string; seconds: number }[];
+  isometricSeconds?: number;
 };
 
 export type ReportInput = {

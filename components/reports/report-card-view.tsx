@@ -283,6 +283,54 @@ export function ReportCardView({ card, interactive }: { card: ReportCard; intera
       );
     }
 
+    case "cardio": {
+      // Minutos de cardio (oct-2026): número grande + barras contra el
+      // período anterior (si hubo) + minutos por ejercicio.
+      const max = Math.max(card.minutes, card.previousMinutes ?? 0, 1);
+      return (
+        <>
+          <div className={styles.rise}>
+            <p className={styles.kicker}>Tu cardio</p>
+          </div>
+          <div className={styles.focusIn} style={{ marginTop: 6 }}>
+            <span className={`${styles.display} ${styles.big}`}>{card.minutes}</span>
+            <span className={`${styles.display} ${styles.unit}`}>min</span>
+          </div>
+          <div className={styles.rise}>
+            <p className={styles.sub}>{card.exercises.map((e) => `${e.name} ${e.minutes} min`).join(" · ")}</p>
+          </div>
+          {card.previousMinutes != null && (
+            <div className={styles.barsCmp}>
+              <div>
+                <div className={styles.lbl}>
+                  <span>Contra {card.versus}</span>
+                  <b>{card.previousMinutes} min</b>
+                </div>
+                <div className={styles.track}>
+                  <i style={{ width: `${(card.previousMinutes / max) * 100}%` }} />
+                </div>
+              </div>
+              <div>
+                <div className={styles.lbl}>
+                  <span>Ahora</span>
+                  <b>{card.minutes} min</b>
+                </div>
+                <div className={`${styles.track} ${styles.trackNow}`}>
+                  <i style={{ width: `${(card.minutes / max) * 100}%` }} />
+                </div>
+              </div>
+            </div>
+          )}
+          {card.phrase && (
+            <div className={styles.rise} style={{ marginTop: 20 }}>
+              <p className={styles.phrase}>{card.phrase}</p>
+            </div>
+          )}
+          {foot}
+        </>
+      );
+    }
+
     case "streak":
       return (
         <>

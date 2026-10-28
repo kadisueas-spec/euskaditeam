@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { TRACKING_COLUMNS } from "@/lib/constants/tracking";
+import { countsAsWorkSet, setTime, setVolumeKg, trackingOfSetRow } from "@/lib/utils/set-volume";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
 import { paraguayNow } from "@/lib/utils/today";
@@ -76,9 +78,19 @@ export type RawSetRow = {
   weight_kg: number | null;
   reps_completed: number | null;
   rir_actual: number | null;
+  // Tipos de registro (oct-2026). Opcionales: Mi Entrenamiento del coach
+  // (coach-stats.ts) arma estas filas con otra consulta.
+  duration_seconds?: number | null;
   routine_exercises: {
     exercise_id: string;
-    exercises: { name: string; muscle_group: string | null } | null;
+    exercises: {
+      name: string;
+      muscle_group: string | null;
+      tracking_type?: string | null;
+      per_side?: boolean | null;
+      assistance_unit?: string | null;
+      cardio_scale?: string | null;
+    } | null;
   } | null;
   workout_logs: { workout_date: string } | null;
 };
@@ -90,8 +102,8 @@ async function fetchRawSets(clientId: string, windowStartMs: number): Promise<Ra
   const { data } = await supabase
     .from("workout_set_logs")
     .select(
-      `workout_log_id, weight_kg, reps_completed, rir_actual,
-       routine_exercises ( exercise_id, exercises ( name, muscle_group ) ),
+      `workout_log_id, weight_kg, reps_completed, rir_actual, duration_seconds,
+       routine_exercises ( exercise_id, exercises ( name, muscle_group, ${TRACKING_COLUMNS} ) ),
        workout_logs!inner ( workout_date, client_id )`
     )
     .eq("workout_logs.client_id", clientId)
@@ -161,6 +173,9 @@ export type ClientMetrics = {
   range: MetricsRange;
   totalTonnage: number;
   totalSets: number;
+  // Tipos de registro (oct-2026): tiempo total del rango.
+  cardioMinutes: number;
+  isometricSeconds: number;
   muscleGroupTotals: MuscleGroupTotal[];
   exerciseTotals: ExerciseTotal[];
   sessionVolume: SessionVolumePoint[];
@@ -175,6 +190,8 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
 
   let totalTonnage = 0;
   let totalSets = 0;
+  let cardioSeconds = 0;
+  let isometricSeconds = 0;
 
   const muscleGroupTotals = new Map<string, { tonnage: number; sets: number }>();
   const exerciseTotals = new Map<
@@ -201,13 +218,19 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
     const exerciseName = row.routine_exercises?.exercises?.name ?? "Ejercicio";
     const muscleGroup = row.routine_exercises?.exercises?.muscle_group ?? UNCATEGORIZED;
 
+    // Tipos de registro (oct-2026): un "check" no es serie de trabajo; el
+    // volumen sale de setVolumeKg (por lado × 2, lastre, sin cardio ni
+    // isométricos) y el tiempo se suma aparte.
+    const tracking = trackingOfSetRow(row);
+    if (!countsAsWorkSet(tracking)) continue;
+    const time = setTime(tracking, row.duration_seconds ?? null);
+    cardioSeconds += time.cardioSeconds;
+    isometricSeconds += time.isometricSeconds;
+
     totalSets++;
     sessionDate.set(row.workout_log_id, workoutDate);
 
-    const tonnage =
-      row.weight_kg != null && row.reps_completed != null
-        ? row.weight_kg * row.reps_completed
-        : 0;
+    const tonnage = setVolumeKg(tracking, row.weight_kg, row.reps_completed);
 
     totalTonnage += tonnage;
     sessionSets.set(row.workout_log_id, (sessionSets.get(row.workout_log_id) ?? 0) + 1);
@@ -236,7 +259,7 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
         tonnageBuckets.set(bucket.key, (tonnageBuckets.get(bucket.key) ?? 0) + tonnage);
         exerciseTonnageByBucket.set(exerciseId, tonnageBuckets);
 
-        if (row.weight_kg != null) {
+        if (row.weight_kg != null && tracking.trackingType === "weight_reps") {
           const weightBuckets =
             exerciseMaxWeightByBucket.get(exerciseId) ?? new Map<string, number>();
           weightBuckets.set(
@@ -339,6 +362,8 @@ function computeMetrics(rows: RawSetRow[], range: MetricsRange, now: Date): Clie
     range,
     totalTonnage: Math.round(totalTonnage),
     totalSets,
+    cardioMinutes: Math.round(cardioSeconds / 60),
+    isometricSeconds,
     muscleGroupTotals: muscleGroupTotalsArr,
     exerciseTotals: exerciseTotalsArr,
     sessionVolume,
@@ -374,6 +399,8 @@ export function buildExerciseSessionSeries(rows: RawSetRow[]): ExerciseSessionSe
     const workoutDate = row.workout_logs?.workout_date;
     const exerciseId = row.routine_exercises?.exercise_id;
     if (!workoutDate || !exerciseId || row.weight_kg == null) continue;
+    // Gráficos de peso: solo peso + reps (en los otros tipos el peso es lastre).
+    if (trackingOfSetRow(row).trackingType !== "weight_reps") continue;
 
     exerciseNameById.set(exerciseId, row.routine_exercises?.exercises?.name ?? "Ejercicio");
 

@@ -13,6 +13,8 @@ import { getMyNutritionPlans } from "@/lib/supabase/nutrition";
 import { getMyProgressPhotos } from "@/lib/supabase/progress-photos";
 import { getMyVideos } from "@/lib/supabase/videos";
 import { todayInParaguay } from "@/lib/utils/today";
+import { TRACKING_COLUMNS } from "@/lib/constants/tracking";
+import { countsAsWorkSet, setVolumeKg, trackingOfSetRow, type SetVolumeRow } from "@/lib/utils/set-volume";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -120,21 +122,21 @@ export async function getClientHomeData(): Promise<ClientHomeData | null> {
   if (trainedToday) {
     const { data: sets } = await supabase
       .from("workout_set_logs")
-      .select("weight_kg, reps_completed")
+      .select(`weight_kg, reps_completed, routine_exercises ( exercises ( ${TRACKING_COLUMNS} ) )`)
       .in(
         "workout_log_id",
         todayLogs.map((l) => l.id)
-      );
+      )
+      .returns<SetVolumeRow[]>();
     const totalVolume = Math.round(
       (sets ?? []).reduce(
-        (sum, s) =>
-          sum + (s.weight_kg != null && s.reps_completed != null ? s.weight_kg * s.reps_completed : 0),
+        (sum, s) => sum + setVolumeKg(trackingOfSetRow(s), s.weight_kg, s.reps_completed),
         0
       )
     );
     todaySummary = {
       dayName: todayLogs[0].routine_days?.name ?? null,
-      totalSets: (sets ?? []).length,
+      totalSets: (sets ?? []).filter((s) => countsAsWorkSet(trackingOfSetRow(s))).length,
       totalVolume,
     };
   }

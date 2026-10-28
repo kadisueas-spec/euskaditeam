@@ -32,6 +32,7 @@ import {
   type TrackingTargets,
 } from "@/lib/utils/tracking-progression";
 import { detectTrackingRecord } from "@/lib/utils/tracking-records";
+import { countsAsWorkSet, setVolumeKg, trackingOfSetRow, type SetVolumeRow } from "@/lib/utils/set-volume";
 
 export type LoggedSet = {
   id: string;
@@ -821,14 +822,14 @@ async function checkWeeklyCompletion({
   }
 
   const totalVolume = thisWeekRows.reduce(
-    (sum, r) => sum + (r.weight_kg != null && r.reps_completed != null ? r.weight_kg * r.reps_completed : 0),
+    (sum, r) => sum + setVolumeKg(rowTracking(r), r.weight_kg, r.reps_completed),
     0
   );
 
   return {
     completedDays,
     plannedDays,
-    totalSets: thisWeekRows.length,
+    totalSets: thisWeekRows.filter((r) => countsAsWorkSet(rowTracking(r))).length,
     totalVolume: Math.round(totalVolume),
     weeklyStreak: stats.weeklyStreak,
     isFirstCompleteWeek: priorCount === 1,
@@ -881,8 +882,9 @@ export async function finishWorkout(
         } | null>(),
       supabase
         .from("workout_set_logs")
-        .select("weight_kg, reps_completed")
-        .eq("workout_log_id", input.workoutLogId),
+        .select(`weight_kg, reps_completed, routine_exercises ( exercises ( ${TRACKING_COLUMNS} ) )`)
+        .eq("workout_log_id", input.workoutLogId)
+        .returns<SetVolumeRow[]>(),
     ]);
 
   const finishedAt = now.toISOString();
@@ -914,16 +916,19 @@ export async function finishWorkout(
     now: pyNow,
   }).catch((err) => console.error("finishWorkout adherence push error:", err));
 
+  // Tipos de registro (oct-2026): volumen según el tipo (setVolumeKg) y
+  // las series "check" no cuentan como series de trabajo.
   const totalVolume = (sets ?? []).reduce(
-    (sum, s) => sum + (s.weight_kg != null && s.reps_completed != null ? s.weight_kg * s.reps_completed : 0),
+    (sum, s) => sum + setVolumeKg(trackingOfSetRow(s), s.weight_kg, s.reps_completed),
     0
   );
+  const workSets = (sets ?? []).filter((s) => countsAsWorkSet(trackingOfSetRow(s))).length;
   const durationMinutes = workoutLog?.started_at
     ? Math.max(1, Math.round((new Date(finishedAt).getTime() - new Date(workoutLog.started_at).getTime()) / 60000))
     : 0;
 
   const summary: WorkoutSummary = {
-    totalSets: (sets ?? []).length,
+    totalSets: workSets,
     totalVolume: Math.round(totalVolume),
     durationMinutes,
   };

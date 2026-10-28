@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { formatDuration } from "@/lib/utils/set-format";
 import {
   CartesianGrid,
   Legend,
@@ -96,6 +97,29 @@ export function ClientMetricsTab({
           <p className="mt-1 font-display text-3xl text-[#e8001c]">{metrics.totalSets}</p>
         </div>
       </div>
+      {/* Tipos de registro (oct-2026): el tonelaje solo cuenta kilos; el
+          cardio y los isométricos suman tiempo aparte. */}
+      {(metrics.cardioMinutes > 0 || metrics.isometricSeconds > 0) && (
+        <div className="grid grid-cols-2 gap-3">
+          {metrics.cardioMinutes > 0 && (
+            <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+              <p className="text-xs text-[#888888]">Minutos de cardio</p>
+              <p className="mt-1 font-display text-3xl text-[#e8001c]">
+                {metrics.cardioMinutes}
+                <span className="text-sm text-[#888888]"> min</span>
+              </p>
+            </div>
+          )}
+          {metrics.isometricSeconds > 0 && (
+            <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+              <p className="text-xs text-[#888888]">Isométricos</p>
+              <p className="mt-1 font-display text-3xl text-[#e8001c]">
+                {formatDuration(metrics.isometricSeconds)}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
         <p className="mb-3 text-sm font-medium text-white">Tonelaje por grupo muscular</p>
