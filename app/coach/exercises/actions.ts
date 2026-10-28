@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { extractYouTubeId } from "@/lib/constants/youtube";
+import { normalizeTracking } from "@/lib/constants/tracking";
 
 export type ExerciseFormState = { error: string } | undefined;
 
@@ -28,6 +29,25 @@ function exerciseFieldsFromForm(formData: FormData) {
       String(formData.get("technique_tips") ?? "").trim() || null,
     common_mistakes:
       String(formData.get("common_mistakes") ?? "").trim() || null,
+    ...trackingColumns(formData),
+  };
+}
+
+// Tipo de registro (oct-2026): normalizado con las mismas reglas que los
+// CHECK de la base (asistencia solo en peso corporal, escala solo en
+// cardio), así un formulario manipulado no termina en un error de Postgres.
+function trackingColumns(formData: FormData) {
+  const t = normalizeTracking({
+    trackingType: formData.get("tracking_type"),
+    perSide: formData.get("per_side"),
+    assistanceUnit: formData.get("assistance_unit"),
+    cardioScale: formData.get("cardio_scale"),
+  });
+  return {
+    tracking_type: t.trackingType,
+    per_side: t.perSide,
+    assistance_unit: t.assistanceUnit,
+    cardio_scale: t.cardioScale,
   };
 }
 

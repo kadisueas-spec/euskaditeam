@@ -10,7 +10,9 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import { MUSCLE_GROUPS } from "@/lib/constants/exercises";
 import type { ExerciseDetail } from "@/lib/supabase/exercises";
+import { DEFAULT_TRACKING } from "@/lib/constants/tracking";
 import type { ExerciseFormState } from "./actions";
+import { TrackingFields } from "./tracking-fields";
 
 type ExerciseFormAction = (
   state: ExerciseFormState,
@@ -77,6 +79,12 @@ export function ExerciseForm({
           ))}
         </NativeSelect>
       </div>
+
+      <TrackingFields
+        initial={initialData?.tracking ?? DEFAULT_TRACKING}
+        disabled={readOnly}
+        existing={!isCreating}
+      />
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="secondary_muscles">

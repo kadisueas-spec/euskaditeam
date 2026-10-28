@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { FadeIn } from "@/components/motion/fade-in";
 import { MUSCLE_GROUPS, getExercisesList } from "@/lib/supabase/exercises";
 import { getYouTubeThumbnailUrl } from "@/lib/constants/youtube";
+import { TRACKING_LABELS } from "@/lib/constants/tracking";
 import { cn } from "@/lib/utils";
 
 export default async function ExercisesPage({
@@ -107,6 +108,16 @@ export default async function ExercisesPage({
                       {exercise.muscleGroup && (
                         <Badge variant="secondary" className="w-fit">
                           {exercise.muscleGroup}
+                        </Badge>
+                      )}
+                      {exercise.tracking.trackingType !== "weight_reps" && (
+                        <Badge variant="outline" className="w-fit">
+                          {exercise.tracking.assistanceUnit ? "Asistido" : TRACKING_LABELS[exercise.tracking.trackingType]}
+                        </Badge>
+                      )}
+                      {exercise.tracking.perSide && (
+                        <Badge variant="outline" className="w-fit">
+                          Por lado
                         </Badge>
                       )}
                     </div>

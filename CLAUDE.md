@@ -1256,6 +1256,27 @@ momento, no una galería genérica.
       (`layout.ts`) lo corrige al leer (bandeja, cliente y al enviar), sin
       regenerar; las frases quedan como se generaron.
 
+72. Tipos de registro por ejercicio (oct-2026, migraciones
+    `20261028_tracking_types.sql` y `20261028b_plancha_abdominal.sql`, ya
+    corridas; conversiones de datos viejos en
+    `docs/sql/tracking-types-conversiones.sql`, con respaldo en el esquema
+    `backup` y bloque para deshacer). `exercises.tracking_type`:
+    `weight_reps` (peso, reps, RIR — el de siempre), `bodyweight_reps`
+    (reps; kilos extra y RIR opcionales; con `assistance_unit` kg/banda =
+    asistido, menos es mejor), `time` (segundos, kilos extra opcionales),
+    `cardio` (minutos, distancia e intensidad opcionales, escala
+    `cardio_scale` nivel/esfuerzo, sin RIR) y `check` (solo hecho).
+    `per_side`: reps o segundos anotados por lado; el volumen cuenta los dos.
+    Series: `workout_set_logs.duration_seconds` (cardio = minutos × 60),
+    `distance_km`, `intensity`, `assistance`; `weight_kg` = kilos extra en
+    peso corporal e isométricos. Prescripción: `routine_exercises.seconds_min`
+    /`seconds_max`, `minutes_target`, `intensity_target`.
+    - Etapa 1 (catálogo): `lib/constants/tracking.ts` (`normalizeTracking`,
+      mismas reglas que los CHECK de la base), formulario de ejercicio con
+      "Tipo de registro" (`app/coach/exercises/tracking-fields.tsx`), "Por
+      lado", asistencia y escala; etiquetas en la biblioteca. "Solo marcar
+      hecho" no se puede elegir todavía (etapa 5).
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)

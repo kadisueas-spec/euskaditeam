@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
+import type { TrackingFields } from "@/lib/constants/tracking";
 
 export { MUSCLE_GROUPS } from "@/lib/constants/exercises";
 
@@ -9,6 +11,7 @@ export type ExerciseListItem = {
   equipment: string | null;
   videoId: string | null;
   isGlobal: boolean;
+  tracking: TrackingFields;
 };
 
 // coach_id = NULL es un ejercicio "global" (base de Euskadi, compartida
@@ -22,7 +25,7 @@ export async function getExercisesList(
 
   let query = supabase
     .from("exercises")
-    .select("id, name, muscle_group, equipment, video_url, coach_id")
+    .select(`id, name, muscle_group, equipment, video_url, coach_id, ${TRACKING_COLUMNS}`)
     .order("name", { ascending: true });
 
   if (muscleGroup) {
@@ -38,6 +41,7 @@ export async function getExercisesList(
     equipment: e.equipment,
     videoId: e.video_url,
     isGlobal: e.coach_id === null,
+    tracking: trackingFromRow(e),
   }));
 
   return items.sort((a, b) => {
@@ -58,6 +62,7 @@ export type ExerciseDetail = {
   techniqueTips: string | null;
   commonMistakes: string | null;
   isGlobal: boolean;
+  tracking: TrackingFields;
 };
 
 export async function getExerciseDetail(
@@ -68,7 +73,7 @@ export async function getExerciseDetail(
   const { data } = await supabase
     .from("exercises")
     .select(
-      "id, name, description, video_url, muscle_group, secondary_muscles, equipment, movement_pattern, technique_tips, common_mistakes, coach_id"
+      `id, name, description, video_url, muscle_group, secondary_muscles, equipment, movement_pattern, technique_tips, common_mistakes, coach_id, ${TRACKING_COLUMNS}`
     )
     .eq("id", id)
     .single();
@@ -87,5 +92,6 @@ export async function getExerciseDetail(
     techniqueTips: data.technique_tips,
     commonMistakes: data.common_mistakes,
     isGlobal: data.coach_id === null,
+    tracking: trackingFromRow(data),
   };
 }
