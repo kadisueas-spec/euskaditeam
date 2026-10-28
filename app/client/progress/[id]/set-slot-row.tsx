@@ -14,6 +14,9 @@ import {
 } from "@/app/client/log-workout/actions";
 import { parseDecimalInput, sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import type { WorkoutLogSetSlot } from "@/lib/supabase/workout-history";
+import type { TrackingFields } from "@/lib/constants/tracking";
+import { formatSet } from "@/lib/utils/set-format";
+import { SetFields, fieldsFromSaved, numOrNull, payloadFromFields } from "@/components/client/set-fields";
 
 // B2 (jul-2026): reemplaza a EditableSetRow — ahora cada fila es un SLOT
 // planificado, completado o no. Si no está completado y la sesión sigue
@@ -25,6 +28,7 @@ export function SetSlotRow({
   slot,
   workoutLogId,
   routineExerciseId,
+  tracking,
   editable,
   onPersonalRecord,
   onWeeklyCelebration,
@@ -34,6 +38,9 @@ export function SetSlotRow({
   slot: WorkoutLogSetSlot;
   workoutLogId: string;
   routineExerciseId: string;
+  // Tipo de registro del ejercicio (oct-2026): qué campos se cargan y cómo
+  // se lee la serie.
+  tracking: TrackingFields;
   editable: boolean;
   onPersonalRecord: (setId: string) => void;
   onWeeklyCelebration: (summary: WeeklyCelebrationSummary) => void;
@@ -48,20 +55,22 @@ export function SetSlotRow({
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [completed, setCompleted] = useState(slot.completed);
-  const [values, setValues] = useState({
-    weight: slot.weightKg != null ? String(slot.weightKg) : "",
-    reps: slot.repsCompleted != null ? String(slot.repsCompleted) : "",
-    rir: slot.rirActual != null ? String(slot.rirActual) : "",
+  const savedOf = (s: WorkoutLogSetSlot) => ({
+    weightKg: s.weightKg,
+    reps: s.repsCompleted,
+    rir: s.rirActual,
+    durationSeconds: s.durationSeconds,
+    distanceKm: s.distanceKm,
+    intensity: s.intensity,
+    assistance: s.assistance,
   });
+  const [values, setValues] = useState(() => fieldsFromSaved(tracking, savedOf(slot)));
+  const isWeightReps = tracking.trackingType === "weight_reps";
   const [setId, setSetId] = useState(slot.id);
   const [removed, setRemoved] = useState(false);
 
   function startEditing() {
-    setValues({
-      weight: slot.weightKg != null ? String(slot.weightKg) : "",
-      reps: slot.repsCompleted != null ? String(slot.repsCompleted) : "",
-      rir: slot.rirActual != null ? String(slot.rirActual) : "",
-    });
+    setValues(fieldsFromSaved(tracking, savedOf(slot)));
     setError(null);
     setMode("edit");
   }
@@ -83,11 +92,13 @@ export function SetSlotRow({
     setSaving(true);
     setError(null);
     try {
-      const patch = {
-        weightKg: parseDecimalInput(values.weight),
-        reps: values.reps ? Number(values.reps) : null,
-        rir: values.rir ? Number(values.rir) : null,
-      };
+      const patch = isWeightReps
+        ? {
+            weightKg: parseDecimalInput(values.weight),
+            reps: values.reps ? Number(values.reps) : null,
+            rir: values.rir ? Number(values.rir) : null,
+          }
+        : payloadFromFields(tracking, values);
       if (completed && setId) {
         const result = await updateSet(setId, patch);
         if ("error" in result) {
@@ -141,6 +152,14 @@ export function SetSlotRow({
         <p className="text-xs font-semibold text-[#e8001c] uppercase">
           {completed ? "Editando" : "Completar"} serie {slot.setNumber}
         </p>
+        {!isWeightReps ? (
+          <SetFields
+            tracking={tracking}
+            values={values}
+            size="sm"
+            onChange={(key, value) => setValues((v) => ({ ...v, [key]: value }))}
+          />
+        ) : (
         <div className="grid grid-cols-3 gap-2">
           <Input
             type="text"
@@ -167,6 +186,7 @@ export function SetSlotRow({
             className="h-11 text-center"
           />
         </div>
+        )}
         {error && <p className="text-xs text-destructive">{error}</p>}
         <div className="flex gap-2">
           <Button
@@ -215,7 +235,7 @@ export function SetSlotRow({
             </span>
           </span>
           <span className="flex items-center gap-2 font-mono text-[#666666]">
-            — kg · — reps
+            {isWeightReps ? "— kg · — reps" : "—"}
             {editable && <Plus className="size-3.5 text-[#e8001c]" />}
           </span>
         </button>
@@ -235,8 +255,20 @@ export function SetSlotRow({
       >
         <span className="text-[#888888]">Serie {slot.setNumber}</span>
         <span className="flex items-center gap-2 font-mono text-white">
-          {values.weight || "-"} kg · {values.reps || "-"} reps
-          {values.rir ? ` · RIR ${values.rir}` : ""}
+          {formatSet(tracking, {
+            weight: numOrNull(values.weight),
+            reps: numOrNull(values.reps),
+            rir: numOrNull(values.rir),
+            seconds:
+              tracking.trackingType === "cardio"
+                ? numOrNull(values.minutes) != null
+                  ? Math.round(numOrNull(values.minutes)! * 60)
+                  : null
+                : numOrNull(values.seconds),
+            distanceKm: numOrNull(values.distance),
+            intensity: numOrNull(values.intensity),
+            assistance: numOrNull(values.assistance),
+          })}
           {editable && <Pencil className="size-3.5 text-[#888888]" />}
         </span>
       </button>

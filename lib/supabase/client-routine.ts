@@ -2,6 +2,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 import { mondayKeyFor, addWeeks } from "@/lib/utils/week";
 import { todayInParaguay } from "@/lib/utils/today";
+import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
+import type { TrackingFields } from "@/lib/constants/tracking";
 
 export type WarmupType =
   | "none"
@@ -27,6 +29,13 @@ export type MyRoutineExercise = {
   warmupType: WarmupType;
   warmupFixedWeightKg: number | null;
   weightIncrement: number;
+  // Tipos de registro (oct-2026): qué se anota en cada serie y la
+  // prescripción de isométricos y cardio.
+  tracking: TrackingFields;
+  secondsMin: number | null;
+  secondsMax: number | null;
+  minutesTarget: number | null;
+  intensityTarget: number | null;
 };
 
 export type MyRoutineDay = {
@@ -76,7 +85,19 @@ type MyActiveRoutineRow = {
       warmup_type: string;
       warmup_fixed_weight_kg: number | null;
       weight_increment: number;
-      exercises: { name: string; video_url: string | null; gif_url: string | null } | null;
+      seconds_min: number | null;
+      seconds_max: number | null;
+      minutes_target: number | null;
+      intensity_target: number | null;
+      exercises: {
+        name: string;
+        video_url: string | null;
+        gif_url: string | null;
+        tracking_type: string | null;
+        per_side: boolean | null;
+        assistance_unit: string | null;
+        cardio_scale: string | null;
+      } | null;
     }[];
   }[];
 };
@@ -100,7 +121,8 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
          routine_exercises (
            id, exercise_id, order_index, sets, reps_min, reps_max,
            rir_target, rest_seconds, coach_notes, warmup_type, warmup_fixed_weight_kg, weight_increment,
-           exercises ( name, video_url, gif_url )
+           seconds_min, seconds_max, minutes_target, intensity_target,
+           exercises ( name, video_url, gif_url, ${TRACKING_COLUMNS} )
          )
        )`
     )
@@ -147,6 +169,11 @@ export async function getMyActiveRoutine(): Promise<MyRoutine | null> {
           warmupType: re.warmup_type as WarmupType,
           warmupFixedWeightKg: re.warmup_fixed_weight_kg,
           weightIncrement: Number(re.weight_increment) || 2.5,
+          secondsMin: re.seconds_min,
+          secondsMax: re.seconds_max,
+          minutesTarget: re.minutes_target,
+          intensityTarget: re.intensity_target != null ? Number(re.intensity_target) : null,
+          tracking: trackingFromRow(re.exercises ?? {}),
         })),
     })),
   };

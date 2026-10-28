@@ -124,6 +124,10 @@ export async function copyRoutineAsTemplate(
           weightIncrement: ex.weightIncrement,
           warmupType: ex.warmupType,
           warmupFixedWeightKg: ex.warmupFixedWeightKg,
+          secondsMin: ex.secondsMin,
+          secondsMax: ex.secondsMax,
+          minutesTarget: ex.minutesTarget,
+          intensityTarget: ex.intensityTarget,
         })),
     }))
   );

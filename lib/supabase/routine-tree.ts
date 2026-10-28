@@ -1,7 +1,18 @@
 import type { createClient } from "@/lib/supabase/server";
-import type { RoutineDayInput } from "@/app/coach/routines/actions";
+import type { RoutineDayInput, RoutineExerciseInput } from "@/app/coach/routines/actions";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
+
+// Columnas de la prescripción de isométricos y cardio (oct-2026). Compartido
+// por insertRoutineDays y updateRoutine.
+export function trackingTargetColumns(ex: RoutineExerciseInput) {
+  return {
+    seconds_min: ex.secondsMin ?? null,
+    seconds_max: ex.secondsMax ?? null,
+    minutes_target: ex.minutesTarget ?? null,
+    intensity_target: ex.intensityTarget ?? null,
+  };
+}
 
 // Inserta los días y ejercicios de una rutina recién creada. Compartido por
 // createRoutine (rutina de cliente) y las plantillas (oct-2026) — una
@@ -46,6 +57,7 @@ export async function insertRoutineDays(
         weight_increment: ex.weightIncrement,
         warmup_type: ex.warmupType,
         warmup_fixed_weight_kg: ex.warmupFixedWeightKg,
+        ...trackingTargetColumns(ex),
       }))
     );
 

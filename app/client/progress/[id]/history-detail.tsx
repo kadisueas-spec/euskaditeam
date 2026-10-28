@@ -119,6 +119,7 @@ export function HistoryDetail({
                         slot={slot}
                         workoutLogId={log.id}
                         routineExerciseId={ex.routineExerciseId}
+                        tracking={ex.tracking}
                         editable={editable && !isCompleted}
                         onPersonalRecord={(setId) =>
                           setRecordSetIds((prev) => new Set(prev).add(setId))

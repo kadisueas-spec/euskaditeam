@@ -1276,6 +1276,32 @@ momento, no una galería genérica.
       "Tipo de registro" (`app/coach/exercises/tracking-fields.tsx`), "Por
       lado", asistencia y escala; etiquetas en la biblioteca. "Solo marcar
       hecho" no se puede elegir todavía (etapa 5).
+    - Etapa 2 (editor y Entrenar): `components/coach/prescription-fields.tsx`
+      (campos según el tipo del ejercicio elegido, compartido por wizard y
+      editor: peso corporal sin calentamiento, isométrico "seg. mín/máx",
+      cardio "minutos + intensidad", una serie y sin descanso) y
+      `lib/utils/prescription.ts` (`exercisePayloadFromValues`,
+      `prescriptionChips`/`prescriptionLine`: "3 × 10 por lado", "3 × 30–45
+      s", "20 min · nivel 8" en Mi Rutina, detalle de rutina y Mi
+      Entrenamiento). RIR 0 ya no se pierde al guardar (antes "0" se leía
+      como vacío). Entrenar: peso + reps sin cambios; los otros tipos usan
+      `components/client/set-fields.tsx` (`SetFields`, también en el
+      historial) y `lib/utils/tracking-progression.ts`: serie 1 =
+      `getWorkoutSuggestions` con la mejor serie de SU tipo
+      (`isBetterTrackingSet`: menos ayuda, más lastre, más segundos, más
+      nivel) + `suggestFirstTrackingSet`; serie 2+ =
+      `suggestNextTrackingSet`. Peso corporal: +1 rep; en el tope, más
+      lastre si ya usa, si no "sumá lastre o pasá a una variante más
+      difícil". Asistido: en el tope, menos ayuda (kg del paso o 1 nivel de
+      banda); debajo del mínimo, más ayuda. Isométrico: +5 s por sesión
+      hasta el máximo, en la sesión repite; cronómetro opcional
+      (`isometric-stopwatch.tsx`). Cardio: +2 min hasta el objetivo,
+      después +1 nivel (por esfuerzo no sube solo), sin descanso. Series
+      leídas con `lib/utils/set-format.ts` (`formatSet`; registros de antes
+      del tipo se muestran tal cual con "(registro anterior)").
+      `trackingSetColumns` (`validate-set-input.ts`): al corregir una serie
+      solo se tocan las columnas nuevas que vienen. Récords de los tipos
+      nuevos: etapa 3 (hasta entonces no disparan).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

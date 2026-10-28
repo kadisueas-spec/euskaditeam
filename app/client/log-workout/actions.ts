@@ -5,7 +5,7 @@ import { getCurrentClientRecord, type ClientRecord } from "@/lib/supabase/client
 import { getClientStats } from "@/lib/supabase/stats";
 import { sendPushToCoach } from "@/lib/push/send-push";
 import { adherence80PushTitle } from "@/lib/constants/push-copy";
-import { validateSetInput } from "@/lib/utils/validate-set-input";
+import { trackingSetColumns, validateSetInput } from "@/lib/utils/validate-set-input";
 import { plannedDaysInRange } from "@/lib/utils/planned-days";
 import { mondayKeyFor, previousMondayKey, addWeeks } from "@/lib/utils/week";
 import { EDIT_WINDOW_DAYS, daysAgo } from "@/lib/utils/edit-window";
@@ -20,6 +20,14 @@ import {
 import { paraguayNow, todayInParaguay } from "@/lib/utils/today";
 import { TRAINING_SESSION_SELECT, countsAsTraining, trainedDates } from "@/lib/utils/training-sessions";
 import type { TrainingSessionRow } from "@/lib/utils/training-sessions";
+import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
+import {
+  isBetterTrackingSet,
+  suggestFirstTrackingSet,
+  type TrackingCase,
+  type TrackingSet,
+  type TrackingTargets,
+} from "@/lib/utils/tracking-progression";
 
 export type LoggedSet = {
   id: string;
@@ -28,6 +36,11 @@ export type LoggedSet = {
   weightKg: number | null;
   reps: number | null;
   rir: number | null;
+  // Tipos de registro (oct-2026)
+  durationSeconds: number | null;
+  distanceKm: number | null;
+  intensity: number | null;
+  assistance: number | null;
 };
 
 export type InProgressWorkout = {
@@ -104,7 +117,9 @@ export async function getOrCreateInProgressWorkout(
 
   const { data: sets } = await supabase
     .from("workout_set_logs")
-    .select("id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual")
+    .select(
+      "id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual, duration_seconds, distance_km, intensity, assistance"
+    )
     .eq("workout_log_id", workoutLogId)
     .order("set_number", { ascending: true });
 
@@ -115,6 +130,10 @@ export async function getOrCreateInProgressWorkout(
     weightKg: s.weight_kg,
     reps: s.reps_completed,
     rir: s.rir_actual,
+    durationSeconds: s.duration_seconds,
+    distanceKm: s.distance_km != null ? Number(s.distance_km) : null,
+    intensity: s.intensity != null ? Number(s.intensity) : null,
+    assistance: s.assistance != null ? Number(s.assistance) : null,
   }));
 
   if (existing?.is_completed && plannedSets) {
@@ -149,6 +168,12 @@ export type AddSetInput = {
   weightKg: number | null;
   reps: number | null;
   rir: number | null;
+  // Tipos de registro (oct-2026) — opcionales: peso + reps no los manda, y
+  // las series guardadas offline antes de este cambio tampoco los tienen.
+  durationSeconds?: number | null;
+  distanceKm?: number | null;
+  intensity?: number | null;
+  assistance?: number | null;
 };
 
 export type AddSetResult =
@@ -216,6 +241,7 @@ export async function addSet(input: AddSetInput): Promise<AddSetResult> {
       weight_kg: input.weightKg,
       reps_completed: input.reps,
       rir_actual: input.rir,
+      ...trackingSetColumns(input, "insert"),
     })
     .select("id")
     .single();
@@ -232,6 +258,10 @@ export type UpdateSetInput = {
   weightKg: number | null;
   reps: number | null;
   rir: number | null;
+  durationSeconds?: number | null;
+  distanceKm?: number | null;
+  intensity?: number | null;
+  assistance?: number | null;
 };
 
 type SetOwnershipRow = {
@@ -282,6 +312,7 @@ export async function updateSet(
       weight_kg: patch.weightKg,
       reps_completed: patch.reps,
       rir_actual: patch.rir,
+      ...trackingSetColumns(patch, "update"),
     })
     .eq("id", setId);
 
@@ -346,6 +377,7 @@ export async function addSetToPastLog(input: AddSetInput): Promise<EditPastSessi
       weight_kg: input.weightKg,
       reps_completed: input.reps,
       rir_actual: input.rir,
+      ...trackingSetColumns(input, "insert"),
     })
     .select("id")
     .single();
@@ -910,6 +942,15 @@ export type WorkoutSuggestion = {
   // app explica lo que hace" (ago-2026) para decir "Calculado desde tu
   // récord del [fecha]". null junto con previousRecord null.
   recordDate: string | null;
+  // Tipos de registro (oct-2026), solo en los que no son peso + reps:
+  // segundos (isométrico; en cardio, el total), intensidad y asistencia
+  // sugeridos, el caso (texto en TRACKING_CASE_TEXT) y la mejor serie cruda
+  // de la referencia para la línea "Según tu última vez".
+  seconds?: number | null;
+  intensity?: number | null;
+  assistance?: number | null;
+  trackingCase?: TrackingCase | null;
+  previous?: TrackingSet | null;
 };
 
 type SetLogRow = {
@@ -917,6 +958,10 @@ type SetLogRow = {
   weight_kg: number | null;
   reps_completed: number | null;
   rir_actual: number | null;
+  duration_seconds: number | null;
+  distance_km: number | null;
+  intensity: number | null;
+  assistance: number | null;
   workout_logs: { workout_date: string; is_completed: boolean } | null;
 };
 
@@ -924,8 +969,32 @@ type RoutineExerciseRangeRow = {
   id: string;
   reps_min: number | null;
   reps_max: number | null;
+  rir_target: number | null;
   weight_increment: number;
+  seconds_min: number | null;
+  seconds_max: number | null;
+  minutes_target: number | null;
+  intensity_target: number | null;
+  exercises: {
+    tracking_type: string | null;
+    per_side: boolean | null;
+    assistance_unit: string | null;
+    cardio_scale: string | null;
+  } | null;
 };
+
+function toTrackingSet(row: SetLogRow): TrackingSet {
+  const num = (v: number | null) => (v != null ? Number(v) : null);
+  return {
+    weight: num(row.weight_kg),
+    reps: row.reps_completed,
+    rir: row.rir_actual,
+    seconds: row.duration_seconds,
+    distanceKm: num(row.distance_km),
+    intensity: num(row.intensity),
+    assistance: num(row.assistance),
+  };
+}
 
 // Bug jul-2026: si el cliente se salteó una semana entera de un ejercicio
 // (semana 2 sin entrenarlo), la sugerencia quedaba vacía en la semana 3
@@ -1013,6 +1082,7 @@ export async function getWorkoutSuggestions(
       .from("workout_set_logs")
       .select(
         `routine_exercise_id, weight_kg, reps_completed, rir_actual,
+         duration_seconds, distance_km, intensity, assistance,
          workout_logs!inner ( workout_date, is_completed )`
       )
       .in("routine_exercise_id", routineExerciseIds)
@@ -1022,10 +1092,18 @@ export async function getWorkoutSuggestions(
       .returns<SetLogRow[]>(),
     supabase
       .from("routine_exercises")
-      .select("id, reps_min, reps_max, weight_increment")
+      .select(
+        `id, reps_min, reps_max, rir_target, weight_increment,
+         seconds_min, seconds_max, minutes_target, intensity_target,
+         exercises ( ${TRACKING_COLUMNS} )`
+      )
       .in("id", routineExerciseIds)
       .returns<RoutineExerciseRangeRow[]>(),
   ]);
+
+  const rangeByExercise = new Map<string, RoutineExerciseRangeRow>();
+  for (const r of ranges ?? []) rangeByExercise.set(r.id, r);
+  const trackingOf = (id: string) => trackingFromRow(rangeByExercise.get(id)?.exercises ?? {});
 
   // Por ejercicio: la semana más reciente (menor weeksAgo) que tiene datos,
   // y dentro de esa semana la serie de mayor peso (empate -> más reps).
@@ -1046,21 +1124,28 @@ export async function getWorkoutSuggestions(
 
     // Oct-2026: empate de peso y reps -> la de más RIR (isBetterSet), así
     // el récord de referencia es la mejor ejecución real de esa semana.
-    if (
-      isBetterSet(
-        { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual },
-        { weight: current.weight_kg, reps: current.reps_completed, rir: current.rir_actual }
-      )
-    ) {
+    // Tipos de registro (oct-2026): fuera de peso + reps, "mejor serie"
+    // es la de su tipo (menos ayuda, más segundos, más nivel...).
+    const tracking = trackingOf(row.routine_exercise_id);
+    const better =
+      tracking.trackingType === "weight_reps"
+        ? isBetterSet(
+            { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual },
+            { weight: current.weight_kg, reps: current.reps_completed, rir: current.rir_actual }
+          )
+        : isBetterTrackingSet(tracking, toTrackingSet(row), toTrackingSet(current));
+    if (better) {
       bestByExercise.set(row.routine_exercise_id, { ...row, weeksAgo: rowWeeksAgo });
     }
   }
 
-  const rangeByExercise = new Map<string, RoutineExerciseRangeRow>();
-  for (const r of ranges ?? []) rangeByExercise.set(r.id, r);
-
   const result: Record<string, WorkoutSuggestion> = {};
   for (const [routineExerciseId, row] of bestByExercise) {
+    const tracking = trackingOf(routineExerciseId);
+    if (tracking.trackingType !== "weight_reps") {
+      result[routineExerciseId] = trackingSuggestion(tracking, row, rangeByExercise.get(routineExerciseId));
+      continue;
+    }
     const weightRecord = row.weight_kg;
     const repsRecord = row.reps_completed;
     const recordDate = row.workout_logs?.workout_date ?? null;
@@ -1122,4 +1207,44 @@ export async function getWorkoutSuggestions(
     }
   }
   return result;
+}
+
+// Serie 1 de los tipos que no son peso + reps (oct-2026): la sugerencia
+// sale de suggestFirstTrackingSet sobre la mejor serie de la referencia.
+// Pausa larga (PROGRESSION_STALE_WEEKS): repetir tal cual, igual que en
+// peso + reps. previousRecord queda en null: los récords de estos tipos
+// llegan en la etapa 3 del plan.
+function trackingSuggestion(
+  tracking: ReturnType<typeof trackingFromRow>,
+  row: SetLogRow & { weeksAgo: number },
+  range: RoutineExerciseRangeRow | undefined
+): WorkoutSuggestion {
+  const previous = toTrackingSet(row);
+  const targets: TrackingTargets = {
+    repsMin: range?.reps_min ?? null,
+    repsMax: range?.reps_max ?? null,
+    rirTarget: range?.rir_target ?? null,
+    secondsMin: range?.seconds_min ?? null,
+    secondsMax: range?.seconds_max ?? null,
+    minutesTarget: range?.minutes_target ?? null,
+    intensityTarget: range?.intensity_target != null ? Number(range.intensity_target) : null,
+    weightIncrement: Number(range?.weight_increment) || 2.5,
+  };
+  const stale = row.weeksAgo >= PROGRESSION_STALE_WEEKS;
+  const suggestion = stale ? { set: previous, trackingCase: "repeat" as const } : suggestFirstTrackingSet(tracking, previous, targets);
+  const next = suggestion?.set ?? previous;
+  return {
+    weight: next.weight,
+    reps: next.reps,
+    rir: next.rir,
+    progressionCase: null,
+    previousRecord: null,
+    weeksAgo: row.weeksAgo,
+    recordDate: row.workout_logs?.workout_date ?? null,
+    seconds: next.seconds,
+    intensity: next.intensity,
+    assistance: next.assistance,
+    trackingCase: suggestion?.trackingCase ?? null,
+    previous,
+  };
 }

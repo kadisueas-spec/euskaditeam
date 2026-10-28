@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { todayInParaguay } from "@/lib/utils/today";
+import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
+import type { TrackingFields } from "@/lib/constants/tracking";
 
 export type RoutineListItem = {
   id: string;
@@ -83,19 +85,21 @@ export type ExerciseOption = {
   id: string;
   name: string;
   muscleGroup: string | null;
+  tracking: TrackingFields;
 };
 
 export async function getExercisesForSelect(): Promise<ExerciseOption[]> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("exercises")
-    .select("id, name, muscle_group")
+    .select(`id, name, muscle_group, ${TRACKING_COLUMNS}`)
     .order("name", { ascending: true });
 
   return (data ?? []).map((e) => ({
     id: e.id,
     name: e.name,
     muscleGroup: e.muscle_group,
+    tracking: trackingFromRow(e),
   }));
 }
 
@@ -119,6 +123,12 @@ export type RoutineExerciseDetail = {
   weightIncrement: number;
   warmupType: WarmupType;
   warmupFixedWeightKg: number | null;
+  // Tipos de registro (oct-2026)
+  secondsMin: number | null;
+  secondsMax: number | null;
+  minutesTarget: number | null;
+  intensityTarget: number | null;
+  tracking: TrackingFields;
 };
 
 export type RoutineDayDetail = {
@@ -176,7 +186,17 @@ type RoutineDetailRow = {
       weight_increment: number;
       warmup_type: string;
       warmup_fixed_weight_kg: number | null;
-      exercises: { name: string } | null;
+      seconds_min: number | null;
+      seconds_max: number | null;
+      minutes_target: number | null;
+      intensity_target: number | null;
+      exercises: {
+        name: string;
+        tracking_type: string | null;
+        per_side: boolean | null;
+        assistance_unit: string | null;
+        cardio_scale: string | null;
+      } | null;
     }[];
   }[];
 };
@@ -201,7 +221,8 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
            id, exercise_id, order_index, sets, reps_min, reps_max,
            rir_target, rest_seconds, coach_notes, weight_increment,
            warmup_type, warmup_fixed_weight_kg,
-           exercises ( name )
+           seconds_min, seconds_max, minutes_target, intensity_target,
+           exercises ( name, ${TRACKING_COLUMNS} )
          )
        )`
     )
@@ -251,6 +272,11 @@ export async function getRoutineDetail(id: string): Promise<RoutineDetail | null
           weightIncrement: re.weight_increment,
           warmupType: re.warmup_type as WarmupType,
           warmupFixedWeightKg: re.warmup_fixed_weight_kg,
+          secondsMin: re.seconds_min,
+          secondsMax: re.seconds_max,
+          minutesTarget: re.minutes_target,
+          intensityTarget: re.intensity_target != null ? Number(re.intensity_target) : null,
+          tracking: trackingFromRow(re.exercises ?? {}),
         })),
     })),
   };

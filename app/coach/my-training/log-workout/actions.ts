@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentProfile } from "@/lib/supabase/profiles";
-import { validateSetInput } from "@/lib/utils/validate-set-input";
+import { trackingSetColumns, validateSetInput } from "@/lib/utils/validate-set-input";
 import type {
   AddSetInput,
   AddSetResult,
@@ -74,7 +74,9 @@ export async function getOrCreateInProgressTrainingWorkout(
 
   const { data: sets } = await supabase
     .from("workout_set_logs")
-    .select("id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual")
+    .select(
+      "id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual, duration_seconds, distance_km, intensity, assistance"
+    )
     .eq("workout_log_id", workoutLogId)
     .order("set_number", { ascending: true });
 
@@ -85,6 +87,10 @@ export async function getOrCreateInProgressTrainingWorkout(
     weightKg: s.weight_kg,
     reps: s.reps_completed,
     rir: s.rir_actual,
+    durationSeconds: s.duration_seconds,
+    distanceKm: s.distance_km != null ? Number(s.distance_km) : null,
+    intensity: s.intensity != null ? Number(s.intensity) : null,
+    assistance: s.assistance != null ? Number(s.assistance) : null,
   }));
 
   if (existing?.is_completed && plannedSets) {
@@ -169,6 +175,7 @@ export async function addTrainingSet(input: AddSetInput): Promise<AddSetResult> 
       weight_kg: input.weightKg,
       reps_completed: input.reps,
       rir_actual: input.rir,
+      ...trackingSetColumns(input, "insert"),
     })
     .select("id")
     .single();
@@ -198,6 +205,7 @@ export async function updateTrainingSet(
       weight_kg: patch.weightKg,
       reps_completed: patch.reps,
       rir_actual: patch.rir,
+      ...trackingSetColumns(patch, "update"),
     })
     .eq("id", setId);
 

@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
+import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
+import type { TrackingFields } from "@/lib/constants/tracking";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
 
 export type WorkoutHistoryItem = {
@@ -58,6 +60,11 @@ export type WorkoutLogSetSlot = {
   weightKg: number | null;
   repsCompleted: number | null;
   rirActual: number | null;
+  // Tipos de registro (oct-2026)
+  durationSeconds: number | null;
+  distanceKm: number | null;
+  intensity: number | null;
+  assistance: number | null;
   completed: boolean;
 };
 
@@ -67,6 +74,7 @@ export type WorkoutLogExerciseGroup = {
   plannedSets: number;
   sets: WorkoutLogSetSlot[];
   fullyCompleted: boolean;
+  tracking: TrackingFields;
 };
 
 export type WorkoutLogDetail = {
@@ -86,8 +94,37 @@ type SetLogRow = {
   weight_kg: number | null;
   reps_completed: number | null;
   rir_actual: number | null;
-  routine_exercises: { exercises: { name: string } | null } | null;
+  duration_seconds: number | null;
+  distance_km: number | null;
+  intensity: number | null;
+  assistance: number | null;
+  routine_exercises: { exercises: ExerciseRow | null } | null;
 };
+
+type ExerciseRow = {
+  name: string;
+  tracking_type: string | null;
+  per_side: boolean | null;
+  assistance_unit: string | null;
+  cardio_scale: string | null;
+};
+
+const num = (v: number | null) => (v != null ? Number(v) : null);
+
+function realSlot(real: SetLogRow): WorkoutLogSetSlot {
+  return {
+    id: real.id,
+    setNumber: real.set_number,
+    weightKg: num(real.weight_kg),
+    repsCompleted: real.reps_completed,
+    rirActual: real.rir_actual,
+    durationSeconds: real.duration_seconds,
+    distanceKm: num(real.distance_km),
+    intensity: num(real.intensity),
+    assistance: num(real.assistance),
+    completed: true,
+  };
+}
 
 type LogDetailRow = {
   id: string;
@@ -104,7 +141,7 @@ type PlannedExerciseRow = {
   id: string;
   order_index: number;
   sets: number;
-  exercises: { name: string } | null;
+  exercises: ExerciseRow | null;
 };
 
 // Combina lo planificado (routine_exercises de ese día) con lo realmente
@@ -137,20 +174,17 @@ function buildExerciseGroups(
         const real = logged[i];
         sets.push(
           real
-            ? {
-                id: real.id,
-                setNumber: real.set_number,
-                weightKg: real.weight_kg,
-                repsCompleted: real.reps_completed,
-                rirActual: real.rir_actual,
-                completed: true,
-              }
+            ? realSlot(real)
             : {
                 id: null,
                 setNumber: i + 1,
                 weightKg: null,
                 repsCompleted: null,
                 rirActual: null,
+                durationSeconds: null,
+                distanceKm: null,
+                intensity: null,
+                assistance: null,
                 completed: false,
               }
         );
@@ -162,6 +196,7 @@ function buildExerciseGroups(
         plannedSets: re.sets,
         sets,
         fullyCompleted: logged.length >= re.sets,
+        tracking: trackingFromRow(re.exercises ?? {}),
       };
     });
 
@@ -175,15 +210,9 @@ function buildExerciseGroups(
       routineExerciseId,
       exerciseName: sorted[0]?.routine_exercises?.exercises?.name ?? "Ejercicio",
       plannedSets: sorted.length,
-      sets: sorted.map((real) => ({
-        id: real.id,
-        setNumber: real.set_number,
-        weightKg: real.weight_kg,
-        repsCompleted: real.reps_completed,
-        rirActual: real.rir_actual,
-        completed: true,
-      })),
+      sets: sorted.map(realSlot),
       fullyCompleted: true,
+      tracking: trackingFromRow(sorted[0]?.routine_exercises?.exercises ?? {}),
     });
   }
 
@@ -194,7 +223,8 @@ const LOG_DETAIL_SELECT = `id, workout_date, is_completed, energy_level, client_
        routine_days ( name ),
        workout_set_logs (
          id, routine_exercise_id, set_number, weight_kg, reps_completed, rir_actual,
-         routine_exercises ( exercises ( name ) )
+         duration_seconds, distance_km, intensity, assistance,
+         routine_exercises ( exercises ( name, ${TRACKING_COLUMNS} ) )
        )`;
 
 async function loadPlannedExercises(
@@ -204,7 +234,7 @@ async function loadPlannedExercises(
   if (!routineDayId) return [];
   const { data } = await supabase
     .from("routine_exercises")
-    .select("id, order_index, sets, exercises ( name )")
+    .select(`id, order_index, sets, exercises ( name, ${TRACKING_COLUMNS} )`)
     .eq("day_id", routineDayId)
     .returns<PlannedExerciseRow[]>();
   return data ?? [];

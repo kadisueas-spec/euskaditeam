@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { prescriptionChips } from "@/lib/utils/prescription";
 import { Check, ChevronDown, Dumbbell, Lightbulb, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,12 +10,6 @@ import { getMyActiveRoutine, getWeekProgress } from "@/lib/supabase/client-routi
 import { getMyFeedback } from "@/lib/supabase/feedback";
 import { FEEDBACK_TYPE_LABEL } from "@/lib/constants/feedback";
 import { formatRestTime } from "@/lib/utils/format-rest";
-
-function repsLabel(min: number | null, max: number | null) {
-  if (min == null && max == null) return null;
-  if (min != null && max != null && min !== max) return `${min}-${max} reps`;
-  return `${min ?? max} reps`;
-}
 
 export default async function MyRoutinePage() {
   const [routine, feedback] = await Promise.all([
@@ -100,19 +95,18 @@ export default async function MyRoutinePage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-medium text-white">{ex.exerciseName}</p>
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          <span className="rounded-full bg-[#e8001c]/15 px-2 py-0.5 text-xs font-semibold text-[#e8001c]">
-                            {ex.sets} series
-                          </span>
-                          {repsLabel(ex.repsMin, ex.repsMax) && (
-                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-[#f5f5f5]">
-                              {repsLabel(ex.repsMin, ex.repsMax)}
+                          {prescriptionChips(ex, ex.tracking).map((chip, i) => (
+                            <span
+                              key={chip}
+                              className={
+                                i === 0
+                                  ? "rounded-full bg-[#e8001c]/15 px-2 py-0.5 text-xs font-semibold text-[#e8001c]"
+                                  : "rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-[#f5f5f5]"
+                              }
+                            >
+                              {chip}
                             </span>
-                          )}
-                          {ex.rirTarget != null && (
-                            <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-[#f5f5f5]">
-                              RIR {ex.rirTarget}
-                            </span>
-                          )}
+                          ))}
                           {ex.restSeconds != null && (
                             <span className="rounded-full bg-white/10 px-2 py-0.5 text-xs font-semibold text-[#f5f5f5]">
                               {formatRestTime(ex.restSeconds)} descanso

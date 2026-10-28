@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sendPushToClient } from "@/lib/push/send-push";
 import { NEW_ROUTINE_PUSH_TITLES, pickPushCopy } from "@/lib/constants/push-copy";
 import { todayInParaguay } from "@/lib/utils/today";
-import { insertRoutineDays } from "@/lib/supabase/routine-tree";
+import { insertRoutineDays, trackingTargetColumns } from "@/lib/supabase/routine-tree";
 
 export type WarmupType =
   | "none"
@@ -25,6 +25,12 @@ export type RoutineExerciseInput = {
   weightIncrement: number;
   warmupType: WarmupType;
   warmupFixedWeightKg: number | null;
+  // Tipos de registro (oct-2026): isométricos y cardio. Opcionales para
+  // que Mi Entrenamiento y otros llamadores sigan igual.
+  secondsMin?: number | null;
+  secondsMax?: number | null;
+  minutesTarget?: number | null;
+  intensityTarget?: number | null;
 };
 
 export type RoutineDayInput = {
@@ -285,6 +291,7 @@ export async function updateRoutine(
         weight_increment: ex.weightIncrement,
         warmup_type: ex.warmupType,
         warmup_fixed_weight_kg: ex.warmupFixedWeightKg,
+        ...trackingTargetColumns(ex),
       };
 
       if (ex.id && existingExerciseIds.has(ex.id)) {

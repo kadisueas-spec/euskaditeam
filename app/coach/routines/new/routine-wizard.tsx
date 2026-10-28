@@ -11,9 +11,10 @@ import { NativeSelect } from "@/components/ui/native-select";
 import { Spinner } from "@/components/ui/spinner";
 import { FadeIn } from "@/components/motion/fade-in";
 import { PlannedMetricsPanel } from "@/components/coach/planned-metrics-panel";
-import { WarmupTypeSelector } from "@/components/coach/warmup-type-selector";
+import { PrescriptionFields } from "@/components/coach/prescription-fields";
+import { DEFAULT_TRACKING } from "@/lib/constants/tracking";
+import { exercisePayloadFromValues, missingPrescription } from "@/lib/utils/prescription";
 import type { ClientOption, ExerciseOption, RoutineDetail } from "@/lib/supabase/routines";
-import { sanitizeDecimalInput } from "@/lib/utils/decimal-input";
 import { minutesInputToSeconds, secondsToMinutesInput } from "@/lib/utils/rest-time";
 import { createRoutine, type RoutineDayInput, type WarmupType } from "../actions";
 import { createTemplate } from "../template-actions";
@@ -42,6 +43,12 @@ type ExerciseRow = {
   weightIncrement: string;
   warmupType: WarmupType;
   warmupFixedWeight: string;
+  // Tipos de registro (oct-2026). Opcionales: los borradores guardados
+  // antes no los tienen.
+  secondsMin?: string;
+  secondsMax?: string;
+  minutesTarget?: string;
+  intensityTarget?: string;
 };
 
 type DayRow = {
@@ -68,6 +75,10 @@ function newExerciseRow(isFirstOfDay: boolean): ExerciseRow {
     weightIncrement: "2.5",
     warmupType: isFirstOfDay ? "percentage_with_kg" : "none",
     warmupFixedWeight: "",
+    secondsMin: "",
+    secondsMax: "",
+    minutesTarget: "",
+    intensityTarget: "",
   };
 }
 
@@ -109,6 +120,10 @@ function daysFromSource(
         warmupType: ex.warmupType,
         warmupFixedWeight:
           ex.warmupFixedWeightKg != null ? String(ex.warmupFixedWeightKg) : "",
+        secondsMin: ex.secondsMin != null ? String(ex.secondsMin) : "",
+        secondsMax: ex.secondsMax != null ? String(ex.secondsMax) : "",
+        minutesTarget: ex.minutesTarget != null ? String(ex.minutesTarget) : "",
+        intensityTarget: ex.intensityTarget != null ? String(ex.intensityTarget) : "",
       })),
   }));
   return { days, skipped };
@@ -361,6 +376,11 @@ export function RoutineWizard({
     );
   }
 
+  // Tipo de registro del ejercicio elegido (sin ejercicio todavía: peso + reps).
+  function trackingOf(exerciseId: string) {
+    return exercises.find((opt) => opt.id === exerciseId)?.tracking ?? DEFAULT_TRACKING;
+  }
+
   function updateExercise(
     dayKey: string,
     exerciseKey: string,
@@ -387,8 +407,18 @@ export function RoutineWizard({
           setError(`Elige un ejercicio en "${day.name}".`);
           return false;
         }
-        if (!ex.sets) {
-          setError(`Falta "series" en un ejercicio de "${day.name}".`);
+        const missing = missingPrescription(
+          {
+            ...ex,
+            secondsMin: ex.secondsMin ?? "",
+            secondsMax: ex.secondsMax ?? "",
+            minutesTarget: ex.minutesTarget ?? "",
+            intensityTarget: ex.intensityTarget ?? "",
+          },
+          trackingOf(ex.exerciseId)
+        );
+        if (missing) {
+          setError(`Falta "${missing}" en un ejercicio de "${day.name}".`);
           return false;
         }
       }
@@ -401,18 +431,8 @@ export function RoutineWizard({
       name: d.name,
       exercises: d.exercises.map((e) => ({
         exerciseId: e.exerciseId,
-        sets: Number(e.sets),
-        repsMin: e.repsMin ? Number(e.repsMin) : null,
-        repsMax: e.repsMax ? Number(e.repsMax) : null,
-        rir: e.rir ? Number(e.rir) : null,
-        restSeconds: minutesInputToSeconds(e.restSeconds),
         notes: e.notes || null,
-        weightIncrement: Number(e.weightIncrement) || 2.5,
-        warmupType: e.warmupType,
-        warmupFixedWeightKg:
-          e.warmupType === "fixed_weight" && e.warmupFixedWeight
-            ? Number(e.warmupFixedWeight)
-            : null,
+        ...exercisePayloadFromValues(e, trackingOf(e.exerciseId), minutesInputToSeconds),
       })),
     }));
   }
@@ -788,96 +808,13 @@ export function RoutineWizard({
                           ))}
                       </NativeSelect>
                     </div>
-                    <div>
-                      <Label className="text-xs">Series</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        value={ex.sets}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, { sets: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Reps mín</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={ex.repsMin}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, {
-                            repsMin: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Reps máx</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={ex.repsMax}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, {
-                            repsMax: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">RIR</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={ex.rir}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, { rir: e.target.value })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Descanso (min)</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="1.5"
-                        value={ex.restSeconds}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, {
-                            restSeconds: sanitizeDecimalInput(e.target.value),
-                          })
-                        }
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Incremento (kg)</Label>
-                      <Input
-                        type="text"
-                        inputMode="decimal"
-                        placeholder="2.5"
-                        value={ex.weightIncrement}
-                        onChange={(e) =>
-                          updateExercise(day.key, ex.key, {
-                            weightIncrement: sanitizeDecimalInput(e.target.value),
-                          })
-                        }
-                      />
-                    </div>
-                    <div className="col-span-2 sm:col-span-6">
-                      <WarmupTypeSelector
-                        groupId={ex.key}
-                        value={ex.warmupType}
-                        fixedWeightKg={ex.warmupFixedWeight}
-                        onChange={(warmupType) =>
-                          updateExercise(day.key, ex.key, { warmupType })
-                        }
-                        onFixedWeightChange={(warmupFixedWeight) =>
-                          updateExercise(day.key, ex.key, { warmupFixedWeight })
-                        }
-                        isFirstOfDay={exIndex === 0}
-                      />
-                    </div>
+                    <PrescriptionFields
+                      tracking={trackingOf(ex.exerciseId)}
+                      values={ex}
+                      onChange={(patch) => updateExercise(day.key, ex.key, patch)}
+                      groupId={ex.key}
+                      isFirstOfDay={exIndex === 0}
+                    />
                     <div className="col-span-2 sm:col-span-5">
                       <Label className="text-xs">Notas</Label>
                       <Input

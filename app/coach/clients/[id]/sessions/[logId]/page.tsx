@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { formatSet } from "@/lib/utils/set-format";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -89,9 +90,17 @@ export default async function CoachSessionDetailPage({
                     <span
                       className={`font-mono ${slot.completed ? "text-white" : "text-[#666666]"}`}
                     >
-                      {slot.completed ? slot.weightKg ?? "-" : "—"} kg ·{" "}
-                      {slot.completed ? slot.repsCompleted ?? "-" : "—"} reps
-                      {slot.completed && slot.rirActual != null ? ` · RIR ${slot.rirActual}` : ""}
+                      {slot.completed
+                        ? formatSet(ex.tracking, {
+                            weight: slot.weightKg,
+                            reps: slot.repsCompleted,
+                            rir: slot.rirActual,
+                            seconds: slot.durationSeconds,
+                            distanceKm: slot.distanceKm,
+                            intensity: slot.intensity,
+                            assistance: slot.assistance,
+                          })
+                        : "—"}
                     </span>
                   </li>
                 ))}

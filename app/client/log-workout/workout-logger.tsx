@@ -28,6 +28,23 @@ import {
   type SetProgressionCase,
 } from "@/lib/utils/set-progression";
 import {
+  TRACKING_CASE_TEXT,
+  suggestNextTrackingSet,
+  type TrackingCase,
+  type TrackingSet,
+} from "@/lib/utils/tracking-progression";
+import { formatSet } from "@/lib/utils/set-format";
+import { DEFAULT_TRACKING } from "@/lib/constants/tracking";
+import { IsometricStopwatch } from "@/components/client/isometric-stopwatch";
+import {
+  EMPTY_TRACKING_FORM,
+  SetFields,
+  numOrNull,
+  str,
+  trackingFormFrom,
+  type TrackingForm,
+} from "@/components/client/set-fields";
+import {
   detectWeeklyRecord,
   recordSummaryLine,
   recordSummaryMessage,
@@ -93,9 +110,28 @@ type CommittedSet = {
   weight: string;
   reps: string;
   rir: string;
+  // Tipos de registro (oct-2026). seconds: isométrico y cardio (en cardio
+  // se carga en minutos y se guarda en segundos).
+  seconds?: string;
+  distance?: string;
+  intensity?: string;
+  assistance?: string;
   pending?: boolean;
   isPersonalRecord?: boolean;
 };
+
+// Serie cargada → valores para la progresión y el formato.
+function committedToTrackingSet(s: CommittedSet): TrackingSet {
+  return {
+    weight: numOrNull(s.weight),
+    reps: numOrNull(s.reps),
+    rir: numOrNull(s.rir),
+    seconds: numOrNull(s.seconds),
+    distanceKm: numOrNull(s.distance),
+    intensity: numOrNull(s.intensity),
+    assistance: numOrNull(s.assistance),
+  };
+}
 
 // Bloque 2: confeti sutil rojo/blanco para la pantalla de celebración —
 // posiciones y demoras fijas (no Math.random en cada render) para que sea
@@ -128,6 +164,30 @@ function repsRangeLabel(min: number | null, max: number | null): string | null {
   if (min == null && max == null) return null;
   if (min != null && max != null && min !== max) return `${min}-${max}`;
   return String(min ?? max);
+}
+
+// Tarjetas "número protagonista" de la prescripción, según el tipo de
+// registro (oct-2026). "Por lado" va en la etiqueta: "Reps por lado".
+function statCardsFor(exercise: MyRoutineDay["exercises"][number]): { label: string; value: string }[] {
+  const t = exercise.tracking;
+  const side = t.perSide ? " por lado" : "";
+  if (t.trackingType === "cardio") {
+    const cards = [{ label: "Minutos", value: exercise.minutesTarget != null ? String(exercise.minutesTarget) : "—" }];
+    if (exercise.intensityTarget != null) {
+      cards.push({ label: t.cardioScale === "effort" ? "Esfuerzo" : "Nivel", value: String(exercise.intensityTarget) });
+    }
+    return cards;
+  }
+  const cards = [{ label: "Series", value: String(exercise.sets) }];
+  if (t.trackingType === "time") {
+    const s = repsRangeLabel(exercise.secondsMin, exercise.secondsMax);
+    if (s) cards.push({ label: `Segundos${side}`, value: s });
+    return cards;
+  }
+  const r = repsRangeLabel(exercise.repsMin, exercise.repsMax);
+  if (r) cards.push({ label: `Reps${side}`, value: r });
+  if (exercise.rirTarget != null) cards.push({ label: "RIR", value: String(exercise.rirTarget) });
+  return cards;
 }
 
 export function WorkoutLogger({
@@ -178,6 +238,22 @@ export function WorkoutLogger({
   const [weight, setWeight] = useState("");
   const [reps, setReps] = useState("");
   const [rir, setRir] = useState("");
+  // Tipos de registro (oct-2026): segundos, minutos, distancia, intensidad
+  // y asistencia, más qué campos vienen sugeridos y por qué (el caso y la
+  // serie de la que salió).
+  const [trackingForm, setTrackingForm] = useState<TrackingForm>(EMPTY_TRACKING_FORM);
+  const [trackingSuggested, setTrackingSuggested] = useState<Record<keyof TrackingForm, boolean>>({
+    seconds: false,
+    minutes: false,
+    distance: false,
+    intensity: false,
+    assistance: false,
+  });
+  const [trackingHint, setTrackingHint] = useState<{
+    trackingCase: TrackingCase | null;
+    from: TrackingSet | null;
+    fromThisSession: boolean;
+  } | null>(null);
   const [suggested, setSuggested] = useState({
     weight: false,
     reps: false,
@@ -223,6 +299,7 @@ export function WorkoutLogger({
     weight: "",
     reps: "",
     rir: "",
+    ...EMPTY_TRACKING_FORM,
   });
   const [savingEdit, setSavingEdit] = useState(false);
   // Temporizador de descanso (jul-2026): instanceId nuevo en cada serie
@@ -283,6 +360,10 @@ export function WorkoutLogger({
             weight: s.weightKg != null ? String(s.weightKg) : "",
             reps: s.reps != null ? String(s.reps) : "",
             rir: s.rir != null ? String(s.rir) : "",
+            seconds: str(s.durationSeconds),
+            distance: str(s.distanceKm),
+            intensity: str(s.intensity),
+            assistance: str(s.assistance),
           });
           grouped[s.routineExerciseId] = list;
         }
@@ -386,6 +467,13 @@ export function WorkoutLogger({
   }, []);
 
   const exercise = day.exercises[exerciseIndex];
+  // Tipo de registro del ejercicio actual (oct-2026). Peso + reps sigue con
+  // su formulario y su progresión de siempre.
+  const tracking = exercise?.tracking ?? DEFAULT_TRACKING;
+  const isWeightReps = tracking.trackingType === "weight_reps";
+  const isCardio = tracking.trackingType === "cardio";
+  const isTime = tracking.trackingType === "time";
+  const isBodyweight = tracking.trackingType === "bodyweight_reps";
   const isLastExercise = exerciseIndex === day.exercises.length - 1;
   const currentSets = setsByExercise[exercise?.id ?? ""] ?? [];
   const nextSetNumber = currentSets.length + 1;
@@ -400,6 +488,7 @@ export function WorkoutLogger({
     exerciseIndex === 0 &&
     currentSets.length === 0 &&
     !!exercise &&
+    isWeightReps &&
     exercise.warmupType !== "none";
   // Recorrido de bienvenida (oct-2026): arranca cuando la pantalla de carga
   // de la serie está lista y no hay nada encima (calentamiento) — y solo
@@ -441,9 +530,71 @@ export function WorkoutLogger({
   // Depende de lastSet además de nextSetNumber: si el cliente edita la
   // última serie, la sugerencia de la siguiente se recalcula.
   const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : null;
-  const lastSetKey = lastSet ? `${lastSet.weight}|${lastSet.reps}|${lastSet.rir}` : "";
+  const lastSetKey = lastSet
+    ? `${lastSet.weight}|${lastSet.reps}|${lastSet.rir}|${lastSet.seconds}|${lastSet.intensity}|${lastSet.assistance}`
+    : "";
   useEffect(() => {
     if (!exercise) return;
+
+    // Tipos de registro (oct-2026): peso corporal, isométrico y cardio.
+    // Serie 1: lo que calculó el servidor (getWorkoutSuggestions); serie 2+:
+    // suggestNextTrackingSet sobre la última serie de esta sesión.
+    if (!isWeightReps) {
+      const fromSession = nextSetNumber > 1 && lastSet ? committedToTrackingSet(lastSet) : null;
+      const targets = {
+        repsMin: exercise.repsMin,
+        repsMax: exercise.repsMax,
+        rirTarget: exercise.rirTarget,
+        secondsMin: exercise.secondsMin,
+        secondsMax: exercise.secondsMax,
+        minutesTarget: exercise.minutesTarget,
+        intensityTarget: exercise.intensityTarget,
+        weightIncrement: exercise.weightIncrement,
+      };
+      const server = nextSetNumber === 1 ? suggestions[exercise.id] : undefined;
+      const next = fromSession
+        ? suggestNextTrackingSet(tracking, fromSession, targets)
+        : server
+          ? {
+              set: {
+                weight: server.weight,
+                reps: server.reps,
+                rir: server.rir,
+                seconds: server.seconds ?? null,
+                distanceKm: null,
+                intensity: server.intensity ?? null,
+                assistance: server.assistance ?? null,
+              },
+              trackingCase: server.trackingCase ?? null,
+            }
+          : null;
+      const set = next?.set ?? null;
+      const form = set ? trackingFormFrom(set, isCardio) : EMPTY_TRACKING_FORM;
+      setWeight(set?.weight != null ? String(set.weight) : "");
+      setReps(set?.reps != null ? String(set.reps) : "");
+      setRir(set?.rir != null ? String(set.rir) : "");
+      setTrackingForm(form);
+      setSuggested({ weight: set?.weight != null, reps: set?.reps != null, rir: set?.rir != null });
+      setTrackingSuggested({
+        seconds: form.seconds !== "",
+        minutes: form.minutes !== "",
+        distance: false,
+        intensity: form.intensity !== "",
+        assistance: form.assistance !== "",
+      });
+      setTrackingHint(
+        next ? { trackingCase: next.trackingCase, from: fromSession ?? server?.previous ?? null, fromThisSession: !!fromSession } : null
+      );
+      setSetProgression(null);
+      setSuggestionCase(null);
+      setSuggestionWeeksAgo(fromSession ? null : (server?.weeksAgo ?? null));
+      setSuggestionRecord(null);
+      setSuggestionRecordDate(null);
+      setError(null);
+      return;
+    }
+    setTrackingForm(EMPTY_TRACKING_FORM);
+    setTrackingHint(null);
 
     if (nextSetNumber > 1 && lastSet) {
       const lastWeight = parseDecimalInput(lastSet.weight);
@@ -548,8 +699,23 @@ export function WorkoutLogger({
     // Segunda protección del bug de series de más: un ejercicio con todas
     // sus series hechas no acepta otra (el botón ya no se muestra).
     if (exerciseDone) return;
-    if (!weight && !reps) {
+    // Qué hace falta para completar la serie según el tipo (oct-2026).
+    const minutesValue = numOrNull(trackingForm.minutes);
+    const secondsValue = numOrNull(trackingForm.seconds);
+    if (isWeightReps && !weight && !reps) {
       setError("Ingresá al menos peso o reps.");
+      return;
+    }
+    if (isBodyweight && !reps) {
+      setError("Ingresá las reps.");
+      return;
+    }
+    if (isTime && !(secondsValue != null && secondsValue > 0)) {
+      setError("Ingresá los segundos.");
+      return;
+    }
+    if (isCardio && !(minutesValue != null && minutesValue > 0)) {
+      setError("Ingresá los minutos.");
       return;
     }
     if (!workoutLogId) {
@@ -559,13 +725,30 @@ export function WorkoutLogger({
     setError(null);
 
     const setNumber = nextSetNumber;
-    const input = {
+    const durationSeconds = isCardio
+      ? minutesValue != null
+        ? Math.round(minutesValue * 60)
+        : null
+      : isTime && secondsValue != null
+        ? Math.round(secondsValue)
+        : null;
+    const input: AddSetInput = {
       workoutLogId,
       routineExerciseId: exercise.id,
       setNumber,
-      weightKg: parseDecimalInput(weight),
-      reps: reps ? Number(reps) : null,
-      rir: rir ? Number(rir) : null,
+      // Peso + reps: el peso; peso corporal e isométrico: kilos extra
+      // (opcionales); cardio y asistidos: sin kilos.
+      weightKg: isCardio || tracking.assistanceUnit ? null : parseDecimalInput(weight),
+      reps: isTime || isCardio ? null : reps ? Number(reps) : null,
+      rir: isTime || isCardio ? null : rir !== "" ? Number(rir) : null,
+      ...(isWeightReps
+        ? {}
+        : {
+            durationSeconds,
+            distanceKm: isCardio ? numOrNull(trackingForm.distance) : null,
+            intensity: isCardio ? numOrNull(trackingForm.intensity) : null,
+            assistance: tracking.assistanceUnit ? numOrNull(trackingForm.assistance) : null,
+          }),
     };
 
     // Récord vs la semana pasada (no vs el récord all-time del badge por
@@ -575,11 +758,14 @@ export function WorkoutLogger({
     // no hace falta ninguna consulta extra ni esperar la respuesta del
     // servidor.
     const previousRecord = suggestions[exercise.id]?.previousRecord ?? null;
-    const weeklyRecord = detectWeeklyRecord(previousRecord, {
-      weight: input.weightKg,
-      reps: input.reps,
-      rir: input.rir,
-    });
+    // Los récords de los otros tipos de registro llegan en la etapa 3.
+    const weeklyRecord = isWeightReps
+      ? detectWeeklyRecord(previousRecord, {
+          weight: input.weightKg,
+          reps: input.reps,
+          rir: input.rir,
+        })
+      : null;
     if (weeklyRecord && input.weightKg != null) {
       const record: SessionRecord = {
         id: crypto.randomUUID(),
@@ -602,7 +788,7 @@ export function WorkoutLogger({
     // perfil, no arranca — instanceId nuevo en cada serie para que
     // RestTimerBar sepa que es un período de descanso distinto y no algo
     // para resumir desde localStorage.
-    if (restTimerPrefs.enabled && exercise.restSeconds && exercise.restSeconds > 0) {
+    if (restTimerPrefs.enabled && !isCardio && exercise.restSeconds && exercise.restSeconds > 0) {
       setRestTimer({
         routineExerciseId: exercise.id,
         restSeconds: exercise.restSeconds,
@@ -619,7 +805,17 @@ export function WorkoutLogger({
       ...prevState,
       [exercise.id]: [
         ...(prevState[exercise.id] ?? []),
-        { id: tempId, weight, reps, rir, pending: true },
+        {
+          id: tempId,
+          weight: input.weightKg != null ? weight : "",
+          reps: input.reps != null ? reps : "",
+          rir: input.rir != null ? rir : "",
+          seconds: str(input.durationSeconds),
+          distance: str(input.distanceKm),
+          intensity: str(input.intensity),
+          assistance: str(input.assistance),
+          pending: true,
+        },
       ],
     }));
 
@@ -668,16 +864,42 @@ export function WorkoutLogger({
   function startEditingSet(set: CommittedSet) {
     if (set.pending) return;
     setEditingSetId(set.id);
-    setEditValues({ weight: set.weight, reps: set.reps, rir: set.rir });
+    const seconds = numOrNull(set.seconds);
+    setEditValues({
+      weight: set.weight,
+      reps: set.reps,
+      rir: set.rir,
+      seconds: isCardio ? "" : (set.seconds ?? ""),
+      minutes: isCardio && seconds != null ? String(Math.round((seconds / 60) * 10) / 10) : "",
+      distance: set.distance ?? "",
+      intensity: set.intensity ?? "",
+      assistance: set.assistance ?? "",
+    });
   }
 
   async function saveEditedSet() {
     if (!editingSetId) return;
     setSavingEdit(true);
+    const minutes = numOrNull(editValues.minutes);
+    const seconds = numOrNull(editValues.seconds);
     const result = await actions.updateSet(editingSetId, {
-      weightKg: parseDecimalInput(editValues.weight),
-      reps: editValues.reps ? Number(editValues.reps) : null,
-      rir: editValues.rir ? Number(editValues.rir) : null,
+      weightKg: isCardio || tracking.assistanceUnit ? null : parseDecimalInput(editValues.weight),
+      reps: isTime || isCardio ? null : editValues.reps ? Number(editValues.reps) : null,
+      rir: isTime || isCardio ? null : editValues.rir !== "" ? Number(editValues.rir) : null,
+      ...(isWeightReps
+        ? {}
+        : {
+            durationSeconds: isCardio
+              ? minutes != null && minutes > 0
+                ? Math.round(minutes * 60)
+                : null
+              : isTime && seconds != null && seconds > 0
+                ? Math.round(seconds)
+                : null,
+            distanceKm: isCardio ? numOrNull(editValues.distance) : null,
+            intensity: isCardio ? numOrNull(editValues.intensity) : null,
+            assistance: tracking.assistanceUnit ? numOrNull(editValues.assistance) : null,
+          }),
     });
     setSavingEdit(false);
     if ("error" in result) {
@@ -693,6 +915,16 @@ export function WorkoutLogger({
               weight: editValues.weight,
               reps: editValues.reps,
               rir: editValues.rir,
+              ...(isWeightReps
+                ? {}
+                : {
+                    seconds: isCardio
+                      ? str(minutes != null && minutes > 0 ? Math.round(minutes * 60) : null)
+                      : editValues.seconds,
+                    distance: editValues.distance,
+                    intensity: editValues.intensity,
+                    assistance: editValues.assistance,
+                  }),
             }
           : s
       ),
@@ -1023,15 +1255,7 @@ export function WorkoutLogger({
             Mismo tratamiento "número protagonista" que el resto de la app
             (Bebas Neue grande + label chico debajo) — se lee de un vistazo. */}
         <div className="flex gap-2">
-          {[
-            { label: "Series", value: String(exercise.sets) },
-            ...(repsRangeLabel(exercise.repsMin, exercise.repsMax)
-              ? [{ label: "Reps", value: repsRangeLabel(exercise.repsMin, exercise.repsMax)! }]
-              : []),
-            ...(exercise.rirTarget != null
-              ? [{ label: "RIR", value: String(exercise.rirTarget) }]
-              : []),
-          ].map((stat) => (
+          {statCardsFor(exercise).map((stat) => (
             <div
               key={stat.label}
               className="flex flex-1 flex-col items-center rounded-xl bg-white/5 py-2.5"
@@ -1071,6 +1295,14 @@ export function WorkoutLogger({
                 <p className="text-xs font-semibold text-[#e8001c] uppercase">
                   Editando serie {i + 1}
                 </p>
+                {!isWeightReps ? (
+                  <SetFields
+                    tracking={tracking}
+                    values={editValues}
+                    size="sm"
+                    onChange={(key, value) => setEditValues((v) => ({ ...v, [key]: value }))}
+                  />
+                ) : (
                 <div className="grid grid-cols-3 gap-2">
                   <Input
                     type="text"
@@ -1106,6 +1338,7 @@ export function WorkoutLogger({
                     className="h-11 text-center"
                   />
                 </div>
+                )}
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
@@ -1143,8 +1376,7 @@ export function WorkoutLogger({
                     )}
                   </span>
                   <span className="flex items-center gap-2 font-mono text-white">
-                    {s.weight || "-"} kg · {s.reps || "-"} reps
-                    {s.rir ? ` · RIR ${s.rir}` : ""}
+                    {formatSet(tracking, committedToTrackingSet(s))}
                     <Pencil className="size-3.5 text-[#888888]" />
                   </span>
                 </button>
@@ -1185,6 +1417,55 @@ export function WorkoutLogger({
         </p>
       </div>
 
+      {!isWeightReps ? (
+        <>
+          <div data-tour="set-inputs">
+            <SetFields
+              tracking={tracking}
+              values={{ weight, reps, rir, ...trackingForm }}
+              size="lg"
+              suggested={{ ...suggested, ...trackingSuggested }}
+              onChange={(key, value) => {
+                if (key === "weight" || key === "reps" || key === "rir") {
+                  if (key === "weight") setWeight(value);
+                  else if (key === "reps") setReps(value);
+                  else setRir(value);
+                  setSuggested((s) => ({ ...s, [key]: false }));
+                } else {
+                  setTrackingForm((f) => ({ ...f, [key]: value }));
+                  setTrackingSuggested((s) => ({ ...s, [key]: false }));
+                }
+              }}
+            />
+          </div>
+          {isTime && (
+            <IsometricStopwatch
+              onDone={(seconds) => {
+                setTrackingForm((f) => ({ ...f, seconds: String(seconds) }));
+                setTrackingSuggested((s) => ({ ...s, seconds: false }));
+              }}
+            />
+          )}
+          {trackingHint && (Object.values(trackingSuggested).some(Boolean) || suggested.reps || suggested.weight) && (
+            <div className="-mt-2 flex flex-col gap-0.5">
+              <p className="flex items-center gap-1 text-xs text-amber-400">
+                <Check className="size-3" />
+                {trackingHint.fromThisSession && trackingHint.from
+                  ? `Según tu serie anterior: ${formatSet(tracking, trackingHint.from)} — podés editarlo`
+                  : suggestionWeeksAgo != null && suggestionWeeksAgo >= 2
+                    ? `Tu última vez con este ejercicio, hace ${suggestionWeeksAgo} semanas — podés editarlo`
+                    : trackingHint.from
+                      ? `Según tu última vez: ${formatSet(tracking, trackingHint.from)} — podés editarlo`
+                      : "Sugerido según tu última vez — podés editarlo"}
+              </p>
+              {trackingHint.trackingCase && TRACKING_CASE_TEXT[trackingHint.trackingCase] && (
+                <p className="text-xs text-[#888888]">{TRACKING_CASE_TEXT[trackingHint.trackingCase]}</p>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+      <>
       <div data-tour="set-inputs" className="grid grid-cols-3 gap-2">
         <div className="flex flex-col gap-1">
           <Label className="text-xs">Peso (kg)</Label>
@@ -1269,6 +1550,8 @@ export function WorkoutLogger({
             </p>
           )}
         </div>
+      )}
+      </>
       )}
 
       <Button
