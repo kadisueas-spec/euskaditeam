@@ -1255,6 +1255,21 @@ momento, no una galería genérica.
       decían "Tu período" en portada, cierre e imagen. `upgradeLegacyCards`
       (`layout.ts`) lo corrige al leer (bandeja, cliente y al enviar), sin
       regenerar; las frases quedan como se generaron.
+    - Reporte que se abre solo en Inicio (oct-2026, migración
+      `20261028c_report_auto_open.sql`: `progress_reports.auto_open_count` y
+      `.auto_open_last_at`). Regla pura en `lib/reports/auto-open.ts`
+      (`pickAutoOpenReport`): enviado y sin `opened_at`, máximo 1 vez por día
+      (fecha de Paraguay) y 3 por reporte, el más reciente primero, nunca
+      con un entrenamiento en curso. `opened_at` ahora = pasó de la portada
+      (`ReportViewer` con `onIndexChange` del reproductor; antes se marcaba
+      al abrir). `HomeReportAccess`: una tarjeta por reporte sin ver completo
+      (`getPendingClientReports`, hasta 3), abre al toque el de la push
+      (`?report=`, no cuenta) y el automático recién después del banner
+      "Empecemos" (`WELCOME_BANNER_CLOSED_EVENT`) y del recorrido
+      (`HOME_TOUR_DONE_EVENT`, `OnboardingTour.onDone`). Cada apertura
+      automática: `markReportAutoOpened` (propiedad con la sesión del
+      cliente, escritura con service role, UPDATE condicional sobre el
+      contador leído).
 
 72. Tipos de registro por ejercicio (oct-2026, migraciones
     `20261028_tracking_types.sql` y `20261028b_plancha_abdominal.sql`, ya

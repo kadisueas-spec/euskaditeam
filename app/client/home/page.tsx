@@ -14,7 +14,9 @@ import { HomeTour } from "@/components/client/home-tour";
 import { FadeIn } from "@/components/motion/fade-in";
 import { getClientHomeData } from "@/lib/supabase/client-home";
 import { getActiveWorkoutSession } from "@/lib/supabase/client-routine";
-import { getClientReport, getPendingClientReport } from "@/lib/supabase/progress-reports";
+import { getClientReport, getPendingClientReports } from "@/lib/supabase/progress-reports";
+import { pickAutoOpenReport } from "@/lib/reports/auto-open";
+import { todayInParaguay } from "@/lib/utils/today";
 import { HomeReportAccess } from "@/components/client/home-report-access";
 import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
@@ -25,10 +27,10 @@ export default async function ClientHomePage({
   searchParams: Promise<{ report?: string }>;
 }) {
   const { report: requestedReportId } = await searchParams;
-  const [data, activeWorkout, pendingReport, requestedReport] = await Promise.all([
+  const [data, activeWorkout, pendingReports, requestedReport] = await Promise.all([
     getClientHomeData(),
     getActiveWorkoutSession(),
-    getPendingClientReport(),
+    getPendingClientReports(),
     // ?report=<id> llega desde la push del reporte: se abre solo.
     requestedReportId ? getClientReport(requestedReportId) : Promise.resolve(null),
   ]);
@@ -38,12 +40,27 @@ export default async function ClientHomePage({
 
   const daysSinceEvalLabel =
     data.daysSinceLastEvaluation == null ? "—" : String(data.daysSinceLastEvaluation);
-  const report = requestedReport ?? pendingReport;
+  // Reporte que se abre solo (oct-2026): el más reciente sin abrir, 1 vez
+  // por día y 3 por reporte, nunca con un entrenamiento en curso.
+  const autoOpenId = requestedReport
+    ? null
+    : pickAutoOpenReport({
+        reports: pendingReports,
+        today: todayInParaguay(),
+        workoutInProgress: !!activeWorkout,
+      });
 
   return (
     <div className="flex flex-col gap-4">
-      {report && (
-        <HomeReportAccess key={report.id} report={report} autoOpen={!!requestedReport} />
+      {(pendingReports.length > 0 || requestedReport) && (
+        <HomeReportAccess
+          key={requestedReport?.id ?? "home"}
+          reports={pendingReports}
+          requested={requestedReport}
+          autoOpenId={autoOpenId}
+          waitForWelcomeBanner={!!data.welcomeBanner}
+          waitForTour={!!data.homeTourRoutineId}
+        />
       )}
 
       <FadeIn>

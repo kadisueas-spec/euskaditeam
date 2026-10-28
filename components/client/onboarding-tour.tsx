@@ -94,6 +94,7 @@ export function OnboardingTour({
   enabled,
   waitForEvent,
   onStart,
+  onDone,
   startDelayMs = 500,
 }: {
   steps: TourStep[];
@@ -105,6 +106,8 @@ export function OnboardingTour({
   // el cierre del banner "Empecemos").
   waitForEvent?: string;
   onStart: () => void;
+  // Al terminar (completo, salteado, o si no había ningún paso en pantalla).
+  onDone?: () => void;
   startDelayMs?: number;
 }) {
   const [eventFired, setEventFired] = useState(!waitForEvent);
@@ -122,6 +125,14 @@ export function OnboardingTour({
   useEffect(() => {
     onStartRef.current = onStart;
   }, [onStart]);
+
+  const onDoneRef = useRef(onDone);
+  useEffect(() => {
+    onDoneRef.current = onDone;
+  }, [onDone]);
+  useEffect(() => {
+    if (status === "done") onDoneRef.current?.();
+  }, [status]);
 
   useEffect(() => {
     if (!waitForEvent) return;

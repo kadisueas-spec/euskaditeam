@@ -2,6 +2,7 @@
 
 import { OnboardingTour } from "@/components/client/onboarding-tour";
 import {
+  HOME_TOUR_DONE_EVENT,
   HOME_TOUR_STEPS,
   WELCOME_BANNER_CLOSED_EVENT,
 } from "@/lib/constants/onboarding-tour";
@@ -25,6 +26,7 @@ export function HomeTour({
       onStart={() => {
         markTourSeen(routineId, "home").catch(() => {});
       }}
+      onDone={() => window.dispatchEvent(new Event(HOME_TOUR_DONE_EVENT))}
     />
   );
 }

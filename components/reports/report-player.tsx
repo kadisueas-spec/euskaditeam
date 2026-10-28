@@ -33,6 +33,9 @@ type Props = {
   onClose?: () => void;
   // Se llama una vez al llegar a la última tarjeta.
   onComplete?: () => void;
+  // Cada vez que cambia la tarjeta (el cliente marca "abierto" al pasar de
+  // la portada).
+  onIndexChange?: (index: number) => void;
 };
 
 type Slide = { key: string; theme: CardTheme; card?: ReportCard; content?: React.ReactNode };
@@ -46,6 +49,7 @@ export function ReportPlayer({
   initialIndex = 0,
   onClose,
   onComplete,
+  onIndexChange,
 }: Props) {
   const slides: Slide[] = [
     ...cards.map((card, i) => ({ key: `${card.type}-${i}`, theme: card.theme, card })),
@@ -66,6 +70,10 @@ export function ReportPlayer({
   // El portal solo existe en el navegador (document.body).
   // eslint-disable-next-line react-hooks/set-state-in-effect -- montaje del portal
   useEffect(() => setMounted(true), []);
+
+  useEffect(() => {
+    onIndexChange?.(index);
+  }, [index, onIndexChange]);
 
   useEffect(() => {
     if (index === last && !completed.current) {

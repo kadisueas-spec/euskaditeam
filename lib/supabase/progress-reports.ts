@@ -236,21 +236,34 @@ export async function getClientReport(reportId: string): Promise<ClientReport | 
   return { ...toSummary(data), cards: upgradeLegacyCards(data.cards ?? []) };
 }
 
-// El reporte enviado más reciente que el cliente todavía no vio hasta el
-// final: queda como acceso destacado arriba de todo en Inicio.
-export async function getPendingClientReport(): Promise<ClientReport | null> {
+// Reportes enviados que el cliente todavía no vio hasta el final (oct-2026):
+// cada uno queda con su tarjeta en Inicio, y el más reciente que corresponda
+// se abre solo (lib/reports/auto-open.ts). Más reciente primero; tope de 3
+// para no llenar Inicio de tarjetas.
+export type PendingClientReport = ClientReport & {
+  openedAt: string | null;
+  autoOpenCount: number;
+  autoOpenLastAt: string | null;
+};
+
+export async function getPendingClientReports(): Promise<PendingClientReport[]> {
   const client = await getCurrentClientRecord();
-  if (!client) return null;
+  if (!client) return [];
   const supabase = await createClient();
   const { data } = await supabase
     .from("progress_reports")
-    .select("id, kind, period_start, period_end, sent_at, completed_at, cards")
+    .select("id, kind, period_start, period_end, sent_at, completed_at, opened_at, auto_open_count, auto_open_last_at, cards")
     .eq("client_id", client.id)
     .eq("status", "sent")
     .is("completed_at", null)
     .order("sent_at", { ascending: false })
-    .limit(1)
-    .maybeSingle<ClientRow>();
-  if (!data) return null;
-  return { ...toSummary(data), cards: upgradeLegacyCards(data.cards ?? []) };
+    .limit(3)
+    .returns<(ClientRow & { opened_at: string | null; auto_open_count: number | null; auto_open_last_at: string | null })[]>();
+  return (data ?? []).map((r) => ({
+    ...toSummary(r),
+    cards: upgradeLegacyCards(r.cards ?? []),
+    openedAt: r.opened_at,
+    autoOpenCount: r.auto_open_count ?? 0,
+    autoOpenLastAt: r.auto_open_last_at,
+  }));
 }

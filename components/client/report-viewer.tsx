@@ -1,19 +1,24 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import { ReportPlayer } from "@/components/reports/report-player";
 import { markReportCompleted, markReportOpened } from "@/app/client/progress/reports/actions";
 import type { ClientReport } from "@/lib/supabase/progress-reports";
 
-// Reporte a pantalla completa para el cliente: marca "abierto" al montar y
+// Reporte a pantalla completa para el cliente: marca "abierto" al pasar de
+// la portada (oct-2026: antes era al montar — con el reporte que se abre
+// solo en Inicio, mirar la portada y cerrarlo no cuenta como abierto) y
 // "visto completo" al llegar a la última tarjeta.
 export function ReportViewer({ report, onClose }: { report: ClientReport; onClose: () => void }) {
   const opened = useRef(false);
-  useEffect(() => {
-    if (opened.current) return;
-    opened.current = true;
-    markReportOpened(report.id).catch(() => {});
-  }, [report.id]);
+  const onIndexChange = useCallback(
+    (index: number) => {
+      if (index === 0 || opened.current) return;
+      opened.current = true;
+      markReportOpened(report.id).catch(() => {});
+    },
+    [report.id]
+  );
 
   return (
     <ReportPlayer
@@ -22,6 +27,7 @@ export function ReportViewer({ report, onClose }: { report: ClientReport; onClos
       periodLabel={report.periodLabel}
       variant="fullscreen"
       onClose={onClose}
+      onIndexChange={onIndexChange}
       onComplete={() => {
         if (!report.completedAt) markReportCompleted(report.id).catch(() => {});
       }}

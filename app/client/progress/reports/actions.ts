@@ -48,3 +48,40 @@ export async function markReportCompleted(reportId: string) {
   if (!result.error) revalidatePath("/client/home");
   return result;
 }
+
+// Reporte que se abrió solo en Inicio (oct-2026): suma 1 al contador y
+// guarda cuándo, para no mostrarlo más de 1 vez por día ni más de 3 veces
+// (lib/reports/auto-open.ts). Mismo patrón que stamp: la propiedad se
+// verifica con la sesión del cliente y escribe el service role. El UPDATE
+// es condicional sobre el contador leído (no se pisa si dos dispositivos lo
+// abren a la vez) y solo mientras siga sin abrir.
+export async function markReportAutoOpened(reportId: string): Promise<{ error?: string }> {
+  const client = await getCurrentClientRecord();
+  if (!client) return { error: "No autenticado." };
+
+  const supabase = await createClient();
+  const { data: own } = await supabase
+    .from("progress_reports")
+    .select("id, auto_open_count, opened_at")
+    .eq("id", reportId)
+    .eq("client_id", client.id)
+    .eq("status", "sent")
+    .maybeSingle<{ id: string; auto_open_count: number | null; opened_at: string | null }>();
+  if (!own) return { error: "Reporte no encontrado." };
+  if (own.opened_at) return {};
+
+  const count = own.auto_open_count ?? 0;
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("progress_reports")
+    .update({ auto_open_count: count + 1, auto_open_last_at: new Date().toISOString() })
+    .eq("id", reportId)
+    .eq("client_id", client.id)
+    .eq("auto_open_count", count)
+    .is("opened_at", null);
+  if (error) {
+    console.error("reportes: no se pudo marcar la apertura automática:", error);
+    return { error: "No se pudo guardar." };
+  }
+  return {};
+}

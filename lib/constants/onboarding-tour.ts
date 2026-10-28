@@ -13,6 +13,9 @@ export type TourStep = {
 // Evento que dispara el banner "Empecemos" al cerrarse: el recorrido de
 // Inicio espera a que el banner se cierre para no superponerse.
 export const WELCOME_BANNER_CLOSED_EVENT = "fitcoach:welcome-banner-closed";
+// El recorrido de Inicio terminó (oct-2026): el reporte que se abre solo lo
+// espera para no superponerse.
+export const HOME_TOUR_DONE_EVENT = "fitcoach:home-tour-done";
 
 export const HOME_TOUR_STEPS: TourStep[] = [
   {
