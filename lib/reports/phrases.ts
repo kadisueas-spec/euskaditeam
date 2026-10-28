@@ -68,6 +68,13 @@ export const PHRASE_BANK = {
     { text: "En {ejercicio} pasaste de RIR {rir_antes} a RIR {rir}. Te está costando menos, eso es que te estás haciendo más fuerte 🫡" },
     { text: "{ejercicio} con más resto que tu mejor marca. Todo el esfuerzo vale la pena 👏🏻" },
   ],
+  // Tipos de registro (oct-2026): peso corporal, asistidos, isométricos y
+  // cardio. {mejora} ya viene escrita ("−5 kg de ayuda", "+10 s", "nivel 7 → 8").
+  "record.typed": [
+    { text: "{ejercicio}: {mejora}. Todo el esfuerzo vale la pena 👏🏻" },
+    { text: "Nueva mejor marca en {ejercicio}: {mejora}. Vamos por más" },
+    { text: "{ejercicio}, {mejora} contra tu mejor marca. Así se progresa" },
+  ],
   "record.none": [
     { text: "Esta semana fueron {series} series y {volumen} kg movidos. El progreso es más que números, lo diste todo", scope: "weekly" },
     { text: "{series} series hechas. Cumpliste con lo que pudiste y eso es lo que importa" },

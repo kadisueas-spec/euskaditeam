@@ -1,6 +1,6 @@
 import { PhrasePicker } from "@/lib/reports/phrases";
 import type { PhraseVars, Situation } from "@/lib/reports/phrases";
-import { personalBests, recordRow } from "@/lib/reports/records";
+import { pbValue, personalBests, recordDiff, recordRow, typedHeadline } from "@/lib/reports/records";
 import type { PersonalBest } from "@/lib/reports/records";
 import { weightDirectionFromGoal } from "@/lib/reports/weight-goal";
 import { WEEK_LABELS, rangeWeightCard } from "@/lib/reports/weight";
@@ -40,6 +40,25 @@ export function improvementCard(
   more: PersonalBest[],
   picker: PhrasePicker
 ): ReportCard {
+  // Tipos de registro (oct-2026): su propio número, unidad y frases.
+  if (top.typed) {
+    const head = typedHeadline(top);
+    const picked = picker.pick("record.typed", { ejercicio: top.exerciseName, mejora: recordDiff(top) });
+    return {
+      type: "improvement",
+      key: "improvement",
+      theme: "black",
+      kicker: "Tu mejor avance",
+      exercise: top.exerciseName,
+      value: head.value,
+      unit: head.unit,
+      detail: `${pbValue(top, top.current)} — antes ${pbValue(top, top.previous)}`,
+      more: more.map(recordRow),
+      phrase: picked?.text,
+      phraseKey: picked?.key,
+      link: STATS_LINK,
+    };
+  }
   const situation: Situation =
     top.type === "weight" ? "record.weight" : top.type === "reps" ? "record.reps" : "record.rir";
   const vars: PhraseVars = {

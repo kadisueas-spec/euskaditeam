@@ -1,3 +1,14 @@
+import { trackingFromRow, type TrackingFields } from "@/lib/constants/tracking";
+import { isBetterTrackingSet } from "@/lib/utils/tracking-progression";
+import {
+  TRACKING_RECORD_PRIORITY,
+  trackingRecordBanner,
+  trackingRecordDiff,
+  type TrackingRecord,
+} from "@/lib/utils/tracking-records";
+import type { TrackingSet } from "@/lib/utils/tracking-progression";
+import { formatSet, type SetValues } from "@/lib/utils/set-format";
+
 // Sistema de celebración de récords (jul-2026). Compara cada serie recién
 // cargada contra el récord CRUDO de la semana pasada (previousRecord de
 // WorkoutSuggestion, ver actions.ts) — nunca contra la sugerencia ya
@@ -24,6 +35,10 @@ export type SessionRecord = {
   // Récord de RIR: cuántas reps MÁS en reserva que antes (mismo peso y reps).
   rirDelta?: number;
   previousRir?: number;
+  // Tipos de registro (oct-2026): récord de un ejercicio que no es peso +
+  // reps (ver lib/utils/tracking-records.ts). `value` = la serie como se
+  // lee ("45 s · +5 kg"). Con esto, banner y resumen usan su propio texto.
+  tracking?: { fields: TrackingFields; record: TrackingRecord; value: string };
 };
 
 const EPS = 0.001;
@@ -80,6 +95,7 @@ export function formatKg(n: number): string {
 
 // Momento 1 — dato concreto debajo de "¡Nuevo récord!" en el banner.
 export function recordBannerDetail(record: SessionRecord): string {
+  if (record.tracking) return trackingRecordBanner(record.tracking.fields, record.tracking.record);
   if (record.type === "weight") {
     return `+${formatKg(record.weightDelta ?? 0)}kg más que la semana pasada`;
   }
@@ -93,6 +109,9 @@ export function recordBannerDetail(record: SessionRecord): string {
 
 // Momento 2 — una línea por ejercicio en "Tus récords de hoy".
 export function recordSummaryLine(record: SessionRecord): string {
+  if (record.tracking) {
+    return `${record.exerciseName}: ${trackingRecordDiff(record.tracking.fields, record.tracking.record)} (${record.tracking.value})`;
+  }
   const repsSuffix = record.reps != null ? ` × ${record.reps}` : "";
   if (record.type === "weight") {
     return `${record.exerciseName}: +${formatKg(record.weightDelta ?? 0)}kg (${formatKg(record.weight)}kg${repsSuffix})`;
@@ -116,7 +135,12 @@ export function recordSummaryMessage(count: number): string {
 // la mejora más grande primero (+5kg antes que +2,5kg).
 const TYPE_PRIORITY: Record<RecordType, number> = { weight: 2, reps: 1, rir: 0 };
 
+function recordPriority(record: SessionRecord): number {
+  return record.tracking ? TRACKING_RECORD_PRIORITY[record.tracking.record.type] : TYPE_PRIORITY[record.type];
+}
+
 function recordMagnitude(record: SessionRecord): number {
+  if (record.tracking) return record.tracking.record.delta;
   if (record.type === "weight") return record.weightDelta ?? 0;
   if (record.type === "reps") return record.repsDelta ?? 0;
   return record.rirDelta ?? 0;
@@ -124,7 +148,7 @@ function recordMagnitude(record: SessionRecord): number {
 
 // Negativo si `a` es más impactante que `b` (para Array.sort).
 export function compareRecordsByImpact(a: SessionRecord, b: SessionRecord): number {
-  const byType = TYPE_PRIORITY[b.type] - TYPE_PRIORITY[a.type];
+  const byType = recordPriority(b) - recordPriority(a);
   if (byType !== 0) return byType;
   return recordMagnitude(b) - recordMagnitude(a);
 }
@@ -153,9 +177,41 @@ export type SetLogWithExerciseRow = {
   weight_kg: number | null;
   reps_completed: number | null;
   rir_actual: number | null;
+  // Tipos de registro (oct-2026): opcionales para las consultas que no los
+  // piden (quedan como peso + reps).
+  duration_seconds?: number | null;
+  distance_km?: number | null;
+  intensity?: number | null;
+  assistance?: number | null;
   workout_logs: { workout_date: string } | null;
-  routine_exercises: { exercises: { name: string } | null } | null;
+  routine_exercises: {
+    exercises: {
+      name: string;
+      tracking_type?: string | null;
+      per_side?: boolean | null;
+      assistance_unit?: string | null;
+      cardio_scale?: string | null;
+    } | null;
+  } | null;
 };
+
+// Fila → valores de una serie para los tipos de registro.
+export function rowToTrackingSet(row: SetLogWithExerciseRow): TrackingSet {
+  const num = (x: number | null | undefined) => (x != null ? Number(x) : null);
+  return {
+    weight: num(row.weight_kg),
+    reps: row.reps_completed,
+    rir: row.rir_actual,
+    seconds: row.duration_seconds ?? null,
+    distanceKm: num(row.distance_km),
+    intensity: num(row.intensity),
+    assistance: num(row.assistance),
+  };
+}
+
+export function rowTracking(row: SetLogWithExerciseRow): TrackingFields {
+  return trackingFromRow(row.routine_exercises?.exercises ?? {});
+}
 
 // ¿La serie `a` es mejor que `b`? Mayor peso; empate -> más reps; empate ->
 // MÁS RIR (le sobró más con el mismo trabajo). Compartido por la mejor
@@ -183,15 +239,60 @@ export function bestSetByExercise<T extends SetLogWithExerciseRow>(
   for (const row of rows) {
     if (!row.routine_exercise_id) continue;
     const current = best.get(row.routine_exercise_id);
-    if (
+    const tracking = rowTracking(row);
+    const better =
       !current ||
-      isBetterSet(
-        { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual },
-        { weight: current.weight_kg, reps: current.reps_completed, rir: current.rir_actual }
-      )
-    ) {
+      (tracking.trackingType === "weight_reps"
+        ? isBetterSet(
+            { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual },
+            { weight: current.weight_kg, reps: current.reps_completed, rir: current.rir_actual }
+          )
+        : isBetterTrackingSet(tracking, rowToTrackingSet(row), rowToTrackingSet(current)));
+    if (better) {
       best.set(row.routine_exercise_id, row);
     }
   }
   return best;
+}
+
+// Récord de un tipo de registro que no es peso + reps (oct-2026), con la
+// forma de siempre para que la cola de banners, el resumen y la
+// celebración semanal lo traten igual. `type` es el equivalente más
+// cercano (carga/ayuda/nivel ≈ peso; reps/segundos/minutos ≈ reps).
+export function trackingSessionRecord(params: {
+  exerciseId: string;
+  exerciseName: string;
+  fields: TrackingFields;
+  record: TrackingRecord;
+  current: TrackingSet;
+}): SessionRecord {
+  const { record, current } = params;
+  const type: RecordType =
+    record.type === "rir"
+      ? "rir"
+      : record.type === "load" || record.type === "assistance" || record.type === "intensity"
+        ? "weight"
+        : "reps";
+  return {
+    id: crypto.randomUUID(),
+    exerciseId: params.exerciseId,
+    exerciseName: params.exerciseName,
+    type,
+    weight: current.weight ?? 0,
+    reps: current.reps,
+    rir: current.rir,
+    tracking: { fields: params.fields, record, value: formatSet(params.fields, setValuesOf(current)) },
+  };
+}
+
+function setValuesOf(s: TrackingSet): SetValues {
+  return {
+    weight: s.weight,
+    reps: s.reps,
+    rir: s.rir,
+    seconds: s.seconds,
+    distanceKm: s.distanceKm,
+    intensity: s.intensity,
+    assistance: s.assistance,
+  };
 }

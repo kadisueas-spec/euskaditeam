@@ -1300,8 +1300,26 @@ momento, no una galería genérica.
       leídas con `lib/utils/set-format.ts` (`formatSet`; registros de antes
       del tipo se muestran tal cual con "(registro anterior)").
       `trackingSetColumns` (`validate-set-input.ts`): al corregir una serie
-      solo se tocan las columnas nuevas que vienen. Récords de los tipos
-      nuevos: etapa 3 (hasta entonces no disparan).
+      solo se tocan las columnas nuevas que vienen.
+    - Etapa 3 (récords): `lib/utils/tracking-records.ts`
+      (`detectTrackingRecord`, cada criterio pide empatar el anterior):
+      peso corporal = más lastre > más reps > más RIR; asistido = MENOS
+      ayuda > más reps > más RIR; isométrico = más lastre > más segundos;
+      cardio = más nivel sin bajar minutos > más minutos sin bajar nivel >
+      más km sin más minutos (la intensidad solo si las dos la tienen);
+      check nunca. Textos: `trackingRecordDiff` ("−5 kg de ayuda", "+10 s",
+      "nivel 7 → 8") y `trackingRecordBanner`. Entrenar compara contra
+      `WorkoutSuggestion.previous` (mejor serie de la semana de referencia);
+      `SessionRecord.tracking` lleva el récord tipado (`trackingSessionRecord`)
+      y la prioridad (`TRACKING_RECORD_PRIORITY`: ayuda/lastre/nivel como
+      kilos). `bestSetByExercise` (celebración semanal) y `personalBests`
+      (reportes, contra la mejor marca histórica; `DayBestSet.tracking`,
+      `PersonalBest.typed`) eligen la mejor serie con el criterio del tipo.
+      Tarjeta "Tu mejor avance" con `typedHeadline` y frases
+      `record.typed`; los gráficos de ejercicios de los reportes quedan
+      solo para peso + reps. El distintivo "¡Nuevo récord!" por serie
+      (`checkPersonalRecord`, peso máximo histórico) solo aplica a peso +
+      reps.
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

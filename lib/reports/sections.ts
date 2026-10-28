@@ -1,5 +1,5 @@
 import type { PhrasePicker } from "@/lib/reports/phrases";
-import { recordRow, setValue } from "@/lib/reports/records";
+import { isTypedTracking, pbValue, recordDiff, recordRow, setValue } from "@/lib/reports/records";
 import type { DayBestSet, PersonalBest } from "@/lib/reports/records";
 import { goalMentions } from "@/lib/reports/weight-goal";
 import type { WeightDirection } from "@/lib/reports/weight-goal";
@@ -178,6 +178,7 @@ function lowerFirst(s: string): string {
 }
 
 function gluteEvidence(pb: PersonalBest): string {
+  if (pb.typed) return `Glúteos: ${lowerFirst(pb.exerciseName)} ${pbValue(pb, pb.current)}, ${recordDiff(pb)}`;
   const what =
     pb.type === "rir"
       ? `ahora con RIR ${pb.current.rir} (antes ${pb.previous.rir})`
@@ -251,7 +252,8 @@ export function goalSection(params: {
 export function exerciseSections(bestSets: DayBestSet[], periodStart: string, periodEnd: string): ReportCard[] {
   const trained = new Map<string, string>();
   for (const s of bestSets) {
-    if (s.date >= periodStart && s.date <= periodEnd && s.weight) trained.set(s.exerciseId, s.exerciseName);
+    // Solo peso + reps: en los otros tipos el peso es lastre (o no hay).
+    if (s.date >= periodStart && s.date <= periodEnd && s.weight && !isTypedTracking(s)) trained.set(s.exerciseId, s.exerciseName);
   }
   const from = addDays(periodEnd, -EXERCISE_WINDOW_DAYS);
   const cards: ReportCard[] = [];

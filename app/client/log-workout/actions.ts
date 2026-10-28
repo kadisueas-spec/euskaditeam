@@ -13,7 +13,10 @@ import {
   bestSetByExercise,
   detectWeeklyRecord,
   isBetterSet,
+  rowToTrackingSet,
+  rowTracking,
   summarizeSessionRecords,
+  trackingSessionRecord,
   type SessionRecord,
   type SetLogWithExerciseRow,
 } from "@/lib/utils/session-records";
@@ -28,6 +31,7 @@ import {
   type TrackingSet,
   type TrackingTargets,
 } from "@/lib/utils/tracking-progression";
+import { detectTrackingRecord } from "@/lib/utils/tracking-records";
 
 export type LoggedSet = {
   id: string;
@@ -196,10 +200,14 @@ async function checkPersonalRecord(
 
   const { data: routineExercise } = await supabase
     .from("routine_exercises")
-    .select("exercise_id")
+    .select("exercise_id, exercises ( tracking_type )")
     .eq("id", routineExerciseId)
-    .single();
+    .single<{ exercise_id: string | null; exercises: { tracking_type: string | null } | null }>();
   if (!routineExercise?.exercise_id) return false;
+  // Tipos de registro (oct-2026): el récord histórico por peso solo aplica a
+  // peso + reps; en los otros tipos el peso es lastre (o no hay), y sus
+  // récords salen por el banner con el criterio de su tipo.
+  if ((routineExercise.exercises?.tracking_type ?? "weight_reps") !== "weight_reps") return false;
 
   const { data: priorSets } = await supabase
     .from("workout_set_logs")
@@ -752,8 +760,9 @@ async function checkWeeklyCompletion({
       .from("workout_set_logs")
       .select(
         `routine_exercise_id, weight_kg, reps_completed, rir_actual,
+         duration_seconds, distance_km, intensity, assistance,
          workout_logs!inner ( workout_date, is_completed, client_id ),
-         routine_exercises!inner ( exercises ( name ) )`
+         routine_exercises!inner ( exercises ( name, ${TRACKING_COLUMNS} ) )`
       )
       .eq("workout_logs.client_id", client.id)
       .eq("workout_logs.is_completed", true)
@@ -776,7 +785,25 @@ async function checkWeeklyCompletion({
   const records: SessionRecord[] = [];
   for (const [routineExerciseId, row] of thisWeekBest) {
     const prev = prevWeekBest.get(routineExerciseId);
-    if (!prev || prev.weight_kg == null || prev.reps_completed == null) continue;
+    if (!prev) continue;
+    // Tipos de registro (oct-2026): récord con el criterio de su tipo.
+    const tracking = rowTracking(row);
+    if (tracking.trackingType !== "weight_reps") {
+      const typed = detectTrackingRecord(tracking, rowToTrackingSet(prev), rowToTrackingSet(row));
+      if (typed) {
+        records.push(
+          trackingSessionRecord({
+            exerciseId: routineExerciseId,
+            exerciseName: row.routine_exercises?.exercises?.name ?? "Ejercicio",
+            fields: tracking,
+            record: typed,
+            current: rowToTrackingSet(row),
+          })
+        );
+      }
+      continue;
+    }
+    if (prev.weight_kg == null || prev.reps_completed == null) continue;
     const weeklyRecord = detectWeeklyRecord(
       { weight: prev.weight_kg, reps: prev.reps_completed, rir: prev.rir_actual },
       { weight: row.weight_kg, reps: row.reps_completed, rir: row.rir_actual }

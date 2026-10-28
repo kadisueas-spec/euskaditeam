@@ -130,10 +130,14 @@ async function checkPersonalRecord(
 
   const { data: routineExercise } = await supabase
     .from("routine_exercises")
-    .select("exercise_id")
+    .select("exercise_id, exercises ( tracking_type )")
     .eq("id", routineExerciseId)
-    .single();
+    .single<{ exercise_id: string | null; exercises: { tracking_type: string | null } | null }>();
   if (!routineExercise?.exercise_id) return false;
+  // Tipos de registro (oct-2026): el récord histórico por peso solo aplica a
+  // peso + reps; en los otros tipos el peso es lastre (o no hay), y sus
+  // récords salen por el banner con el criterio de su tipo.
+  if ((routineExercise.exercises?.tracking_type ?? "weight_reps") !== "weight_reps") return false;
 
   const { data: priorSets } = await supabase
     .from("workout_set_logs")

@@ -49,8 +49,10 @@ import {
   recordSummaryLine,
   recordSummaryMessage,
   summarizeSessionRecords,
+  trackingSessionRecord,
   type SessionRecord,
 } from "@/lib/utils/session-records";
+import { detectTrackingRecord } from "@/lib/utils/tracking-records";
 import {
   addSet as defaultAddSet,
   finishWorkout as defaultFinishWorkout,
@@ -778,6 +780,32 @@ export function WorkoutLogger({
       };
       setSessionRecords((prev) => [...prev, record]);
       setCelebrationQueue((prev) => [...prev, record]);
+    }
+    // Tipos de registro (oct-2026): contra la mejor serie de la semana de
+    // referencia, con el criterio de su tipo (menos ayuda, más segundos...).
+    const typedPrevious = !isWeightReps ? (suggestions[exercise.id]?.previous ?? null) : null;
+    if (typedPrevious) {
+      const current: TrackingSet = {
+        weight: input.weightKg,
+        reps: input.reps,
+        rir: input.rir,
+        seconds: input.durationSeconds ?? null,
+        distanceKm: input.distanceKm ?? null,
+        intensity: input.intensity ?? null,
+        assistance: input.assistance ?? null,
+      };
+      const typed = detectTrackingRecord(tracking, typedPrevious, current);
+      if (typed) {
+        const record = trackingSessionRecord({
+          exerciseId: exercise.id,
+          exerciseName: exercise.exerciseName,
+          fields: tracking,
+          record: typed,
+          current,
+        });
+        setSessionRecords((prev) => [...prev, record]);
+        setCelebrationQueue((prev) => [...prev, record]);
+      }
     }
 
     navigator.vibrate?.(50);

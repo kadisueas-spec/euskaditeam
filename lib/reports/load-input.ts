@@ -1,9 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { isBetterSet } from "@/lib/utils/session-records";
+import { TRACKING_COLUMNS, trackingFromRow } from "@/lib/constants/tracking";
 import { countsAsTraining } from "@/lib/utils/training-sessions";
 import { paraguayDateOf } from "@/lib/utils/today";
 import { addDays, daysBetween } from "@/lib/reports/format";
-import type { DayBestSet } from "@/lib/reports/records";
+import { isBetterDayBest, type DayBestSet } from "@/lib/reports/records";
 import type { ReportInput, SessionSummary } from "@/lib/reports/input";
 import type { ReportKind } from "@/lib/reports/types";
 
@@ -27,9 +27,20 @@ type SessionRow = {
     weight_kg: number | null;
     reps_completed: number | null;
     rir_actual: number | null;
+    duration_seconds?: number | null;
+    distance_km?: number | null;
+    intensity?: number | null;
+    assistance?: number | null;
     routine_exercises: {
       exercise_id: string;
-      exercises: { name: string; muscle_group: string | null } | null;
+      exercises: {
+        name: string;
+        muscle_group: string | null;
+        tracking_type?: string | null;
+        per_side?: boolean | null;
+        assistance_unit?: string | null;
+        cardio_scale?: string | null;
+      } | null;
     } | null;
   }[];
 };
@@ -42,7 +53,8 @@ async function allSessions(admin: Admin, clientId: string, periodEnd: string): P
       .select(
         `id, workout_date, is_completed, routine_day_id, routine_days ( name ),
          workout_set_logs ( weight_kg, reps_completed, rir_actual,
-           routine_exercises ( exercise_id, exercises ( name, muscle_group ) ) )`
+           duration_seconds, distance_km, intensity, assistance,
+           routine_exercises ( exercise_id, exercises ( name, muscle_group, ${TRACKING_COLUMNS} ) ) )`
       )
       .eq("client_id", clientId)
       .eq("is_completed", true)
@@ -73,12 +85,17 @@ export function summarizeSessions(rows: SessionRow[]): { sessions: SessionSummar
         exerciseId: ex.exercise_id,
         exerciseName: ex.exercises?.name ?? "Ejercicio",
         muscleGroup: ex.exercises?.muscle_group ?? null,
-        weight: s.weight_kg,
+        weight: s.weight_kg != null ? Number(s.weight_kg) : null,
         reps: s.reps_completed,
         rir: s.rir_actual,
+        seconds: s.duration_seconds ?? null,
+        distanceKm: s.distance_km != null ? Number(s.distance_km) : null,
+        intensity: s.intensity != null ? Number(s.intensity) : null,
+        assistance: s.assistance != null ? Number(s.assistance) : null,
+        tracking: trackingFromRow(ex.exercises ?? {}),
       };
       const current = best.get(key);
-      if (!current || isBetterSet(candidate, current)) best.set(key, candidate);
+      if (!current || isBetterDayBest(candidate, current)) best.set(key, candidate);
     }
     sessions.push({
       date: r.workout_date,
