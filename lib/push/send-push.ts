@@ -71,10 +71,12 @@ export async function sendPushToClient(
 
 // Igual que sendPushToClient pero para el coach — avisos de mesociclo por
 // terminar y de adherencia del cliente (ver Fase 7, push notifications).
+// Devuelve cuántos dispositivos tiene suscriptos y a cuántos llegó (la
+// prueba de Novedades lo muestra; el resto de los avisos lo ignora).
 export async function sendPushToCoach(
   coachId: string,
   payload: PushPayload
-): Promise<void> {
+): Promise<{ devices: number; delivered: number }> {
   const supabase = createAdminClient();
 
   const { data: subscriptions } = await supabase
@@ -82,9 +84,10 @@ export async function sendPushToCoach(
     .select("id, endpoint, p256dh, auth")
     .eq("coach_id", coachId);
 
-  if (!subscriptions || subscriptions.length === 0) return;
+  if (!subscriptions || subscriptions.length === 0) return { devices: 0, delivered: 0 };
 
-  await deliver(subscriptions, payload, supabase);
+  const results = await deliver(subscriptions, payload, supabase);
+  return { devices: subscriptions.length, delivered: results.filter(Boolean).length };
 }
 
 // Push a varios clientes a la vez (novedades, oct-2026). Los que no tienen

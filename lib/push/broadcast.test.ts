@@ -4,8 +4,11 @@ import {
   BROADCAST_BODY_MAX,
   BROADCAST_DEFAULTS,
   BROADCAST_TAG,
+  BROADCAST_TEST_TAG,
+  BROADCAST_TEST_URL,
   BROADCAST_URL,
   buildBroadcastPayload,
+  buildBroadcastTestPayload,
   normalizeBroadcastText,
 } from "@/lib/push/broadcast";
 
@@ -44,4 +47,20 @@ test("validación: título y texto obligatorios, con tope", () => {
   assert.ok("error" in long);
   // Los emojis cuentan como un carácter, no por sus bytes
   assert.ok("payload" in buildBroadcastPayload({ title: "💪".repeat(60), body: "ok" }));
+});
+
+test("prueba solo a mí: mismo texto, abre Novedades del coach y no reemplaza una novedad real", () => {
+  const real = buildBroadcastPayload(BROADCAST_DEFAULTS);
+  const prueba = buildBroadcastTestPayload(BROADCAST_DEFAULTS);
+  assert.ok("payload" in real && "payload" in prueba);
+  assert.equal(prueba.payload.title, real.payload.title);
+  assert.equal(prueba.payload.body, real.payload.body);
+  assert.equal(prueba.payload.url, BROADCAST_TEST_URL);
+  assert.equal(BROADCAST_TEST_URL, "/coach/notifications");
+  assert.notEqual(prueba.payload.tag, real.payload.tag);
+  assert.equal(prueba.payload.tag, BROADCAST_TEST_TAG);
+});
+
+test("prueba: misma validación que el envío a todos", () => {
+  assert.deepEqual(buildBroadcastTestPayload({ title: "", body: "x" }), { error: "Escribí un título." });
 });

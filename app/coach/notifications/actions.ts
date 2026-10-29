@@ -1,8 +1,8 @@
 "use server";
 
 import { getBroadcastAudience } from "@/lib/supabase/broadcast";
-import { sendPushToClients } from "@/lib/push/send-push";
-import { buildBroadcastPayload } from "@/lib/push/broadcast";
+import { sendPushToClients, sendPushToCoach } from "@/lib/push/send-push";
+import { buildBroadcastPayload, buildBroadcastTestPayload } from "@/lib/push/broadcast";
 
 export type BroadcastResult =
   | { delivered: number; withoutPush: number; failed: number; total: number }
@@ -24,5 +24,22 @@ export async function sendBroadcast(title: string, body: string): Promise<Broadc
   } catch (err) {
     console.error("sendBroadcast error:", err);
     return { error: "No se pudo enviar. Probá de nuevo." };
+  }
+}
+
+export type BroadcastTestResult = { devices: number; delivered: number } | { error: string };
+
+// Prueba "solo a mí": la misma notificación, únicamente a los dispositivos
+// del coach (push_subscriptions.coach_id). Nunca toca a un cliente.
+export async function sendBroadcastTest(title: string, body: string): Promise<BroadcastTestResult> {
+  const audience = await getBroadcastAudience();
+  if (!audience) return { error: "No autorizado." };
+  const built = buildBroadcastTestPayload({ title, body });
+  if ("error" in built) return { error: built.error };
+  try {
+    return await sendPushToCoach(audience.coachId, built.payload);
+  } catch (err) {
+    console.error("sendBroadcastTest error:", err);
+    return { error: "No se pudo enviar la prueba. Probá de nuevo." };
   }
 }

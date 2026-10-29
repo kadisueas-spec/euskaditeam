@@ -25,12 +25,24 @@ export const BROADCAST_TAG = "novedades";
 // que un doble toque no la mande dos veces.
 export const BROADCAST_COOLDOWN_SECONDS = 15;
 
+// Prueba "solo a mí" (oct-2026): mismo título y texto, pero al tocarla abre
+// la pantalla de Novedades del coach (Inicio del cliente no existe para el
+// coach) y con su propio tag (no reemplaza una novedad real).
+export const BROADCAST_TEST_URL = "/coach/notifications";
+export const BROADCAST_TEST_TAG = "novedades-prueba";
+
 export type BroadcastInput = { title: string; body: string };
 
 // Normaliza Unicode a NFC: las tildes y la ñ llegan como un solo carácter
 // aunque se hayan pegado desde otro lado con la letra y la tilde separadas.
 export function normalizeBroadcastText(s: string): string {
   return s.normalize("NFC").replace(/\s+/g, " ").trim();
+}
+
+export function buildBroadcastTestPayload(input: BroadcastInput): { payload: PushPayload } | { error: string } {
+  const built = buildBroadcastPayload(input);
+  if ("error" in built) return built;
+  return { payload: { ...built.payload, url: BROADCAST_TEST_URL, tag: BROADCAST_TEST_TAG } };
 }
 
 export function buildBroadcastPayload(

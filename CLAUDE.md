@@ -1371,6 +1371,15 @@ momento, no una galería genérica.
     (`buildBroadcastPayload`: texto normalizado a NFC para que las tildes y la
     ñ lleguen como un solo carácter, topes 60/200 caracteres, abre
     `/client/home`, tag `novedades`).
+    - "Enviar prueba solo a mí" (antes de "Enviar a todos"):
+      `sendBroadcastTest` → `sendPushToCoach` (solo `push_subscriptions.coach_id`,
+      ningún cliente; devuelve dispositivos y entregadas), mismo texto con
+      `buildBroadcastTestPayload` (abre `/coach/notifications`, tag
+      `novedades-prueba`). La pantalla revisa ESTE dispositivo
+      (`pushManager.getSubscription()`) y, si no tiene notificaciones, lo
+      dice y ofrece "Activar en este dispositivo" (`activateCoachPush`,
+      extraída de `push-permission-prompt.tsx`, la usa también el aviso del
+      Dashboard).
 
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)

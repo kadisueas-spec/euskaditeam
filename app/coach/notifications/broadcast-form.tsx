@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { Bell, Send } from "lucide-react";
+import { Bell, Send, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,7 +13,31 @@ import {
   BROADCAST_TITLE_MAX,
   buildBroadcastPayload,
 } from "@/lib/push/broadcast";
-import { sendBroadcast, type BroadcastResult } from "./actions";
+import { activateCoachPush, isPushSupported } from "@/components/coach/push-permission-prompt";
+import { sendBroadcast, sendBroadcastTest, type BroadcastResult, type BroadcastTestResult } from "./actions";
+
+// ¿Este dispositivo tiene las notificaciones activadas? (para la prueba)
+type DeviceState = "checking" | "on" | "off" | "denied" | "unsupported";
+
+async function checkThisDevice(): Promise<DeviceState> {
+  if (!isPushSupported()) return "unsupported";
+  if (Notification.permission === "denied") return "denied";
+  if (Notification.permission !== "granted") return "off";
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    return (await registration.pushManager.getSubscription()) ? "on" : "off";
+  } catch {
+    return "off";
+  }
+}
+
+const DEVICE_MESSAGE: Record<Exclude<DeviceState, "checking" | "on">, string> = {
+  off: "En este dispositivo no tenés las notificaciones activadas: la prueba no te va a llegar acá.",
+  denied:
+    "En este dispositivo bloqueaste las notificaciones: activalas desde la configuración del navegador para recibir la prueba acá.",
+  unsupported:
+    "Este navegador no recibe notificaciones. En iPhone, instalá la app (Compartir → Agregar a inicio) y abrila desde ahí.",
+};
 
 // Formulario de novedades (oct-2026): título y texto precargados y
 // editables, vista previa tipo notificación, confirmación "Vas a enviar
@@ -26,6 +50,43 @@ export function BroadcastForm({ activeClients, withPush }: { activeClients: numb
   const [result, setResult] = useState<BroadcastResult | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [pending, startTransition] = useTransition();
+  // Prueba "solo a mí" (oct-2026)
+  const [device, setDevice] = useState<DeviceState>("checking");
+  const [testResult, setTestResult] = useState<BroadcastTestResult | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [activating, setActivating] = useState(false);
+  const [activateError, setActivateError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    checkThisDevice().then((state) => {
+      if (!cancelled) setDevice(state);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  async function activateHere() {
+    setActivating(true);
+    setActivateError(null);
+    const failure = await activateCoachPush();
+    setActivating(false);
+    if (failure) setActivateError(failure);
+    setDevice(await checkThisDevice());
+  }
+
+  async function sendTest() {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      setTestResult(await sendBroadcastTest(title, body));
+    } catch {
+      setTestResult({ error: "Sin conexión. Revisá tu red y reintentá." });
+    } finally {
+      setTesting(false);
+    }
+  }
 
   useEffect(() => {
     if (cooldown <= 0) return;
@@ -111,6 +172,45 @@ export function BroadcastForm({ activeClients, withPush }: { activeClients: numb
       </p>
 
       {invalid && <p className="text-sm text-[#e8001c]">{invalid}</p>}
+
+      {/* Prueba "solo a mí": antes del envío a todos */}
+      <div className="flex flex-col gap-2 rounded-2xl border border-[#1e1e1e] bg-[#111111] p-4">
+        <Button
+          variant="outline"
+          className="min-h-11 self-start"
+          disabled={testing || !!invalid}
+          onClick={sendTest}
+        >
+          <Smartphone className="size-4" aria-hidden />
+          {testing ? "Enviando prueba…" : "Enviar prueba solo a mí"}
+        </Button>
+        <p className="text-xs text-[#888888]">
+          Llega solo a tus dispositivos con la cuenta de coach. Ningún cliente la recibe.
+        </p>
+        {device !== "checking" && device !== "on" && (
+          <div className="flex flex-col gap-2 rounded-xl border border-[#f5c542]/40 bg-[#f5c542]/10 p-3 text-sm text-[#f5f5f5]">
+            <p>{DEVICE_MESSAGE[device]}</p>
+            {device === "off" && (
+              <Button size="sm" className="min-h-11 self-start" disabled={activating} onClick={activateHere}>
+                <Bell className="size-4" aria-hidden />
+                {activating ? "Activando…" : "Activar en este dispositivo"}
+              </Button>
+            )}
+            {activateError && <p className="text-xs whitespace-pre-line text-[#ff6b6b]">{activateError}</p>}
+          </div>
+        )}
+        {testResult && (
+          <p role="status" className={`text-sm ${"error" in testResult || testResult.delivered === 0 ? "text-[#e8001c]" : "text-white"}`}>
+            {"error" in testResult
+              ? testResult.error
+              : testResult.devices === 0
+                ? "No tenés notificaciones activadas en ningún dispositivo con tu cuenta de coach: la prueba no se envió."
+                : testResult.delivered === 0
+                  ? "No se pudo entregar a tus dispositivos. Volvé a activar las notificaciones y probá de nuevo."
+                  : `Prueba enviada a ${testResult.delivered} de ${testResult.devices} ${testResult.devices === 1 ? "dispositivo" : "dispositivos"}.${device === "on" ? "" : " En este dispositivo no te va a llegar."}`}
+          </p>
+        )}
+      </div>
 
       {confirming ? (
         <div className="flex flex-col gap-3 rounded-2xl border border-[#e8001c]/40 bg-[#e8001c]/10 p-4">

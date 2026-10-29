@@ -5,13 +5,67 @@ import { Bell, X } from "lucide-react";
 import { formatErrorDetail, urlBase64ToUint8Array, PUSH_PROMPTED_KEY_COACH } from "@/lib/constants/push";
 import { hasCoachPushSubscription, saveCoachPushSubscription } from "@/app/coach/actions";
 
-function isPushSupported() {
+export function isPushSupported() {
   return (
     typeof window !== "undefined" &&
     "serviceWorker" in navigator &&
     "PushManager" in window &&
     "Notification" in window
   );
+}
+
+// Activa las notificaciones del coach en ESTE dispositivo (pide permiso,
+// suscribe y guarda la suscripción). Devuelve el mensaje de error, o null
+// si salió bien. Compartida por el aviso del Dashboard y la prueba de
+// Novedades (oct-2026).
+export async function activateCoachPush(): Promise<string | null> {
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") {
+    return permission === "denied"
+      ? "Bloqueaste las notificaciones. Activalas desde la configuración del navegador."
+      : "No se activaron las notificaciones.";
+  }
+
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  if (!publicKey) {
+    console.error("CoachPushPermissionPrompt: falta NEXT_PUBLIC_VAPID_PUBLIC_KEY");
+    return "No se pudo activar. Probá de nuevo más tarde.";
+  }
+
+  let subscription: PushSubscription;
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+    });
+  } catch (err) {
+    console.error("CoachPushPermissionPrompt: pushManager.subscribe() falló", err);
+    return `No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`;
+  }
+
+  const json = subscription.toJSON();
+  if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
+    console.error("CoachPushPermissionPrompt: suscripción incompleta", json);
+    return "No se pudo activar. Probá de nuevo más tarde.";
+  }
+
+  try {
+    const result = await saveCoachPushSubscription({
+      endpoint: json.endpoint,
+      p256dh: json.keys.p256dh,
+      auth: json.keys.auth,
+    });
+    if (result?.error) {
+      console.error("CoachPushPermissionPrompt: saveCoachPushSubscription devolvió error", result.error);
+      return `No se pudieron activar las notificaciones.\nError: ${result.error}`;
+    }
+  } catch (err) {
+    console.error("CoachPushPermissionPrompt: saveCoachPushSubscription lanzó una excepción", err);
+    return `No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`;
+  }
+
+  return null;
 }
 
 // Mismo flujo que components/client/push-permission-prompt.tsx, pero para
@@ -51,61 +105,11 @@ export function CoachPushPermissionPrompt() {
   // de reintentar una vez que el permiso quedó en "granted".
   async function activate() {
     setError(null);
-
-    const permission = await Notification.requestPermission();
-    if (permission !== "granted") {
-      setError(
-        permission === "denied"
-          ? "Bloqueaste las notificaciones. Activalas desde la configuración del navegador."
-          : "No se activaron las notificaciones."
-      );
+    const failure = await activateCoachPush();
+    if (failure) {
+      setError(failure);
       return;
     }
-
-    const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-    if (!publicKey) {
-      console.error("CoachPushPermissionPrompt: falta NEXT_PUBLIC_VAPID_PUBLIC_KEY");
-      setError("No se pudo activar. Probá de nuevo más tarde.");
-      return;
-    }
-
-    let subscription: PushSubscription;
-    try {
-      const registration = await navigator.serviceWorker.ready;
-      subscription = await registration.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
-      });
-    } catch (err) {
-      console.error("CoachPushPermissionPrompt: pushManager.subscribe() falló", err);
-      setError(`No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`);
-      return;
-    }
-
-    const json = subscription.toJSON();
-    if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-      console.error("CoachPushPermissionPrompt: suscripción incompleta", json);
-      setError("No se pudo activar. Probá de nuevo más tarde.");
-      return;
-    }
-
-    try {
-      const result = await saveCoachPushSubscription({
-        endpoint: json.endpoint,
-        p256dh: json.keys.p256dh,
-        auth: json.keys.auth,
-      });
-      if (result?.error) {
-        console.error("CoachPushPermissionPrompt: saveCoachPushSubscription devolvió error", result.error);
-        setError(`No se pudieron activar las notificaciones.\nError: ${result.error}`);
-        return;
-      }
-    } catch (err) {
-      console.error("CoachPushPermissionPrompt: saveCoachPushSubscription lanzó una excepción", err);
-      setError(`No se pudieron activar las notificaciones.\nError: ${formatErrorDetail(err)}`);
-      return;
-    }
-
     localStorage.setItem(PUSH_PROMPTED_KEY_COACH, "1");
     setVisible(false);
   }
