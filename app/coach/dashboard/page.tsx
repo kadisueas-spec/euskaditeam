@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Activity, AlertTriangle, Clock, Flag, Sparkles } from "lucide-react";
+import { Activity, AlertTriangle, Clock, Flag, Megaphone, Sparkles } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -44,6 +44,13 @@ export default async function CoachDashboardPage() {
           Bienvenido, {firstName}
         </h1>
         <div className="mt-1.5 h-0.5 w-10 bg-[#e8001c]" />
+        {/* Novedades (oct-2026): en el teléfono no entra en la barra de abajo */}
+        <Link
+          href="/coach/notifications"
+          className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#1e1e1e] px-3 text-sm text-[#c9c9c9] active:bg-white/10 md:hidden"
+        >
+          <Megaphone className="size-4" aria-hidden /> Enviar novedades a tus clientes
+        </Link>
       </div>
 
       {(reportsToReview > 0 || monthEndAlerts.length > 0 || noActiveRoutineAlerts.length > 0) && (

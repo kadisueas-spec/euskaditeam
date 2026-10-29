@@ -1357,6 +1357,21 @@ momento, no una galería genérica.
       pero no es serie de trabajo ni suma volumen, tiempo, récords ni
       sugerencias.
 
+73. Novedades: push a todos los clientes activos (oct-2026), sin tabla nueva.
+    `/coach/notifications` (en la barra lateral; en el teléfono, acceso desde
+    el Dashboard — la barra de abajo ya tiene 6 ítems, `desktopOnly` en
+    `coach-nav-items.ts`). Título y texto precargados y editables
+    (`BROADCAST_DEFAULTS`), vista previa, "La van a recibir N clientes
+    activos · M con notificaciones", confirmación "Vas a enviar esto a N
+    clientes" y botón bloqueado `BROADCAST_COOLDOWN_SECONDS` (15 s) después
+    de enviar. Destinatarios calculados en el servidor
+    (`getBroadcastAudience`, `isAccessActive`), nunca desde el navegador.
+    `sendPushToClients` (`lib/push/send-push.ts`) saltea a los que no tienen
+    push y devuelve cuántos la recibieron. Payload en `lib/push/broadcast.ts`
+    (`buildBroadcastPayload`: texto normalizado a NFC para que las tildes y la
+    ñ lleguen como un solo carácter, topes 60/200 caracteres, abre
+    `/client/home`, tag `novedades`).
+
 ## Convenciones de código
 - Siempre usar TypeScript estricto (no `any`)
 - Server Components por defecto, Client Components solo cuando necesario (`'use client'`)

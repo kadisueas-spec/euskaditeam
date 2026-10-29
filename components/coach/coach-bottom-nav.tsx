@@ -30,7 +30,7 @@ export function CoachBottomNav() {
   return (
     <nav className="z-20 flex shrink-0 flex-col border-t border-[#1e1e1e] md:hidden">
       <div className="flex bg-[#080808]">
-        {COACH_NAV_ITEMS.map(({ href, label, icon: Icon }) => {
+        {COACH_NAV_ITEMS.filter((item) => !item.desktopOnly).map(({ href, label, icon: Icon }) => {
           const active = tappedHref === href || (tappedHref === null && pathname.startsWith(href));
           return (
             <Link

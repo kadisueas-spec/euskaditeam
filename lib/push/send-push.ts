@@ -21,8 +21,9 @@ async function deliver(
   subscriptions: Subscription[],
   payload: PushPayload,
   supabase: ReturnType<typeof createAdminClient>
-): Promise<void> {
-  await Promise.all(
+): Promise<boolean[]> {
+  // true = entregada a ese dispositivo (para contar quién la recibió).
+  return Promise.all(
     subscriptions.map(async (sub) => {
       try {
         await webpush.sendNotification(
@@ -36,6 +37,7 @@ async function deliver(
           // se abra en vez de mostrarla enseguida en background.
           { urgency: "high" }
         );
+        return true;
       } catch (error) {
         const statusCode = (error as { statusCode?: number }).statusCode;
         if (statusCode === 404 || statusCode === 410) {
@@ -43,6 +45,7 @@ async function deliver(
         } else {
           console.error("sendPush error:", error);
         }
+        return false;
       }
     })
   );
@@ -82,4 +85,47 @@ export async function sendPushToCoach(
   if (!subscriptions || subscriptions.length === 0) return;
 
   await deliver(subscriptions, payload, supabase);
+}
+
+// Push a varios clientes a la vez (novedades, oct-2026). Los que no tienen
+// push activado se saltean sin error. Devuelve cuántos clientes la
+// recibieron en al menos un dispositivo, cuántos no tienen push y cuántos
+// tenían push pero no se les pudo entregar.
+export async function sendPushToClients(
+  clientIds: string[],
+  payload: PushPayload
+): Promise<{ delivered: number; withoutPush: number; failed: number }> {
+  if (clientIds.length === 0) return { delivered: 0, withoutPush: 0, failed: 0 };
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("push_subscriptions")
+    .select("id, endpoint, p256dh, auth, client_id")
+    .in("client_id", clientIds)
+    .returns<(Subscription & { client_id: string })[]>();
+  const subs = data ?? [];
+  const results = await deliver(subs, payload, supabase);
+  const reached = new Set<string>();
+  const withSubs = new Set<string>();
+  subs.forEach((sub, i) => {
+    withSubs.add(sub.client_id);
+    if (results[i]) reached.add(sub.client_id);
+  });
+  return {
+    delivered: reached.size,
+    withoutPush: clientIds.filter((id) => !withSubs.has(id)).length,
+    failed: withSubs.size - reached.size,
+  };
+}
+
+// Cuántos de estos clientes tienen push activado en al menos un dispositivo
+// (vista previa de la pantalla de novedades; no envía nada).
+export async function countClientsWithPush(clientIds: string[]): Promise<number> {
+  if (clientIds.length === 0) return 0;
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("push_subscriptions")
+    .select("client_id")
+    .in("client_id", clientIds)
+    .returns<{ client_id: string }[]>();
+  return new Set((data ?? []).map((d) => d.client_id)).size;
 }
