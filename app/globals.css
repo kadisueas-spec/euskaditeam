@@ -217,20 +217,30 @@
    paleta propia, mismo degradé radial que el hero de login (AuthHero).
    Relieve sin sombra gris (ver DESIGN.md): línea de luz de 1px arriba +
    sombra NEGRA (no gris) donde una capa sube sobre otra. */
+/* Transición suave hacia la tarjeta (nov-2026): el degradé ya no termina en
+   negro puro justo donde sube la tarjeta — se apaga en un rojo muy oscuro
+   que se funde con el halo de la tarjeta. */
 @utility surface-hero {
-  background: radial-gradient(130% 95% at 50% 0%, #2a0508 0%, #1a0306 45%, #080808 100%);
+  background:
+    radial-gradient(130% 95% at 50% 0%, #2a0508 0%, #1c0407 50%, transparent 100%),
+    linear-gradient(180deg, #080808 0%, #120406 70%, #170608 100%);
 }
+/* Tarjeta que sube: un escalón más clara que el fondo (#171717) y con la
+   línea de luz más marcada. Hacia arriba, un halo rojo oscuro (no sombra
+   gris) que suaviza el borde contra el degradé. */
 @utility surface-sheet {
-  background: #111111;
+  background: #171717;
   box-shadow:
-    0 -18px 40px rgba(0, 0, 0, 0.6),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+    0 -14px 36px rgba(42, 5, 8, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
 }
+/* Bloques dentro de la tarjeta: otro escalón más claro, para que se
+   despeguen de ella. */
 @utility surface-raised {
-  background: linear-gradient(180deg, #181818 0%, #131313 100%);
+  background: linear-gradient(180deg, #1f1f1f 0%, #1b1b1b 100%);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.06),
-    0 0 0 1px rgba(255, 255, 255, 0.04);
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 @utility glow-pulse {
   animation: glow-pulse 2.4s ease-in-out infinite;

@@ -68,3 +68,42 @@ export function computeStreaks(
 
   return { dailyStreak, weeklyStreak };
 }
+
+function addDaysStr(dateStr: string, days: number): string {
+  return new Date(new Date(`${dateStr}T00:00:00Z`).getTime() + days * DAY_MS).toISOString().slice(0, 10);
+}
+
+// Mejor racha de días (nov-2026, tarjeta de racha de Inicio): la más alta
+// que llegó a marcar dailyStreak en algún momento, con el MISMO criterio
+// (computeStreaks, plan de la rutina activa). Una racha llega a su pico el
+// domingo antes de cortarse, así que alcanza con evaluarla cada domingo
+// desde la primera semana con datos, más hoy. Datos que ya existen, nada
+// guardado aparte.
+export function bestDailyStreak(datesDesc: string[], plannedPerWeek: number, today: Date): number {
+  if (plannedPerWeek <= 0 || datesDesc.length === 0) return 0;
+  const todayStr = today.toISOString().slice(0, 10);
+  let best = computeStreaks(datesDesc, plannedPerWeek, today).dailyStreak;
+  const earliest = datesDesc[datesDesc.length - 1];
+  for (let sunday = addDaysStr(mondayKeyFor(earliest), 6); sunday < todayStr; sunday = addDaysStr(sunday, 7)) {
+    const upTo = datesDesc.filter((d) => d <= sunday);
+    const { dailyStreak } = computeStreaks(upTo, plannedPerWeek, new Date(`${sunday}T12:00:00Z`));
+    if (dailyStreak > best) best = dailyStreak;
+  }
+  return best;
+}
+
+// Los últimos `days` días calendario hasta hoy (del más viejo al más
+// nuevo), marcando cuáles se entrenaron (día entrenado = mismo criterio de
+// trainedDates).
+export function recentTrainedDays(
+  trained: string[],
+  today: Date,
+  days = 7
+): { date: string; trained: boolean }[] {
+  const set = new Set(trained);
+  const todayStr = today.toISOString().slice(0, 10);
+  return Array.from({ length: days }, (_, i) => {
+    const date = addDaysStr(todayStr, i - (days - 1));
+    return { date, trained: set.has(date) };
+  });
+}

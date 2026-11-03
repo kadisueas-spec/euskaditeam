@@ -100,7 +100,12 @@ export default async function ClientHomePage({
           />
         )}
 
-        <HomeStats dailyStreak={data.dailyStreak} adherencePercent={data.adherencePercent} />
+        <HomeStats
+          dailyStreak={data.dailyStreak}
+          bestDailyStreak={data.bestDailyStreak}
+          recentDays={data.recentDays}
+          adherencePercent={data.adherencePercent}
+        />
 
         <PlanList>
           <PlanRow

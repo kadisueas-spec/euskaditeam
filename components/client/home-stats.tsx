@@ -1,11 +1,26 @@
 import { Flame } from "lucide-react";
 
+// Iniciales de los días (getUTCDay: 0 = domingo).
+const WEEKDAY_INITIALS = ["D", "L", "M", "M", "J", "V", "S"];
+
 // Racha y adherencia en Inicio (nov-2026, "Vestuario en capas"): dos
 // bloques de distinto tamaño a propósito — la racha, ancha, con el número
 // protagonista; la adherencia del mes, angosta, con su anillo. Antes eran
 // tres números iguales en fila ("Días s/ evaluación" pasó a la fila de Mi
-// Cuerpo de la lista del plan).
-export function HomeStats({ dailyStreak, adherencePercent }: { dailyStreak: number; adherencePercent: number }) {
+// Cuerpo de la lista del plan). La racha suma la mejor racha y los últimos
+// 7 días entrenados (nov-2026), calculados con los datos que ya existen.
+
+export function HomeStats({
+  dailyStreak,
+  bestDailyStreak,
+  recentDays,
+  adherencePercent,
+}: {
+  dailyStreak: number;
+  bestDailyStreak: number;
+  recentDays: { date: string; trained: boolean }[];
+  adherencePercent: number;
+}) {
   return (
     <div className="grid grid-cols-[1.6fr_1fr] gap-3">
       <div className="surface-raised flex flex-col justify-between rounded-3xl p-4">
@@ -15,6 +30,12 @@ export function HomeStats({ dailyStreak, adherencePercent }: { dailyStreak: numb
         <div className="mt-3">
           <p className="font-display text-6xl leading-none text-[#f5f5f5]">{dailyStreak}</p>
           <p className="mt-1 text-sm text-[#c9c9c9]">{dailyStreak === 1 ? "día de racha" : "días de racha"}</p>
+          {bestDailyStreak > 0 && (
+            <p className="mt-2 text-sm text-[#f5f5f5]">
+              Mejor racha: <b className="font-semibold">{bestDailyStreak}</b> {bestDailyStreak === 1 ? "día" : "días"}
+            </p>
+          )}
+          {recentDays.length > 0 && <RecentDays days={recentDays} />}
         </div>
       </div>
       <div className="surface-raised flex flex-col items-center justify-center rounded-3xl p-4">
@@ -51,6 +72,27 @@ function AdherenceRing({ percent }: { percent: number }) {
       <span className="absolute inset-0 flex items-center justify-center font-display text-2xl text-[#f5f5f5]">
         {value}%
       </span>
+    </div>
+  );
+}
+
+// Últimos 7 días, del más viejo a hoy: punto rojo = entrenó ese día.
+function RecentDays({ days }: { days: { date: string; trained: boolean }[] }) {
+  const trainedCount = days.filter((d) => d.trained).length;
+  return (
+    <div
+      className="mt-3 flex gap-1.5"
+      role="img"
+      aria-label={`Entrenaste ${trainedCount} de los últimos ${days.length} días`}
+    >
+      {days.map((d) => (
+        <span key={d.date} className="flex flex-col items-center gap-1">
+          <span className={`size-3 rounded-full ${d.trained ? "bg-[#e8001c]" : "bg-white/15"}`} />
+          <span className="text-[10px] leading-none text-[#888888]">
+            {WEEKDAY_INITIALS[new Date(`${d.date}T12:00:00Z`).getUTCDay()]}
+          </span>
+        </span>
+      ))}
     </div>
   );
 }

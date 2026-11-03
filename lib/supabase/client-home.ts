@@ -40,6 +40,8 @@ export type ClientHomeData = {
   plannedThisWeek: number;
   // Estado actual (una fila, tres datos)
   dailyStreak: number;
+  bestDailyStreak: number;
+  recentDays: { date: string; trained: boolean }[];
   adherencePercent: number;
   daysSinceLastEvaluation: number | null;
   // Tarjetas del plan — null = todavía no tiene ese dato (tarjeta "vacía"
@@ -172,6 +174,8 @@ export async function getClientHomeData(): Promise<ClientHomeData | null> {
     completedThisWeek: weekProgress.completedDayIds.length,
     plannedThisWeek: routine?.days.length ?? 0,
     dailyStreak: stats.dailyStreak,
+    bestDailyStreak: stats.bestDailyStreak,
+    recentDays: stats.recentDays,
     adherencePercent: stats.adherencePercent,
     daysSinceLastEvaluation,
     routineCard: routine
