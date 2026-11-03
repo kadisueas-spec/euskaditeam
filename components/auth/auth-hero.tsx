@@ -12,7 +12,36 @@ import Image from "next/image";
 // la pantalla (grande, con glow rojo propio); el wordmark pasa a ser un
 // lockup chico debajo, tipo firma, en Anton (font-hero) — excepción
 // puntual a Bebas Neue solo para este wordmark, ver DESIGN.md.
-export function AuthHero({ subtitle }: { subtitle: string }) {
+//
+// size="tall" (nov-2026, login estilo Solstice): ocupa casi la mitad de la
+// pantalla (min-h 46%, la tarjeta sube encima) con el tridente un poco más
+// chico en pantallas bajas para que entre todo. Las demás pantallas siguen
+// con la altura de siempre.
+export function AuthHero({ subtitle, size = "default" }: { subtitle: string; size?: "default" | "tall" }) {
+  if (size === "tall") {
+    return (
+      <div
+        className="relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
+        style={{
+          background: "radial-gradient(circle at 50% 45%, #2a0508 0%, #1a0306 45%, #080808 100%)",
+        }}
+      >
+        <div className="absolute top-[45%] left-1/2 size-88 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e8001c]/35 blur-[100px]" />
+        <Image
+          src="/brand/euskadi-logo.png"
+          alt="Euskadi Team"
+          width={228}
+          height={228}
+          priority
+          className="relative h-auto w-[min(200px,24vh)] drop-shadow-[0_0_36px_rgba(232,0,28,0.45)] [@media(max-height:700px)]:w-[17vh]"
+        />
+        <div className="relative">
+          <h1 className="font-hero text-4xl tracking-wide text-white uppercase">Euskadi Team</h1>
+          <p className="mt-1.5 text-base text-[#c9c9c9]">{subtitle}</p>
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className="relative flex shrink-0 flex-col items-center justify-center gap-4 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2.75rem)] pb-11 text-center"
