@@ -24,6 +24,9 @@ function greetingFor(hour: number, name: string): string {
   return `Buenas noches${namePart}. Cerrá el día con todo.`;
 }
 
+// Rediseño nov-2026: en la zona de arriba de Inicio el protagonista es la
+// rutina de hoy; el saludo va más chico, encima. Reserva su altura mientras
+// se calcula, así no empuja el resto al aparecer.
 export function ClientGreeting({ name }: { name: string }) {
   const [greeting, setGreeting] = useState<string | null>(null);
 
@@ -31,10 +34,8 @@ export function ClientGreeting({ name }: { name: string }) {
     setGreeting(greetingFor(new Date().getHours(), name));
   }, [name]);
 
-  if (!greeting) return null;
-
   return (
-    <p className="font-display text-2xl tracking-wide text-[#f5f5f5]">
+    <p className="min-h-7 text-lg font-semibold text-[#f5f5f5] [text-wrap:balance]">
       {greeting}
     </p>
   );

@@ -213,6 +213,25 @@
 @utility gradient-section {
   background: linear-gradient(180deg, #111111 0%, #080808 100%);
 }
+/* Inicio "Vestuario en capas" (nov-2026): superficies en capas con la
+   paleta propia, mismo degradé radial que el hero de login (AuthHero).
+   Relieve sin sombra gris (ver DESIGN.md): línea de luz de 1px arriba +
+   sombra NEGRA (no gris) donde una capa sube sobre otra. */
+@utility surface-hero {
+  background: radial-gradient(130% 95% at 50% 0%, #2a0508 0%, #1a0306 45%, #080808 100%);
+}
+@utility surface-sheet {
+  background: #111111;
+  box-shadow:
+    0 -18px 40px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+@utility surface-raised {
+  background: linear-gradient(180deg, #181818 0%, #131313 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
 @utility glow-pulse {
   animation: glow-pulse 2.4s ease-in-out infinite;
 }
