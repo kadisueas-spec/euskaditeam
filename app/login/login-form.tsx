@@ -108,7 +108,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-              className="flex size-11 items-center justify-center rounded-full text-[#9a9a9a] outline-none focus-visible:ring-2 focus-visible:ring-[#e8001c] active:text-white"
+              className="flex size-11 items-center justify-center rounded-full text-[#9a9a9a] outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid) active:text-white"
             >
               {showPassword ? (
                 <EyeOff className="size-5" />
@@ -120,11 +120,10 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
         />
       </div>
 
-      {/* #FF4D4D (extremo claro del rojo de la marca): el #E8001C en texto
-          chico no llega al contraste AA sobre la tarjeta. */}
+      {/* Acento vivo base: 4,7:1 sobre la tarjeta, alcanza AA en texto chico. */}
       <Link
         href="/forgot-password"
-        className="-mt-3 flex min-h-11 items-center self-end rounded-full px-1 text-sm font-medium text-[#ff4d4d] outline-none focus-visible:ring-2 focus-visible:ring-[#e8001c]"
+        className="-mt-3 flex min-h-11 items-center self-end rounded-full px-1 text-sm font-medium text-(--accent-vivid) outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid)"
       >
         ¿Olvidaste tu contraseña?
       </Link>
@@ -136,7 +135,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
       <button
         type="submit"
         disabled={pending}
-        className="gradient-accent relative flex min-h-[56px] shadow-[0_0_24px_rgba(232,0,28,0.45)] w-full items-center justify-center gap-2 rounded-full text-base font-semibold text-white outline-none transition-[filter,transform] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#171717] active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none"
+        className="gradient-vivid glow-vivid relative flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full text-[1.1875rem] font-bold text-white outline-none transition-[filter,transform] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#171717] active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none"
       >
         {pending ? (
           <>
@@ -157,7 +156,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
         ¿Nuevo por acá?{" "}
         <Link
           href="/register"
-          className="inline-flex min-h-11 items-center rounded-full px-1 font-semibold text-[#ff4d4d] outline-none focus-visible:ring-2 focus-visible:ring-[#e8001c]"
+          className="inline-flex min-h-11 items-center rounded-full px-1 font-semibold text-(--accent-vivid) outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid)"
         >
           Creá tu cuenta
         </Link>

@@ -27,7 +27,7 @@ export function AuthInput({
         <Icon aria-hidden className="pointer-events-none absolute left-5 size-5 text-[#9a9a9a]" />
         <input
           {...props}
-          className={`h-14 w-full scroll-my-24 rounded-full border border-transparent bg-[#232323] pl-13 text-base text-[#f5f5f5] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] placeholder:text-[#9a9a9a] outline-none transition-[background-color,box-shadow] focus:bg-[#262626] focus:ring-2 focus:ring-[#e8001c] ${
+          className={`h-14 w-full scroll-my-24 rounded-full border border-transparent bg-[#232323] pl-13 text-base text-[#f5f5f5] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] placeholder:text-[#9a9a9a] outline-none transition-[background-color,box-shadow] focus:bg-[#262626] focus:ring-2 focus:ring-(--accent-vivid) ${
             rightSlot ? "pr-14" : "pr-5"
           } ${className ?? ""}`}
         />

@@ -24,8 +24,8 @@ export function HomeStats({
   return (
     <div className="grid grid-cols-[1.6fr_1fr] gap-3">
       <div className="surface-raised flex flex-col justify-between rounded-3xl p-4">
-        <span className="flex size-9 items-center justify-center rounded-full bg-[#e8001c]/15">
-          <Flame className="size-5 text-[#e8001c]" aria-hidden />
+        <span className="flex size-9 items-center justify-center rounded-full bg-(--accent-vivid)/15">
+          <Flame className="size-5 text-(--accent-vivid)" aria-hidden />
         </span>
         <div className="mt-3">
           <p className="font-display text-6xl leading-none text-[#f5f5f5]">{dailyStreak}</p>
@@ -61,7 +61,7 @@ function AdherenceRing({ percent }: { percent: number }) {
           cy="36"
           r={r}
           fill="none"
-          stroke="#e8001c"
+          stroke="var(--accent-vivid)"
           strokeWidth="7"
           strokeLinecap="round"
           strokeDasharray={c}
@@ -87,7 +87,7 @@ function RecentDays({ days }: { days: { date: string; trained: boolean }[] }) {
     >
       {days.map((d) => (
         <span key={d.date} className="flex flex-col items-center gap-1">
-          <span className={`size-3 rounded-full ${d.trained ? "bg-[#e8001c]" : "bg-white/15"}`} />
+          <span className={`size-3 rounded-full ${d.trained ? "bg-(--accent-vivid)" : "bg-white/15"}`} />
           <span className="text-[10px] leading-none text-[#888888]">
             {WEEKDAY_INITIALS[new Date(`${d.date}T12:00:00Z`).getUTCDay()]}
           </span>

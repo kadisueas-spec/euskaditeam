@@ -79,9 +79,9 @@ export function HomeReportAccess({
               key={report.id}
               type="button"
               onClick={() => setOpenId(report.id)}
-              className="surface-raised flex min-h-[72px] w-full items-center gap-3 rounded-3xl border border-[#e8001c]/50 px-4 py-3 text-left transition-transform active:scale-[0.98] motion-reduce:transition-none"
+              className="surface-raised flex min-h-[72px] w-full items-center gap-3 rounded-3xl border border-(--accent-vivid)/50 px-4 py-3 text-left transition-transform active:scale-[0.98] motion-reduce:transition-none"
             >
-              <span className="gradient-accent glow-red-sm flex size-11 shrink-0 items-center justify-center rounded-full">
+              <span className="gradient-vivid glow-vivid-sm flex size-11 shrink-0 items-center justify-center rounded-full">
                 <Sparkles className="size-5 text-white" aria-hidden />
               </span>
               <span className="min-w-0 flex-1">
@@ -94,7 +94,7 @@ export function HomeReportAccess({
                 </span>
                 <span className="mt-1 block text-sm text-[#c9c9c9]">{report.periodLabel} · Tocá para verlo</span>
               </span>
-              <ChevronRight className="size-5 shrink-0 text-[#e8001c]" aria-hidden />
+              <ChevronRight className="size-5 shrink-0 text-(--accent-vivid)" aria-hidden />
             </button>
           ))}
         </div>

@@ -47,7 +47,7 @@ export function PlanRow({
       >
         <span
           className={`flex size-10 shrink-0 items-center justify-center rounded-full ${
-            hasData ? "bg-[#e8001c]/15 text-[#e8001c]" : "bg-white/5 text-[#888888]"
+            hasData ? "bg-(--accent-vivid)/15 text-(--accent-vivid)" : "bg-white/5 text-[#888888]"
           }`}
         >
           <Icon className="size-5" aria-hidden />
@@ -59,7 +59,7 @@ export function PlanRow({
           </span>
         </span>
         {badge && (
-          <span className="shrink-0 rounded-full bg-[#e8001c] px-2 py-0.5 text-xs font-bold text-white">{badge}</span>
+          <span className="shrink-0 rounded-full bg-(--accent-vivid-dark) px-2 py-0.5 text-xs font-bold text-white">{badge}</span>
         )}
         <ChevronRight className="size-4 shrink-0 text-[#888888]" aria-hidden />
       </Link>

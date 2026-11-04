@@ -23,17 +23,19 @@ export function AuthHero({ subtitle, size = "default" }: { subtitle: string; siz
       <div
         className="relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
         style={{
-          background: "radial-gradient(circle at 50% 45%, #2a0508 0%, #1a0306 45%, #080808 100%)",
+          // Acento vivo (nov-2026): resplandor más saturado, centrado en el logo.
+          background:
+            "radial-gradient(circle at 50% 38%, var(--accent-glow-core) 0%, var(--accent-glow-mid) 45%, #080808 100%)",
         }}
       >
-        <div className="absolute top-[45%] left-1/2 size-88 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#e8001c]/35 blur-[100px]" />
+        <div className="absolute top-[34%] left-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--accent-vivid)/40 blur-[90px]" />
         <Image
           src="/brand/euskadi-logo.png"
           alt="Euskadi Team"
           width={228}
           height={228}
           priority
-          className="relative h-auto w-[min(200px,24vh)] drop-shadow-[0_0_36px_rgba(232,0,28,0.45)] [@media(max-height:700px)]:w-[17vh]"
+          className="relative h-auto w-[min(200px,24vh)] drop-shadow-[0_0_36px_rgba(255,31,61,0.55)] [@media(max-height:700px)]:w-[17vh]"
         />
         <div className="relative">
           <h1 className="font-hero text-4xl tracking-wide text-white uppercase">Euskadi Team</h1>

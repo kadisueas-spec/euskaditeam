@@ -36,7 +36,9 @@ export function NextWorkoutCard({
   completedCount: number;
   plannedCount: number;
 }) {
-  const cta = "mt-5 min-h-[56px] w-full rounded-full text-base font-semibold";
+  // Acento vivo (nov-2026). Texto de 19px en negrita = "texto grande" para
+  // el contraste (3:1) sobre la parte clara del degradé.
+  const cta = "gradient-vivid glow-vivid mt-5 min-h-[56px] w-full rounded-full text-[1.1875rem] font-bold text-white";
 
   return (
     <div>
@@ -105,7 +107,7 @@ function WeekDots({ done, planned }: { done: number; planned: number }) {
       <div className="flex gap-1.5" aria-hidden>
         {Array.from({ length: total }, (_, i) =>
           i < filled ? (
-            <span key={i} className="flex size-6 items-center justify-center rounded-full bg-[#e8001c]">
+            <span key={i} className="flex size-6 items-center justify-center rounded-full bg-(--accent-vivid)">
               <Check className="size-3.5 text-white" strokeWidth={3} />
             </span>
           ) : (

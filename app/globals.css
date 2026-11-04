@@ -57,6 +57,14 @@
    activa) para que los componentes shadcn (Button, Badge, Card, Input)
    hereden la marca sin tocar cada pantalla. */
 :root {
+  /* Acento vivo (nov-2026): por ahora SOLO Inicio del alumno y login. El
+     resto de la app sigue con #E8001C → #FF4D4D. Afinarlo acá. */
+  --accent-vivid: #ff1f3d;
+  --accent-vivid-light: #ff5a6e;
+  --accent-vivid-dark: #e10a2a;
+  /* Resplandor de fondo: centro → medio → negro */
+  --accent-glow-core: #6b0a1a;
+  --accent-glow-mid: #2e0610;
   --background: #080808;
   --foreground: #f5f5f5;
   --card: #111111;
@@ -217,13 +225,28 @@
    paleta propia, mismo degradé radial que el hero de login (AuthHero).
    Relieve sin sombra gris (ver DESIGN.md): línea de luz de 1px arriba +
    sombra NEGRA (no gris) donde una capa sube sobre otra. */
-/* Transición suave hacia la tarjeta (nov-2026): el degradé ya no termina en
-   negro puro justo donde sube la tarjeta — se apaga en un rojo muy oscuro
-   que se funde con el halo de la tarjeta. */
+/* Zona de arriba del Inicio: resplandor radial vivo (acento vivo, nov-2026)
+   centrado donde arranca "Hoy te toca". Abajo no termina en negro puro
+   justo donde sube la tarjeta: se apaga en el rojo del medio, que se funde
+   con el halo de la tarjeta. */
 @utility surface-hero {
   background:
-    radial-gradient(130% 95% at 50% 0%, #2a0508 0%, #1c0407 50%, transparent 100%),
-    linear-gradient(180deg, #080808 0%, #120406 70%, #170608 100%);
+    radial-gradient(120% 80% at 50% 45%, var(--accent-glow-core) 0%, var(--accent-glow-mid) 50%, transparent 100%),
+    linear-gradient(180deg, #080808 0%, #12030a 65%, var(--accent-glow-mid) 100%);
+}
+/* Botón principal y círculos de acento con el rojo vivo (solo Inicio del
+   alumno y login). */
+@utility gradient-vivid {
+  background-image: linear-gradient(90deg, var(--accent-vivid-dark) 0%, var(--accent-vivid-light) 100%);
+}
+@utility glow-vivid {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 34px -8px color-mix(in srgb, var(--accent-vivid) 70%, transparent),
+    0 0 48px color-mix(in srgb, var(--accent-vivid) 30%, transparent);
+}
+@utility glow-vivid-sm {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-vivid) 45%, transparent);
 }
 /* Tarjeta que sube: un escalón más clara que el fondo (#171717) y con la
    línea de luz más marcada. Hacia arriba, un halo rojo oscuro (no sombra
@@ -231,7 +254,7 @@
 @utility surface-sheet {
   background: #171717;
   box-shadow:
-    0 -14px 36px rgba(42, 5, 8, 0.55),
+    0 -14px 36px rgba(46, 6, 16, 0.6),
     inset 0 1px 0 rgba(255, 255, 255, 0.11);
 }
 /* Bloques dentro de la tarjeta: otro escalón más claro, para que se
