@@ -21,7 +21,7 @@ export function AuthHero({ subtitle, size = "default" }: { subtitle: string; siz
   if (size === "tall") {
     return (
       <div
-        className="hero-vivid relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
+        className="login-hero relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
       >
         <Image
           src="/brand/euskadi-logo.png"
@@ -33,7 +33,7 @@ export function AuthHero({ subtitle, size = "default" }: { subtitle: string; siz
         />
         <div className="relative">
           <h1 className="font-hero text-4xl tracking-wide text-white uppercase">Euskadi Team</h1>
-          <p className="mt-1.5 text-base text-(--hero-text-soft)">{subtitle}</p>
+          <p className="mt-1.5 text-base text-(--login-text-soft)">{subtitle}</p>
         </div>
       </div>
     );

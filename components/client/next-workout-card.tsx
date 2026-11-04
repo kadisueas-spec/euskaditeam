@@ -38,29 +38,29 @@ export function NextWorkoutCard({
 }) {
   // Acento vivo (nov-2026). Texto de 19px en negrita = "texto grande" para
   // el contraste (3:1) sobre la parte clara del degradé.
-  const cta = "gradient-vivid glow-vivid mt-5 min-h-[56px] w-full rounded-full text-[1.1875rem] font-bold text-white";
+  const cta = "home-gradient home-glow mt-5 min-h-[56px] w-full rounded-full text-[1.1875rem] font-bold text-white";
 
   return (
     <div>
       {activeWorkout ? (
         <>
-          <p className="text-sm text-(--hero-text-soft)">Tenés una sesión abierta</p>
+          <p className="text-sm text-(--home-text-soft)">Tenés una sesión abierta</p>
           <p className="mt-1 font-display text-6xl leading-[0.9] tracking-wide text-[#f5f5f5] uppercase [text-wrap:balance]">
             {activeWorkout.dayName ?? "Tu sesión de hoy"}
           </p>
-          <p className="mt-2 text-sm text-(--hero-text-soft)">Retomala donde quedaste.</p>
+          <p className="mt-2 text-sm text-(--home-text-soft)">Retomala donde quedaste.</p>
           <Link href={`/client/log-workout?day=${activeWorkout.dayId}`} className={buttonVariants({ className: cta })}>
             Continuar entrenamiento <ArrowRight className="size-5" aria-hidden />
           </Link>
         </>
       ) : trainedToday ? (
         <>
-          <p className="text-sm text-(--hero-text-soft)">Hoy</p>
+          <p className="text-sm text-(--home-text-soft)">Hoy</p>
           <p className="mt-1 font-display text-5xl leading-[0.9] tracking-wide text-[#f5f5f5] uppercase">
             Ya entrenaste hoy 🔥
           </p>
           {todaySummary && (
-            <p className="mt-2 text-sm text-(--hero-text-soft)">
+            <p className="mt-2 text-sm text-(--home-text-soft)">
               {todaySummary.dayName ?? "Entrenamiento"} · {todaySummary.totalSets} series
               {todaySummary.totalVolume > 0
                 ? ` · ${todaySummary.totalVolume.toLocaleString("es-AR")} kg movidos`
@@ -70,11 +70,11 @@ export function NextWorkoutCard({
         </>
       ) : suggestedDay ? (
         <>
-          <p className="text-sm text-(--hero-text-soft)">Hoy te toca</p>
+          <p className="text-sm text-(--home-text-soft)">Hoy te toca</p>
           <p className="mt-1 font-display text-6xl leading-[0.9] tracking-wide text-[#f5f5f5] uppercase [text-wrap:balance]">
             {suggestedDay.name}
           </p>
-          <p className="mt-2 text-sm text-(--hero-text-soft)">
+          <p className="mt-2 text-sm text-(--home-text-soft)">
             {suggestedDay.exercises.length} ejercicio
             {suggestedDay.exercises.length === 1 ? "" : "s"}
           </p>
@@ -84,11 +84,11 @@ export function NextWorkoutCard({
         </>
       ) : (
         <>
-          <p className="text-sm text-(--hero-text-soft)">Esta semana</p>
+          <p className="text-sm text-(--home-text-soft)">Esta semana</p>
           <p className="mt-1 font-display text-5xl leading-[0.9] tracking-wide text-[#f5f5f5] uppercase">
             Semana completa 🔥
           </p>
-          <p className="mt-2 text-sm text-(--hero-text-soft)">Descansá, arrancás de nuevo el lunes.</p>
+          <p className="mt-2 text-sm text-(--home-text-soft)">Descansá, arrancás de nuevo el lunes.</p>
         </>
       )}
 
@@ -108,14 +108,14 @@ function WeekDots({ done, planned }: { done: number; planned: number }) {
         {Array.from({ length: total }, (_, i) =>
           i < filled ? (
             <span key={i} className="flex size-6 items-center justify-center rounded-full bg-white">
-              <Check className="size-3.5 text-(--accent-vivid-dark)" strokeWidth={3} />
+              <Check className="size-3.5 text-(--home-accent-dark)" strokeWidth={3} />
             </span>
           ) : (
             <span key={i} className="size-6 rounded-full border-2 border-white/35" />
           )
         )}
       </div>
-      <p className="text-sm text-(--hero-text-soft)">
+      <p className="text-sm text-(--home-text-soft)">
         {done} de {planned} esta semana
       </p>
     </div>

@@ -108,7 +108,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
               type="button"
               onClick={() => setShowPassword((v) => !v)}
               aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
-              className="flex size-11 items-center justify-center rounded-full text-[#9a9a9a] outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid) active:text-white"
+              className="flex size-11 items-center justify-center rounded-full text-[#9a9a9a] outline-none focus-visible:ring-2 focus-visible:ring-(--login-accent) active:text-white"
             >
               {showPassword ? (
                 <EyeOff className="size-5" />
@@ -122,7 +122,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
 
       <Link
         href="/forgot-password"
-        className="-mt-3 flex min-h-11 items-center self-end rounded-full px-1 text-sm font-medium text-(--accent-vivid) outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid)"
+        className="-mt-3 flex min-h-11 items-center self-end rounded-full px-1 text-sm font-medium text-(--login-accent) outline-none focus-visible:ring-2 focus-visible:ring-(--login-accent)"
       >
         ¿Olvidaste tu contraseña?
       </Link>
@@ -134,7 +134,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
       <button
         type="submit"
         disabled={pending}
-        className="gradient-vivid glow-vivid relative flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full text-[1.1875rem] font-bold text-white outline-none transition-[filter,transform] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#171717] active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none"
+        className="login-gradient login-glow relative flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full text-[1.1875rem] font-bold text-white outline-none transition-[filter,transform] focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#171717] active:scale-[0.98] disabled:opacity-60 motion-reduce:transition-none"
       >
         {pending ? (
           <>
@@ -155,7 +155,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
         ¿Nuevo por acá?{" "}
         <Link
           href="/register"
-          className="inline-flex min-h-11 items-center rounded-full px-1 font-semibold text-(--accent-vivid) outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid)"
+          className="inline-flex min-h-11 items-center rounded-full px-1 font-semibold text-(--login-accent) outline-none focus-visible:ring-2 focus-visible:ring-(--login-accent)"
         >
           Creá tu cuenta
         </Link>

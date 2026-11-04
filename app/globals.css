@@ -57,22 +57,35 @@
    activa) para que los componentes shadcn (Button, Badge, Card, Input)
    hereden la marca sin tocar cada pantalla. */
 :root {
-  /* Acento de Inicio del alumno y login (nov-2026): el MISMO rojo que la
-     luz del borde superior (--hero-red, más abajo), así quedan siempre
-     iguales. El oscuro es el final del degradé del botón — nunca más claro.
-     El resto de la app sigue con sus colores de siempre. */
-  --accent-vivid: rgb(var(--hero-red));
-  --accent-vivid-dark: #c70018;
-  /* Fondo de arriba (login + Inicio, hero-vivid): base negra con una luz
-     roja que nace en el borde superior. Afinar acá. */
-  --hero-base: #080808;
-  --hero-red: 232 0 28; /* canales RGB del rojo de la luz */
-  --hero-red-glow: 0.65; /* intensidad de la elipse de arriba */
-  --hero-red-wash: 0.3; /* intensidad de la capa vertical */
-  --hero-red-line: 0.45; /* línea de 1px del borde superior */
-  /* Texto secundario sobre ese fondo: el gris de siempre (el fondo vuelve
-     a ser oscuro) */
-  --hero-text-soft: #c9c9c9;
+  /* Inicio del alumno (--home-*, nov-2026): valores fijados en 2c83e95.
+     Independientes del login: cambiar uno nunca toca al otro. */
+  --home-accent: #ff1f3d;
+  --home-accent-light: #ff5a6e;
+  --home-accent-dark: #e10a2a;
+  /* Fondo de arriba (home-hero): elipse a todo el ancho centrada arriba,
+     sobre un vertical que no deja ningún lado oscuro. */
+  --home-glow-center: #b3122b;
+  --home-glow-40: #8a0f22;
+  --home-glow-75: #5c0b18;
+  --home-glow-edge: #3a0710;
+  --home-base-top: #7a0d1f;
+  --home-base-bottom: #4a0914;
+  /* Franja de fundido justo sobre la tarjeta que sube */
+  --home-fade: #160307;
+  /* Texto secundario sobre el fondo de arriba (4,7:1 o más en la zona más
+     clara; el gris #c9c9c9 no alcanzaba) */
+  --home-text-soft: #ffe4e8;
+
+  /* Login (--login-*, nov-2026): base negra con una luz roja que nace en
+     el borde superior; el botón y los acentos usan el mismo rojo. */
+  --login-base: #080808;
+  --login-red: 232 0 28; /* canales RGB del rojo (#E8001C) */
+  --login-red-glow: 0.65; /* intensidad de la elipse de arriba */
+  --login-red-wash: 0.3; /* intensidad de la capa vertical */
+  --login-red-line: 0.45; /* línea de 1px del borde superior */
+  --login-accent: rgb(var(--login-red));
+  --login-accent-dark: #c70018; /* final del degradé del botón, nunca más claro */
+  --login-text-soft: #c9c9c9;
   --background: #080808;
   --foreground: #f5f5f5;
   --card: #111111;
@@ -233,36 +246,76 @@
    paleta propia, mismo degradé radial que el hero de login (AuthHero).
    Relieve sin sombra gris (ver DESIGN.md): línea de luz de 1px arriba +
    sombra NEGRA (no gris) donde una capa sube sobre otra. */
-/* Fondo de arriba del login y del Inicio (nov-2026), una sola clase para
-   las dos pantallas: negro, con una luz roja pegada al borde de arriba que
+/* ---- Inicio del alumno (home-*): estado de 2c83e95 ---- */
+/* Fondo de arriba. Capas, de arriba hacia abajo:
+   1. Franja de fundido: solo los últimos ~64px se oscurecen casi a negro,
+      para fundirse con la tarjeta que sube (es el único lugar oscuro).
+   2. Elipse a todo el ancho centrada arriba (no un círculo chico). Los
+      bordes quedan semitransparentes para que se vea la capa 3.
+   3. Vertical suave, así ni los costados ni arriba quedan oscuros.
+   El brillo detrás de "Hoy te toca" es un halo desenfocado en la página. */
+@utility home-hero {
+  background:
+    linear-gradient(180deg, transparent calc(100% - 64px), var(--home-fade) 100%),
+    radial-gradient(
+      130% 90% at 50% 20%,
+      var(--home-glow-center) 0%,
+      var(--home-glow-40) 40%,
+      color-mix(in srgb, var(--home-glow-75) 85%, transparent) 75%,
+      color-mix(in srgb, var(--home-glow-edge) 60%, transparent) 100%
+    ),
+    linear-gradient(180deg, var(--home-base-top) 0%, var(--home-base-bottom) calc(100% - 64px), var(--home-base-bottom) 100%);
+}
+/* Botón principal y círculos de acento del Inicio */
+@utility home-gradient {
+  background-image: linear-gradient(90deg, var(--home-accent-dark) 0%, var(--home-accent-light) 100%);
+}
+@utility home-glow {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.22),
+    0 10px 34px -8px color-mix(in srgb, var(--home-accent) 70%, transparent),
+    0 0 48px color-mix(in srgb, var(--home-accent) 30%, transparent);
+}
+@utility home-glow-sm {
+  box-shadow: 0 0 18px color-mix(in srgb, var(--home-accent) 45%, transparent);
+}
+/* Tarjeta que sube: un escalón más clara que el fondo (#171717) y con la
+   línea de luz más marcada. Hacia arriba, un halo rojo oscuro (no sombra
+   gris) que suaviza el borde contra el degradé. */
+@utility home-sheet {
+  background: #171717;
+  box-shadow:
+    0 -14px 36px rgba(46, 6, 16, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.11);
+}
+
+/* ---- Login (login-*) ---- */
+/* Fondo de arriba: negro, con una luz roja pegada al borde de arriba que
    se apaga hacia abajo. Capas: línea de 1px arriba, elipse ancha centrada
    en el borde (más intensa al centro, todavía presente en las esquinas),
    lavado vertical que llega hasta el 40% y la base negra. */
-@utility hero-vivid {
+@utility login-hero {
   background:
-    linear-gradient(180deg, rgb(var(--hero-red) / var(--hero-red-line)) 0, rgb(var(--hero-red) / var(--hero-red-line)) 1px, transparent 1px),
-    radial-gradient(ellipse 110% 45% at 50% 0%, rgb(var(--hero-red) / var(--hero-red-glow)) 0%, transparent 100%),
-    linear-gradient(180deg, rgb(var(--hero-red) / var(--hero-red-wash)) 0%, transparent 40%),
-    var(--hero-base);
+    linear-gradient(180deg, rgb(var(--login-red) / var(--login-red-line)) 0, rgb(var(--login-red) / var(--login-red-line)) 1px, transparent 1px),
+    radial-gradient(ellipse 110% 45% at 50% 0%, rgb(var(--login-red) / var(--login-red-glow)) 0%, transparent 100%),
+    linear-gradient(180deg, rgb(var(--login-red) / var(--login-red-wash)) 0%, transparent 40%),
+    var(--login-base);
 }
-/* Botón principal y círculos de acento (solo Inicio del alumno y login):
-   del rojo base a uno apenas más oscuro, con brillo suave del mismo rojo.
-   Texto blanco: 4,7:1 sobre #E8001C y 6,1:1 sobre #C70018. */
-@utility gradient-vivid {
-  background-image: linear-gradient(90deg, var(--accent-vivid) 0%, var(--accent-vivid-dark) 100%);
+/* Botón principal: del rojo de la luz de arriba a uno apenas más oscuro,
+   con brillo suave del mismo rojo. Texto blanco: 4,7:1 sobre #E8001C y
+   6,1:1 sobre #C70018. */
+@utility login-gradient {
+  background-image: linear-gradient(90deg, var(--login-accent) 0%, var(--login-accent-dark) 100%);
 }
-@utility glow-vivid {
+@utility login-glow {
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    0 8px 28px -8px color-mix(in srgb, var(--accent-vivid) 60%, transparent),
-    0 0 36px color-mix(in srgb, var(--accent-vivid) 25%, transparent);
+    0 8px 28px -8px color-mix(in srgb, var(--login-accent) 60%, transparent),
+    0 0 36px color-mix(in srgb, var(--login-accent) 25%, transparent);
 }
-@utility glow-vivid-sm {
-  box-shadow: 0 0 18px color-mix(in srgb, var(--accent-vivid) 45%, transparent);
-}
-/* Tarjeta que sube: un escalón más clara que el fondo (#171717) y con la
-   línea de luz de 1px. Se apoya directo sobre el rojo liso, sin halo. */
-@utility surface-sheet {
+/* Panel que sube: un escalón más claro que el fondo, con línea de luz de
+   1px, apoyado directo sobre el negro (sin halo). */
+@utility login-sheet {
   background: #171717;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.11);
 }

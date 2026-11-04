@@ -65,15 +65,20 @@ export default async function ClientHomePage({
   return (
     <div className="flex flex-col">
       {/* Zona de arriba: degradé con el saludo y la rutina de hoy */}
-      <section className="hero-vivid relative -mx-4 overflow-hidden -mt-5 px-5 pt-6 pb-14">
+      <section className="home-hero relative -mx-4 overflow-hidden -mt-5 px-5 pt-6 pb-14">
         <FadeIn>
           <ClientGreeting name={data.firstName} />
-          <p className="mt-1.5 text-base leading-snug text-(--hero-text-soft) italic">&ldquo;{motivationalPhrase}&rdquo;</p>
+          <p className="mt-1.5 text-base leading-snug text-(--home-text-soft) italic">&ldquo;{motivationalPhrase}&rdquo;</p>
         </FadeIn>
 
         {data.hasRoutine && (
           <FadeIn className="mt-6">
             <div data-tour="today-workout" className="relative">
+              {/* Brillo más fuerte detrás de "Hoy te toca" */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -top-16 left-1/2 h-56 w-[115%] -translate-x-1/2 rounded-full bg-(--home-accent)/20 blur-[90px]"
+              />
               <NextWorkoutCard
                 activeWorkout={activeWorkout}
                 trainedToday={data.trainedToday}
@@ -88,7 +93,7 @@ export default async function ClientHomePage({
       </section>
 
       {/* Tarjeta que sube sobre el degradé */}
-      <div className="surface-sheet animate-slide-up-in relative z-10 -mx-4 -mt-8 -mb-5 flex flex-col gap-3 rounded-t-[32px] px-4 pt-5 pb-8">
+      <div className="home-sheet animate-slide-up-in relative z-10 -mx-4 -mt-8 -mb-5 flex flex-col gap-3 rounded-t-[32px] px-4 pt-5 pb-8">
         {(pendingReports.length > 0 || requestedReport) && (
           <HomeReportAccess
             key={requestedReport?.id ?? "home"}
