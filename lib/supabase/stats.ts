@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentClientRecord } from "@/lib/supabase/client-profile";
-import { computeStreaks } from "@/lib/utils/streaks";
+import { bestDailyStreak, computeStreaks, recentTrainedDays } from "@/lib/utils/streaks";
 import { plannedDaysInRange } from "@/lib/utils/planned-days";
 import { paraguayNow } from "@/lib/utils/today";
 import { TRAINING_SESSION_SELECT, adherencePercent, trainedDates } from "@/lib/utils/training-sessions";
@@ -10,6 +10,10 @@ export type ClientStats = {
   dailyStreak: number;
   weeklyStreak: number;
   adherencePercent: number;
+  // Tarjeta de racha de Inicio (nov-2026): mejor racha de días y los
+  // últimos 7 días (del más viejo a hoy) marcando los entrenados.
+  bestDailyStreak: number;
+  recentDays: { date: string; trained: boolean }[];
 };
 
 type RoutineWithDayCountRow = {
@@ -26,7 +30,7 @@ type RoutineWithDayCountRow = {
 export async function getClientStats(): Promise<ClientStats> {
   const client = await getCurrentClientRecord();
   if (!client) {
-    return { dailyStreak: 0, weeklyStreak: 0, adherencePercent: 0 };
+    return { dailyStreak: 0, weeklyStreak: 0, adherencePercent: 0, bestDailyStreak: 0, recentDays: [] };
   }
 
   const supabase = await createClient();
@@ -69,5 +73,11 @@ export async function getClientStats(): Promise<ClientStats> {
     accessActivatedAt: client.accessActivatedAt,
     routineAssignedAt: activeRoutine?.starts_at ?? activeRoutine?.created_at ?? null,
   });
-  return { dailyStreak, weeklyStreak, adherencePercent: adherencePercent(trainedThisMonth, plannedTotal) };
+  return {
+    dailyStreak,
+    weeklyStreak,
+    adherencePercent: adherencePercent(trainedThisMonth, plannedTotal),
+    bestDailyStreak: bestDailyStreak([...trained].reverse(), plannedDaysPerWeek, now),
+    recentDays: recentTrainedDays(trained, now),
+  };
 }

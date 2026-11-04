@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import { ClientGreeting } from "@/components/client/client-greeting";
 import { NextWorkoutCard } from "@/components/client/next-workout-card";
-import { PlanCard } from "@/components/client/plan-card";
+import { PlanList, PlanRow } from "@/components/client/plan-card";
+import { HomeStats } from "@/components/client/home-stats";
 import { RoutineWelcomeBanner } from "@/components/client/routine-welcome-banner";
 import { HomeTour } from "@/components/client/home-tour";
 import { FadeIn } from "@/components/motion/fade-in";
@@ -21,6 +22,13 @@ import { HomeReportAccess } from "@/components/client/home-report-access";
 import { randomMotivationalPhrase } from "@/lib/constants/motivational-phrases";
 import { formatFriendlyDate } from "@/lib/utils/format-date";
 
+// Inicio del cliente — rediseño nov-2026 "Vestuario en capas": misma forma
+// que el login (AuthHero + AuthCard). Arriba, sobre el degradé radial rojo
+// oscuro, el saludo y la rutina de hoy como protagonista; abajo, una
+// tarjeta que sube encima (esquinas de 32px) con el reporte pendiente, la
+// racha/adherencia y la lista del plan. La zona de arriba y la tarjeta se
+// salen del padding del <main> del layout (-mx-4, -mt-5, -mb-5) para llegar
+// de borde a borde; eso vive solo acá, el layout no cambia.
 export default async function ClientHomePage({
   searchParams,
 }: {
@@ -38,8 +46,6 @@ export default async function ClientHomePage({
 
   if (!data) return null;
 
-  const daysSinceEvalLabel =
-    data.daysSinceLastEvaluation == null ? "—" : String(data.daysSinceLastEvaluation);
   // Reporte que se abre solo (oct-2026): el más reciente sin abrir, 1 vez
   // por día y 3 por reporte, nunca con un entrenamiento en curso.
   const autoOpenId = requestedReport
@@ -50,140 +56,136 @@ export default async function ClientHomePage({
         workoutInProgress: !!activeWorkout,
       });
 
+  // "Días sin evaluación" dejó de ser un número suelto: va en la fila de
+  // Mi Cuerpo.
+  const daysSinceEval = data.daysSinceLastEvaluation;
+  const sinceEvalLabel =
+    daysSinceEval == null ? "" : daysSinceEval === 0 ? " · hoy" : ` · hace ${daysSinceEval} día${daysSinceEval === 1 ? "" : "s"}`;
+
   return (
-    <div className="flex flex-col gap-4">
-      {(pendingReports.length > 0 || requestedReport) && (
-        <HomeReportAccess
-          key={requestedReport?.id ?? "home"}
-          reports={pendingReports}
-          requested={requestedReport}
-          autoOpenId={autoOpenId}
-          waitForWelcomeBanner={!!data.welcomeBanner}
-          waitForTour={!!data.homeTourRoutineId}
-        />
-      )}
-
-      <FadeIn>
-        <ClientGreeting name={data.firstName} />
-        <p className="mt-2 text-xl leading-snug font-medium text-[#f5f5f5] italic">
-          &ldquo;{motivationalPhrase}&rdquo;
-        </p>
-      </FadeIn>
-
-      {data.hasRoutine && (
+    <div className="flex flex-col">
+      {/* Zona de arriba: degradé con el saludo y la rutina de hoy */}
+      <section className="home-hero relative -mx-4 overflow-hidden -mt-5 px-5 pt-6 pb-14">
         <FadeIn>
-          <div data-tour="today-workout">
-            <NextWorkoutCard
-              activeWorkout={activeWorkout}
-              trainedToday={data.trainedToday}
-              todaySummary={data.todaySummary}
-              suggestedDay={data.suggestedDay}
-              completedCount={data.completedThisWeek}
-              plannedCount={data.plannedThisWeek}
-            />
-          </div>
+          <ClientGreeting name={data.firstName} />
+          <p className="mt-1.5 text-base leading-snug text-(--home-text-soft) italic">&ldquo;{motivationalPhrase}&rdquo;</p>
         </FadeIn>
-      )}
 
-      <FadeIn delay={0.05}>
-        <div className="grid grid-cols-3 gap-2 rounded-2xl bg-white/5 p-3">
-          <div className="text-center">
-            <p className="font-display text-2xl text-[#e8001c]">{data.dailyStreak}</p>
-            <p className="text-[10px] tracking-wide text-[#888888] uppercase">
-              Días de racha
-            </p>
-          </div>
-          <div className="border-x border-[#1e1e1e] text-center">
-            <p className="font-display text-2xl text-[#e8001c]">
-              {data.adherencePercent}%
-            </p>
-            <p className="text-[10px] tracking-wide text-[#888888] uppercase">
-              Adherencia
-            </p>
-          </div>
-          <div className="text-center">
-            <p className="font-display text-2xl text-[#e8001c]">{daysSinceEvalLabel}</p>
-            <p className="text-[10px] tracking-wide text-[#888888] uppercase">
-              Días s/ evaluación
-            </p>
-          </div>
-        </div>
-      </FadeIn>
+        {data.hasRoutine && (
+          <FadeIn className="mt-6">
+            <div data-tour="today-workout" className="relative">
+              {/* Brillo más fuerte detrás de "Hoy te toca" */}
+              <span
+                aria-hidden
+                className="pointer-events-none absolute -top-16 left-1/2 h-56 w-[115%] -translate-x-1/2 rounded-full bg-(--home-accent)/20 blur-[90px]"
+              />
+              <NextWorkoutCard
+                activeWorkout={activeWorkout}
+                trainedToday={data.trainedToday}
+                todaySummary={data.todaySummary}
+                suggestedDay={data.suggestedDay}
+                completedCount={data.completedThisWeek}
+                plannedCount={data.plannedThisWeek}
+              />
+            </div>
+          </FadeIn>
+        )}
+      </section>
 
-      <FadeIn delay={0.1} className="flex flex-col gap-2">
-        <PlanCard
-          href="/client/my-routine"
-          icon={ClipboardList}
-          label="Mi Rutina"
-          detail={
-            data.routineCard
-              ? `${data.routineCard.mesocicloNombre ?? "Rutina activa"} · ${data.routineCard.daysPerWeek} días por semana`
-              : "Tu coach está preparando tu rutina"
-          }
-          hasData={!!data.routineCard}
+      {/* Tarjeta que sube sobre el degradé */}
+      <div className="home-sheet animate-slide-up-in relative z-10 -mx-4 -mt-8 -mb-5 flex flex-col gap-3 rounded-t-[32px] px-4 pt-5 pb-8">
+        {(pendingReports.length > 0 || requestedReport) && (
+          <HomeReportAccess
+            key={requestedReport?.id ?? "home"}
+            reports={pendingReports}
+            requested={requestedReport}
+            autoOpenId={autoOpenId}
+            waitForWelcomeBanner={!!data.welcomeBanner}
+            waitForTour={!!data.homeTourRoutineId}
+          />
+        )}
+
+        <HomeStats
+          dailyStreak={data.dailyStreak}
+          bestDailyStreak={data.bestDailyStreak}
+          recentDays={data.recentDays}
+          adherencePercent={data.adherencePercent}
         />
-        <PlanCard
-          href="/client/body?tab=nutricion"
-          icon={Salad}
-          label="Nutrición"
-          detail={
-            data.nutritionCard
-              ? `Plan de ${data.nutritionCard.monthLabel} disponible`
-              : "Tu coach está preparando tu plan"
-          }
-          hasData={!!data.nutritionCard}
-        />
-        <div data-tour="body-card">
-          <PlanCard
+
+        <PlanList>
+          <PlanRow
+            href="/client/my-routine"
+            icon={ClipboardList}
+            label="Mi Rutina"
+            detail={
+              data.routineCard
+                ? `${data.routineCard.mesocicloNombre ?? "Rutina activa"} · ${data.routineCard.daysPerWeek} días por semana`
+                : "Tu coach está preparando tu rutina"
+            }
+            hasData={!!data.routineCard}
+          />
+          <PlanRow
+            href="/client/body?tab=nutricion"
+            icon={Salad}
+            label="Nutrición"
+            detail={
+              data.nutritionCard
+                ? `Plan de ${data.nutritionCard.monthLabel} disponible`
+                : "Tu coach está preparando tu plan"
+            }
+            hasData={!!data.nutritionCard}
+          />
+          <PlanRow
+            tour="body-card"
             href="/client/body?tab=cuerpo"
             icon={Ruler}
             label="Mi Cuerpo"
             detail={
               data.bodyCard
                 ? data.bodyCard.bodyFatPercentage != null
-                  ? `${data.bodyCard.bodyFatPercentage}% de grasa · medido el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`
-                  : `Última medición el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`
+                  ? `${data.bodyCard.bodyFatPercentage}% de grasa${sinceEvalLabel || ` · medido el ${formatFriendlyDate(data.bodyCard.evaluationDate)}`}`
+                  : `Última medición el ${formatFriendlyDate(data.bodyCard.evaluationDate)}${sinceEvalLabel}`
                 : "Tu primera evaluación está por venir"
             }
             hasData={!!data.bodyCard}
           />
-        </div>
-        <PlanCard
-          href="/client/body?tab=cuerpo"
-          icon={Camera}
-          label="Fotos de Progreso"
-          detail={
-            data.photosCard
-              ? `${data.photosCard.count} foto${data.photosCard.count === 1 ? "" : "s"} · última hace ${data.photosCard.daysSinceLast} día${data.photosCard.daysSinceLast === 1 ? "" : "s"}`
-              : "Subí tu primera foto de chequeo"
-          }
-          hasData={!!data.photosCard}
-        />
-        <PlanCard
-          href="/client/videos"
-          icon={PlayCircle}
-          label="Videos"
-          detail={
-            data.videosCard.totalCount === 0
-              ? "Tu coach está preparando material para vos"
-              : data.videosCard.unseenCount > 0
-                ? `${data.videosCard.unseenCount} video${data.videosCard.unseenCount === 1 ? "" : "s"} nuevo${data.videosCard.unseenCount === 1 ? "" : "s"}`
-                : `${data.videosCard.totalCount} video${data.videosCard.totalCount === 1 ? "" : "s"} disponible${data.videosCard.totalCount === 1 ? "" : "s"}`
-          }
-          hasData={data.videosCard.totalCount > 0}
-        />
-        <PlanCard
-          href="/client/progress"
-          icon={TrendingUp}
-          label="Mi Progreso"
-          detail={
-            data.progressCard.completedWorkoutsCount > 0
-              ? `${data.progressCard.completedWorkoutsCount} entrenamiento${data.progressCard.completedWorkoutsCount === 1 ? "" : "s"} completado${data.progressCard.completedWorkoutsCount === 1 ? "" : "s"}`
-              : "Completá tu primer entrenamiento para ver tu progreso"
-          }
-          hasData={data.progressCard.completedWorkoutsCount > 0}
-        />
-      </FadeIn>
+          <PlanRow
+            href="/client/body?tab=cuerpo"
+            icon={Camera}
+            label="Fotos de Progreso"
+            detail={
+              data.photosCard
+                ? `${data.photosCard.count} foto${data.photosCard.count === 1 ? "" : "s"} · última hace ${data.photosCard.daysSinceLast} día${data.photosCard.daysSinceLast === 1 ? "" : "s"}`
+                : "Subí tu primera foto de chequeo"
+            }
+            hasData={!!data.photosCard}
+          />
+          <PlanRow
+            href="/client/videos"
+            icon={PlayCircle}
+            label="Videos"
+            detail={
+              data.videosCard.totalCount === 0
+                ? "Tu coach está preparando material para vos"
+                : data.videosCard.unseenCount > 0
+                  ? `${data.videosCard.unseenCount} video${data.videosCard.unseenCount === 1 ? "" : "s"} nuevo${data.videosCard.unseenCount === 1 ? "" : "s"}`
+                  : `${data.videosCard.totalCount} video${data.videosCard.totalCount === 1 ? "" : "s"} disponible${data.videosCard.totalCount === 1 ? "" : "s"}`
+            }
+            hasData={data.videosCard.totalCount > 0}
+          />
+          <PlanRow
+            href="/client/progress"
+            icon={TrendingUp}
+            label="Mi Progreso"
+            detail={
+              data.progressCard.completedWorkoutsCount > 0
+                ? `${data.progressCard.completedWorkoutsCount} entrenamiento${data.progressCard.completedWorkoutsCount === 1 ? "" : "s"} completado${data.progressCard.completedWorkoutsCount === 1 ? "" : "s"}`
+                : "Completá tu primer entrenamiento para ver tu progreso"
+            }
+            hasData={data.progressCard.completedWorkoutsCount > 0}
+          />
+        </PlanList>
+      </div>
 
       {data.welcomeBanner && (
         <RoutineWelcomeBanner

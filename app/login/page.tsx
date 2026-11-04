@@ -27,10 +27,13 @@ export default async function LoginPage({
     redirect(authUser.role === "coach" ? "/coach/dashboard" : "/client/home");
   }
 
+  // Rediseño nov-2026 (estilo Solstice): hero alto + panel que sube
+  // encima. Scrollea la página entera (no solo la tarjeta) para que con el
+  // teclado abierto los campos y el botón puedan subir por encima de él.
   return (
-    <main className="flex h-[var(--app-height,100dvh)] flex-col bg-[#080808]">
-      <AuthHero subtitle="Acá empieza tu progreso" />
-      <AuthCard>
+    <main className="momentum-scroll flex h-[var(--app-height,100dvh)] flex-col overflow-y-auto overscroll-contain bg-[#080808]">
+      <AuthHero size="tall" subtitle="Acá empieza tu progreso" />
+      <AuthCard variant="sheet">
         <LoginForm notice={notice ? (LOGIN_NOTICES[notice] ?? null) : null} />
       </AuthCard>
     </main>

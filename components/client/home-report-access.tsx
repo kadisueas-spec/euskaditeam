@@ -72,24 +72,29 @@ export function HomeReportAccess({
       {cards.length > 0 && (
         <div className="flex flex-col gap-2">
           {cards.map((report) => (
+            // Rediseño nov-2026: bloque oscuro con borde rojo (no un bloque rojo
+            // lleno) para que el botón de entrenar siga siendo el único rojo
+            // fuerte de la pantalla.
             <button
               key={report.id}
               type="button"
               onClick={() => setOpenId(report.id)}
-              className="flex min-h-[64px] w-full items-center gap-3 rounded-2xl border border-[#e8001c]/60 bg-[#e8001c] px-4 py-3 text-left text-[#080808] active:opacity-90"
+              className="surface-raised flex min-h-[72px] w-full items-center gap-3 rounded-3xl border border-(--home-accent)/50 px-4 py-3 text-left transition-transform active:scale-[0.98] motion-reduce:transition-none"
             >
-              <Sparkles className="size-6 shrink-0" aria-hidden />
-              <span className="flex-1">
-                <span className="block font-display text-2xl leading-none tracking-wide uppercase">
+              <span className="home-gradient home-glow-sm flex size-11 shrink-0 items-center justify-center rounded-full">
+                <Sparkles className="size-5 text-white" aria-hidden />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-display text-2xl leading-none tracking-wide text-[#f5f5f5] uppercase">
                   {report.kind === "weekly"
                     ? "Tu semana está lista"
                     : report.kind === "monthly"
                       ? `Tu ${report.periodLabel.split(" ")[0].toLowerCase()} está listo`
                       : "Tu progreso está listo"}
                 </span>
-                <span className="mt-1 block text-sm font-bold">{report.periodLabel} · Tocá para verlo</span>
+                <span className="mt-1 block text-sm text-[#c9c9c9]">{report.periodLabel} · Tocá para verlo</span>
               </span>
-              <ChevronRight className="size-5 shrink-0" aria-hidden />
+              <ChevronRight className="size-5 shrink-0 text-(--home-accent)" aria-hidden />
             </button>
           ))}
         </div>
