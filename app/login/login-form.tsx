@@ -120,7 +120,6 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
         />
       </div>
 
-      {/* Acento vivo base: 4,7:1 sobre la tarjeta, alcanza AA en texto chico. */}
       <Link
         href="/forgot-password"
         className="-mt-3 flex min-h-11 items-center self-end rounded-full px-1 text-sm font-medium text-(--accent-vivid) outline-none focus-visible:ring-2 focus-visible:ring-(--accent-vivid)"
@@ -145,7 +144,7 @@ export function LoginForm({ notice = null }: { notice?: string | null }) {
         ) : (
           <>
             Iniciar sesión
-            <span aria-hidden className="absolute right-2 flex size-10 items-center justify-center rounded-full bg-white/15">
+            <span aria-hidden className="absolute right-2 flex size-10 items-center justify-center rounded-full bg-black/15">
               <ArrowRight className="size-5" />
             </span>
           </>
