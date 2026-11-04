@@ -21,14 +21,11 @@ export function AuthHero({ subtitle, size = "default" }: { subtitle: string; siz
   if (size === "tall") {
     return (
       <div
-        className="relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
-        style={{
-          // Acento vivo (nov-2026): resplandor más saturado, centrado en el logo.
-          background:
-            "radial-gradient(circle at 50% 38%, var(--accent-glow-core) 0%, var(--accent-glow-mid) 45%, #080808 100%)",
-        }}
+        className="hero-vivid relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
       >
-        <div className="absolute top-[34%] left-1/2 size-72 -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--accent-vivid)/40 blur-[90px]" />
+        {/* Brillo más fuerte detrás del logo: ancho y muy desenfocado, para
+            que no se lea como un círculo aislado */}
+        <div className="absolute top-[34%] left-1/2 h-72 w-[120%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--accent-vivid)/30 blur-[100px]" />
         <Image
           src="/brand/euskadi-logo.png"
           alt="Euskadi Team"
@@ -39,7 +36,7 @@ export function AuthHero({ subtitle, size = "default" }: { subtitle: string; siz
         />
         <div className="relative">
           <h1 className="font-hero text-4xl tracking-wide text-white uppercase">Euskadi Team</h1>
-          <p className="mt-1.5 text-base text-[#c9c9c9]">{subtitle}</p>
+          <p className="mt-1.5 text-base text-(--hero-text-soft)">{subtitle}</p>
         </div>
       </div>
     );

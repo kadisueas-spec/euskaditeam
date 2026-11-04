@@ -65,10 +65,10 @@ export default async function ClientHomePage({
   return (
     <div className="flex flex-col">
       {/* Zona de arriba: degradé con el saludo y la rutina de hoy */}
-      <section className="surface-hero relative -mx-4 -mt-5 px-5 pt-6 pb-14">
+      <section className="hero-vivid relative -mx-4 overflow-hidden -mt-5 px-5 pt-6 pb-14">
         <FadeIn>
           <ClientGreeting name={data.firstName} />
-          <p className="mt-1.5 text-base leading-snug text-[#c9c9c9] italic">&ldquo;{motivationalPhrase}&rdquo;</p>
+          <p className="mt-1.5 text-base leading-snug text-(--hero-text-soft) italic">&ldquo;{motivationalPhrase}&rdquo;</p>
         </FadeIn>
 
         {data.hasRoutine && (
@@ -77,7 +77,7 @@ export default async function ClientHomePage({
               {/* Brillo más fuerte detrás de "Hoy te toca" */}
               <span
                 aria-hidden
-                className="pointer-events-none absolute -top-12 left-1/2 h-44 w-72 -translate-x-1/2 rounded-full bg-(--accent-vivid)/25 blur-[70px]"
+                className="pointer-events-none absolute -top-16 left-1/2 h-56 w-[115%] -translate-x-1/2 rounded-full bg-(--accent-vivid)/20 blur-[90px]"
               />
               <NextWorkoutCard
                 activeWorkout={activeWorkout}
