@@ -74,11 +74,6 @@ export default async function ClientHomePage({
         {data.hasRoutine && (
           <FadeIn className="mt-6">
             <div data-tour="today-workout" className="relative">
-              {/* Brillo más fuerte detrás de "Hoy te toca" */}
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -top-16 left-1/2 h-56 w-[115%] -translate-x-1/2 rounded-full bg-(--accent-vivid)/20 blur-[90px]"
-              />
               <NextWorkoutCard
                 activeWorkout={activeWorkout}
                 trainedToday={data.trainedToday}

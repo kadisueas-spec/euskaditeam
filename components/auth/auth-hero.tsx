@@ -23,16 +23,13 @@ export function AuthHero({ subtitle, size = "default" }: { subtitle: string; siz
       <div
         className="hero-vivid relative flex min-h-[46%] shrink-0 flex-col items-center justify-center gap-3 overflow-hidden px-6 pt-[calc(env(safe-area-inset-top)+2rem)] pb-16 text-center [@media(max-height:700px)]:min-h-0 [@media(max-height:700px)]:gap-2 [@media(max-height:700px)]:pt-[calc(env(safe-area-inset-top)+1.25rem)] [@media(max-height:700px)]:pb-14"
       >
-        {/* Brillo más fuerte detrás del logo: ancho y muy desenfocado, para
-            que no se lea como un círculo aislado */}
-        <div className="absolute top-[34%] left-1/2 h-72 w-[120%] -translate-x-1/2 -translate-y-1/2 rounded-full bg-(--accent-vivid)/30 blur-[100px]" />
         <Image
           src="/brand/euskadi-logo.png"
           alt="Euskadi Team"
           width={228}
           height={228}
           priority
-          className="relative h-auto w-[min(200px,24vh)] drop-shadow-[0_0_36px_rgba(255,31,61,0.55)] [@media(max-height:700px)]:w-[17vh]"
+          className="relative h-auto w-[min(200px,24vh)] [@media(max-height:700px)]:w-[17vh]"
         />
         <div className="relative">
           <h1 className="font-hero text-4xl tracking-wide text-white uppercase">Euskadi Team</h1>
